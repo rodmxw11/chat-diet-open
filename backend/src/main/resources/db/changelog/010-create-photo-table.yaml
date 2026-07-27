@@ -1,0 +1,35 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-create-photo-table
+      author: chat-diet
+      changes:
+        - createTable:
+            tableName: photo
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: food_entry_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archive_path
+                  type: VARCHAR(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: captured_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: purge_after
+                  type: DATETIME
+                  constraints:
+                    nullable: false

@@ -1,6 +1,7 @@
 package com.chatdiet.intent;
 
 import com.chatdiet.chat.ChatService;
+import com.chatdiet.chat.ConversationHistoryStore;
 import com.chatdiet.digestive.DigestiveEventRepository;
 import com.chatdiet.exercise.ExerciseEntryRepository;
 import com.chatdiet.food.FoodEntryRepository;
@@ -67,6 +68,9 @@ class IntentRoutingTest {
     @Autowired
     private FoodItemRepository foodItemRepository;
 
+    @Autowired
+    private ConversationHistoryStore conversationHistoryStore;
+
     @BeforeEach
     void clearAll() {
         noteRepository.deleteAll();
@@ -78,6 +82,7 @@ class IntentRoutingTest {
         requirementEntryRepository.deleteAll();
         dailyTargetRepository.deleteAll();
         foodItemRepository.deleteAll();
+        conversationHistoryStore.clearAll();
     }
 
     @Test

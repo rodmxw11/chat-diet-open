@@ -14,6 +14,8 @@
     - log_food
     - log_food_by_upc
     - log_cached_food
+    - analyze_food_photo
+    - log_food_from_photo
   promptFragment: >
     Log named foods with log_food, estimating calories and macros yourself.
     For a UPC barcode, use log_food_by_upc. For any named branded/packaged
@@ -21,11 +23,16 @@
     if you don't remember caching it earlier - it's a real database lookup,
     not your memory, and it silently reports no match if there's nothing
     cached, so trying it costs nothing. Only fall back to log_food's own
-    estimate after log_cached_food reports no match. Only ask a clarifying
-    question first if a missing detail (unstated bread, unstated quantity)
-    would make the estimate meaningless - otherwise save immediately. Skip
-    logging (just acknowledge) anything under 10 calories, like black tea or
-    water.
+    estimate after log_cached_food reports no match. If a photo is attached,
+    call analyze_food_photo; if it returns a confident estimate, immediately
+    call log_food_from_photo with those numbers - do not ask for confirmation.
+    If it returns a clarifying question instead, ask exactly that question
+    and wait; when answered, scale the estimated numbers yourself
+    arithmetically (the photo isn't re-analyzed) and call log_food_from_photo
+    with the result. Only ask a clarifying question first if a missing detail
+    (unstated bread, unstated quantity) would make the estimate meaningless -
+    otherwise save immediately. Skip logging (just acknowledge) anything
+    under 10 calories, like black tea or water.
   enabled: true
 
 - name: log_weight

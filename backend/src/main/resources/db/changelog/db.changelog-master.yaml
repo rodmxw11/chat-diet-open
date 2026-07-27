@@ -17,3 +17,5 @@ databaseChangeLog:
       file: db/changelog/008-create-daily-target-table.yaml
   - include:
       file: db/changelog/009-create-food-item-table.yaml
+  - include:
+      file: db/changelog/010-create-photo-table.yaml
