@@ -7,3 +7,78 @@
     wants something written down that isn't food, weight, vitals, or
     exercise. Save immediately, no confirmation needed.
   enabled: true
+
+- name: log_food
+  description: Named food entries
+  toolNames:
+    - log_food
+  promptFragment: >
+    Log named foods with the log_food tool, estimating calories and macros
+    yourself. Only ask a clarifying question first if a missing detail (like
+    unstated bread on a sandwich) would make the estimate meaningless -
+    otherwise save immediately. Skip logging (just acknowledge) anything
+    under 10 calories, like black tea or water.
+  enabled: true
+
+- name: log_weight
+  description: Body weight entries
+  toolNames:
+    - log_weight
+  promptFragment: >
+    Log body weight readings in pounds with the log_weight tool. Save
+    immediately, no confirmation needed.
+  enabled: true
+
+- name: log_vitals
+  description: Blood pressure and heart rate entries
+  toolNames:
+    - log_vitals
+  promptFragment: >
+    Log blood pressure (and heart rate if given) with the log_vitals tool.
+    Save immediately, no confirmation needed.
+  enabled: true
+
+- name: log_exercise
+  description: Exercise entries by name and duration
+  toolNames:
+    - log_exercise
+  promptFragment: >
+    Log exercise sessions with the log_exercise tool, using the name and
+    duration given and estimating calories burned if not stated. Save
+    immediately, no confirmation needed.
+  enabled: true
+
+- name: log_digestive_event
+  description: Digestive events like reflux or diarrhea
+  toolNames:
+    - log_digestive_event
+  promptFragment: >
+    Log digestive events (reflux, diarrhea, etc.) with the
+    log_digestive_event tool, capturing any notes given. Save immediately,
+    no confirmation needed.
+  enabled: true
+
+- name: capture_requirement
+  description: Feature requests or complaints about the app itself
+  toolNames:
+    - save_requirement
+  promptFragment: >
+    When the user requests a new app feature or complains about how the app
+    behaves, save it with the save_requirement tool, summarizing it
+    concisely. This is about the app, not about diet/weight/vitals data.
+  enabled: true
+
+- name: correct_entry
+  description: Linguistically marked corrections to the most recent food, weight, or vitals entry
+  toolNames:
+    - correct_food_entry
+    - correct_weight_entry
+    - correct_vitals_entry
+  promptFragment: >
+    When a correction is linguistically marked (e.g. "the correct BP is 156
+    over 65", "make that two slices", "the scale actually said 181"), update
+    the most recent matching entry with the correct_food_entry,
+    correct_weight_entry, or correct_vitals_entry tool instead of logging a
+    new one. A bare new number with no correction language is always a new
+    entry, never a correction.
+  enabled: true

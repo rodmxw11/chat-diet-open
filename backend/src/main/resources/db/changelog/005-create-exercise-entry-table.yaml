@@ -1,0 +1,33 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-create-exercise-entry-table
+      author: chat-diet
+      changes:
+        - createTable:
+            tableName: exercise_entry
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: logged_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: exercise_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: duration_minutes
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: calories_burned
+                  type: INT

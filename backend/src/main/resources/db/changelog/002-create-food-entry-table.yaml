@@ -1,0 +1,56 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-food-entry-table
+      author: chat-diet
+      changes:
+        - createTable:
+            tableName: food_entry
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: logged_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: raw_utterance
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_calories
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_protein_g
+                  type: DOUBLE
+              - column:
+                  name: total_carbs_g
+                  type: DOUBLE
+              - column:
+                  name: total_fat_g
+                  type: DOUBLE
+              - column:
+                  name: cost_usd
+                  type: DOUBLE
+              - column:
+                  name: prep_minutes
+                  type: INT
+              - column:
+                  name: source
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: corrected_at
+                  type: DATETIME
+              - column:
+                  name: prior_values_json
+                  type: TEXT

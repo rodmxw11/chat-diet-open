@@ -1,7 +1,13 @@
 package com.chatdiet.intent;
 
 import com.chatdiet.chat.ChatService;
+import com.chatdiet.digestive.DigestiveEventRepository;
+import com.chatdiet.exercise.ExerciseEntryRepository;
+import com.chatdiet.food.FoodEntryRepository;
 import com.chatdiet.note.NoteRepository;
+import com.chatdiet.requirement.RequirementEntryRepository;
+import com.chatdiet.vitals.VitalsEntryRepository;
+import com.chatdiet.weight.WeightEntryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -35,9 +41,33 @@ class IntentRoutingTest {
     @Autowired
     private NoteRepository noteRepository;
 
+    @Autowired
+    private FoodEntryRepository foodEntryRepository;
+
+    @Autowired
+    private WeightEntryRepository weightEntryRepository;
+
+    @Autowired
+    private VitalsEntryRepository vitalsEntryRepository;
+
+    @Autowired
+    private ExerciseEntryRepository exerciseEntryRepository;
+
+    @Autowired
+    private DigestiveEventRepository digestiveEventRepository;
+
+    @Autowired
+    private RequirementEntryRepository requirementEntryRepository;
+
     @BeforeEach
-    void clearNotes() {
+    void clearAll() {
         noteRepository.deleteAll();
+        foodEntryRepository.deleteAll();
+        weightEntryRepository.deleteAll();
+        vitalsEntryRepository.deleteAll();
+        exerciseEntryRepository.deleteAll();
+        digestiveEventRepository.deleteAll();
+        requirementEntryRepository.deleteAll();
     }
 
     @Test
@@ -56,5 +86,75 @@ class IntentRoutingTest {
         assertThat(noteRepository.findAll())
                 .as("save_note should have been invoked and persisted a Note")
                 .hasSize(1);
+    }
+
+    @Test
+    void routesNamedFoodUtteranceToLogFoodTool() {
+        chatService.reply("I ate a medium banana");
+
+        assertThat(foodEntryRepository.findAll())
+                .as("log_food should have been invoked and persisted a FoodEntry")
+                .hasSize(1);
+    }
+
+    @Test
+    void routesWeightUtteranceToLogWeightTool() {
+        chatService.reply("weight this morning was 182.4 lbs");
+
+        assertThat(weightEntryRepository.findAll())
+                .as("log_weight should have been invoked and persisted a WeightEntry")
+                .hasSize(1);
+    }
+
+    @Test
+    void routesVitalsUtteranceToLogVitalsTool() {
+        chatService.reply("my blood pressure is 128 over 82, heart rate 68");
+
+        assertThat(vitalsEntryRepository.findAll())
+                .as("log_vitals should have been invoked and persisted a VitalsEntry")
+                .hasSize(1);
+    }
+
+    @Test
+    void routesExerciseUtteranceToLogExerciseTool() {
+        chatService.reply("I ran for 30 minutes");
+
+        assertThat(exerciseEntryRepository.findAll())
+                .as("log_exercise should have been invoked and persisted an ExerciseEntry")
+                .hasSize(1);
+    }
+
+    @Test
+    void routesDigestiveEventUtteranceToLogDigestiveEventTool() {
+        chatService.reply("had some mild reflux after lunch");
+
+        assertThat(digestiveEventRepository.findAll())
+                .as("log_digestive_event should have been invoked and persisted a DigestiveEvent")
+                .hasSize(1);
+    }
+
+    @Test
+    void routesFeatureRequestToSaveRequirementTool() {
+        chatService.reply("it would be great if the app could remind me to log weight every morning");
+
+        assertThat(requirementEntryRepository.findAll())
+                .as("save_requirement should have been invoked and persisted a RequirementEntry")
+                .hasSize(1);
+    }
+
+    @Test
+    void routesMarkedCorrectionToCorrectWeightEntryTool() {
+        chatService.reply("weight this morning was 182.4 lbs");
+        assertThat(weightEntryRepository.findAll()).hasSize(1);
+
+        chatService.reply("the scale actually said 181.0");
+
+        var entries = weightEntryRepository.findAll();
+        assertThat(entries)
+                .as("correct_weight_entry should update the existing row in place, not add a new one")
+                .hasSize(1);
+        assertThat(entries.iterator().next().correctedAt())
+                .as("corrected entry should have correctedAt set")
+                .isNotNull();
     }
 }

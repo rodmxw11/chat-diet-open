@@ -1,0 +1,36 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-create-vitals-entry-table
+      author: chat-diet
+      changes:
+        - createTable:
+            tableName: vitals_entry
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: logged_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: systolic
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: diastolic
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: heart_rate
+                  type: INT
+              - column:
+                  name: corrected_at
+                  type: DATETIME
