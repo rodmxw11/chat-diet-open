@@ -13,3 +13,5 @@ databaseChangeLog:
       file: db/changelog/006-create-digestive-event-table.yaml
   - include:
       file: db/changelog/007-create-requirement-entry-table.yaml
+  - include:
+      file: db/changelog/008-create-daily-target-table.yaml

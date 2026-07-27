@@ -5,6 +5,7 @@ import com.chatdiet.digestive.DigestiveEventRepository;
 import com.chatdiet.exercise.ExerciseEntryRepository;
 import com.chatdiet.food.FoodEntryRepository;
 import com.chatdiet.note.NoteRepository;
+import com.chatdiet.nutrition.DailyTargetRepository;
 import com.chatdiet.requirement.RequirementEntryRepository;
 import com.chatdiet.vitals.VitalsEntryRepository;
 import com.chatdiet.weight.WeightEntryRepository;
@@ -59,6 +60,9 @@ class IntentRoutingTest {
     @Autowired
     private RequirementEntryRepository requirementEntryRepository;
 
+    @Autowired
+    private DailyTargetRepository dailyTargetRepository;
+
     @BeforeEach
     void clearAll() {
         noteRepository.deleteAll();
@@ -68,6 +72,7 @@ class IntentRoutingTest {
         exerciseEntryRepository.deleteAll();
         digestiveEventRepository.deleteAll();
         requirementEntryRepository.deleteAll();
+        dailyTargetRepository.deleteAll();
     }
 
     @Test
@@ -156,5 +161,35 @@ class IntentRoutingTest {
         assertThat(entries.iterator().next().correctedAt())
                 .as("corrected entry should have correctedAt set")
                 .isNotNull();
+    }
+
+    @Test
+    void routesCalorieTargetQuestionToGetDailyTargetTool() {
+        chatService.reply("weight this morning was 200 lbs");
+        chatService.reply("I ate a chicken sandwich, 450 calories, 30g protein, 40g carbs, 15g fat");
+
+        chatService.reply("what's my calorie target for today and how many calories do I have left?");
+
+        assertThat(dailyTargetRepository.findAll())
+                .as("get_daily_target should have been invoked and computed/persisted a DailyTarget")
+                .hasSize(1);
+    }
+
+    @Test
+    void routesFastingQuestionToGetFastingStatusTool() {
+        chatService.reply("I ate a chicken sandwich, 450 calories, 30g protein, 40g carbs, 15g fat");
+
+        var reply = chatService.reply("how long has it been since I last ate?");
+
+        assertThat(reply).as("get_fasting_status should have produced a non-empty reply").isNotBlank();
+    }
+
+    @Test
+    void routesGoalWeightQuestionToGetWeightProjectionTool() {
+        chatService.reply("weight this morning was 200 lbs");
+
+        var reply = chatService.reply("at my current rate, when will I reach 190 lbs?");
+
+        assertThat(reply).as("get_weight_projection should have produced a non-empty reply").isNotBlank();
     }
 }

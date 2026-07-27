@@ -68,6 +68,21 @@
     concisely. This is about the app, not about diet/weight/vitals data.
   enabled: true
 
+- name: query_data
+  description: Calorie target, fasting duration, and weight projections
+  toolNames:
+    - get_daily_target
+    - get_fasting_status
+    - get_weight_projection
+  promptFragment: >
+    Use get_daily_target for questions about today's calorie target or how
+    many calories remain today. Use get_fasting_status for "how long since I
+    ate" style questions. Use get_weight_projection for goal-date or
+    future-weight questions, passing either a goal weight or a goal date, not
+    both. Report projected calorie surpluses/deficits in pounds alongside
+    calories, never as a bare calorie number.
+  enabled: true
+
 - name: correct_entry
   description: Linguistically marked corrections to the most recent food, weight, or vitals entry
   toolNames:

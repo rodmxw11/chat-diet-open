@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: backend
+
+  datasource:
+    url: jdbc:h2:file:./data/chat-diet
+    driver-class-name: org.h2.Driver
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+  ai:
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY}
+      chat:
+        model: claude-haiku-4-5-20251001
+        max-tokens: 1024
+
+chat-diet:
+  day-rollover-hour: 4
+
+  # Personal biometrics for Mifflin-St Jeor BMR. No user-profile table in v1
+  # (single user, no auth) - these are config instead. See application.yml
+  # (gitignored - copy this file to application.yml and fill in real values).
+  profile:
+    sex: MALE # or FEMALE
+    birth-date: 1970-01-01
+    height-in: 69
+
+  # Daily calorie target = effective TDEE + (weekly-rate-lbs * 3500 / 7).
+  # Negative to lose weight, positive to gain, 0 for maintenance.
+  goal:
+    weekly-rate-lbs: -1.0
