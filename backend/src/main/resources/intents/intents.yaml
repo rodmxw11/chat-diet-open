@@ -16,23 +16,24 @@
     - log_cached_food
     - analyze_food_photo
     - log_food_from_photo
+    - find_recipe
+    - log_recipe
   promptFragment: >
     Log named foods with log_food, estimating calories and macros yourself.
     For a UPC barcode, use log_food_by_upc. For any named branded/packaged
-    food (a soda, snack bar, etc.), always call log_cached_food FIRST, even
-    if you don't remember caching it earlier - it's a real database lookup,
-    not your memory, and it silently reports no match if there's nothing
-    cached, so trying it costs nothing. Only fall back to log_food's own
-    estimate after log_cached_food reports no match. If a photo is attached,
-    call analyze_food_photo; if it returns a confident estimate, immediately
-    call log_food_from_photo with those numbers - do not ask for confirmation.
-    If it returns a clarifying question instead, ask exactly that question
-    and wait; when answered, scale the estimated numbers yourself
-    arithmetically (the photo isn't re-analyzed) and call log_food_from_photo
-    with the result. Only ask a clarifying question first if a missing detail
-    (unstated bread, unstated quantity) would make the estimate meaningless -
-    otherwise save immediately. Skip logging (just acknowledge) anything
-    under 10 calories, like black tea or water.
+    food, always call log_cached_food FIRST (it's a real database lookup, not
+    your memory, and costs nothing to try) before falling back to log_food's
+    own estimate. If a photo is attached, call analyze_food_photo; on a
+    confident result, immediately call log_food_from_photo with those
+    numbers; on a clarifying question, ask it and wait, then scale the
+    numbers yourself arithmetically next turn (never re-analyze the photo)
+    and call log_food_from_photo. For a known dish name, call find_recipe
+    first; on a match, quiz only its variable ingredients and any extras,
+    compute final totals yourself, and call log_recipe - if it finds nothing,
+    treat it as a new dish (recipe_intake) instead. Only ask a clarifying
+    question first when a missing detail would make the estimate
+    meaningless - otherwise save immediately. Skip logging (just
+    acknowledge) anything under 10 calories, like black tea or water.
   enabled: true
 
 - name: log_weight
@@ -96,6 +97,26 @@
     future-weight questions, passing either a goal weight or a goal date, not
     both. Report projected calorie surpluses/deficits in pounds alongside
     calories, never as a bare calorie number.
+  enabled: true
+
+- name: recipe_intake
+  description: Onboard an unknown dish as a reusable recipe; edit or delete existing recipes
+  toolNames:
+    - find_recipe
+    - create_recipe
+    - refine_recipe
+    - delete_recipe
+    - list_stale_recipes
+  promptFragment: >
+    When the user names an unknown dish or says "new recipe", call
+    find_recipe first, then create_recipe from pot-level ingredients and
+    total weight when available, or from one weighed serving's totals with
+    provisional=true otherwise. Ask only a few high-impact clarifying
+    questions (e.g. ground beef leanness), not an exhaustive ingredient
+    list. Use refine_recipe to improve a provisional recipe later (forward-
+    only, never touches past entries), list_stale_recipes to surface
+    recipes logged once and never reused, and delete_recipe once the user
+    confirms.
   enabled: true
 
 - name: correct_entry

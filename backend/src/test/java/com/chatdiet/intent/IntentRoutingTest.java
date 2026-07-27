@@ -8,6 +8,8 @@ import com.chatdiet.food.FoodEntryRepository;
 import com.chatdiet.fooditem.FoodItemRepository;
 import com.chatdiet.note.NoteRepository;
 import com.chatdiet.nutrition.DailyTargetRepository;
+import com.chatdiet.recipe.RecipeIngredientRepository;
+import com.chatdiet.recipe.RecipeRepository;
 import com.chatdiet.requirement.RequirementEntryRepository;
 import com.chatdiet.vitals.VitalsEntryRepository;
 import com.chatdiet.weight.WeightEntryRepository;
@@ -71,6 +73,12 @@ class IntentRoutingTest {
     @Autowired
     private ConversationHistoryStore conversationHistoryStore;
 
+    @Autowired
+    private RecipeRepository recipeRepository;
+
+    @Autowired
+    private RecipeIngredientRepository recipeIngredientRepository;
+
     @BeforeEach
     void clearAll() {
         noteRepository.deleteAll();
@@ -83,6 +91,8 @@ class IntentRoutingTest {
         dailyTargetRepository.deleteAll();
         foodItemRepository.deleteAll();
         conversationHistoryStore.clearAll();
+        recipeIngredientRepository.deleteAll();
+        recipeRepository.deleteAll();
     }
 
     @Test
@@ -226,5 +236,46 @@ class IntentRoutingTest {
         assertThat(foodEntryRepository.findAll())
                 .as("log_cached_food should have reused the cached FoodItem for a second entry")
                 .hasSize(2);
+    }
+
+    @Test
+    void routesNewDishUtteranceToCreateRecipeTool() {
+        chatService.reply("I made a new recipe called Turkey Chili. I weighed the whole pot at 3000g and it "
+                + "has about 2400 calories, 180g protein, 200g carbs, 80g fat total. Save it.");
+
+        assertThat(recipeRepository.findAll())
+                .as("create_recipe should have been invoked and persisted a Recipe")
+                .hasSize(1);
+        assertThat(recipeRepository.findAll().iterator().next().provisional())
+                .as("a pot-weighed recipe should not be provisional")
+                .isFalse();
+    }
+
+    @Test
+    void routesKnownDishUtteranceToLogRecipeTool() {
+        chatService.reply("I made a new recipe called Turkey Chili. I weighed the whole pot at 3000g and it "
+                + "has about 2400 calories, 180g protein, 200g carbs, 80g fat total. Save it.");
+        assertThat(recipeRepository.findAll()).hasSize(1);
+
+        chatService.reply("I had a bowl of turkey chili, about 400g");
+
+        assertThat(foodEntryRepository.findAll())
+                .as("log_recipe should have been invoked and persisted a FoodEntry")
+                .hasSize(1);
+        assertThat(foodEntryRepository.findAll().iterator().next().source())
+                .isEqualTo("RECIPE");
+    }
+
+    @Test
+    void routesDeleteRequestToDeleteRecipeTool() {
+        chatService.reply("I made a new recipe called Turkey Chili. I weighed the whole pot at 3000g and it "
+                + "has about 2400 calories, 180g protein, 200g carbs, 80g fat total. Save it.");
+        assertThat(recipeRepository.findAll()).hasSize(1);
+
+        chatService.reply("delete the turkey chili recipe");
+
+        assertThat(recipeRepository.findAll())
+                .as("delete_recipe should have removed the recipe")
+                .isEmpty();
     }
 }

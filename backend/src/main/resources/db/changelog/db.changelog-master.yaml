@@ -19,3 +19,7 @@ databaseChangeLog:
       file: db/changelog/009-create-food-item-table.yaml
   - include:
       file: db/changelog/010-create-photo-table.yaml
+  - include:
+      file: db/changelog/011-create-recipe-table.yaml
+  - include:
+      file: db/changelog/012-create-recipe-ingredient-table.yaml
