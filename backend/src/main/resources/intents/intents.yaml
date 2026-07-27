@@ -9,15 +9,23 @@
   enabled: true
 
 - name: log_food
-  description: Named food entries
+  description: Named, UPC-scanned, and previously-cached food entries
   toolNames:
     - log_food
+    - log_food_by_upc
+    - log_cached_food
   promptFragment: >
-    Log named foods with the log_food tool, estimating calories and macros
-    yourself. Only ask a clarifying question first if a missing detail (like
-    unstated bread on a sandwich) would make the estimate meaningless -
-    otherwise save immediately. Skip logging (just acknowledge) anything
-    under 10 calories, like black tea or water.
+    Log named foods with log_food, estimating calories and macros yourself.
+    For a UPC barcode, use log_food_by_upc. For any named branded/packaged
+    food (a soda, snack bar, etc.), always call log_cached_food FIRST, even
+    if you don't remember caching it earlier - it's a real database lookup,
+    not your memory, and it silently reports no match if there's nothing
+    cached, so trying it costs nothing. Only fall back to log_food's own
+    estimate after log_cached_food reports no match. Only ask a clarifying
+    question first if a missing detail (unstated bread, unstated quantity)
+    would make the estimate meaningless - otherwise save immediately. Skip
+    logging (just acknowledge) anything under 10 calories, like black tea or
+    water.
   enabled: true
 
 - name: log_weight

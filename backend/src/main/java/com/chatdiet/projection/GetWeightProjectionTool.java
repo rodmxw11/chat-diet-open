@@ -22,7 +22,7 @@ public class GetWeightProjectionTool implements Function<GetWeightProjectionRequ
 
     @Override
     public ToolResult apply(GetWeightProjectionRequest request) {
-        if (request.goalWeightLbs() != null) {
+        if (request.goalWeightLbs() != null && request.goalWeightLbs() > 0) {
             return projectionService.projectGoalDate(request.goalWeightLbs())
                     .<ToolResult>map(date -> new ToolResult.Success(
                             "Projected to reach %.1f lbs around %s at the current rate."
@@ -31,10 +31,11 @@ public class GetWeightProjectionTool implements Function<GetWeightProjectionRequ
                     .orElseGet(() -> new ToolResult.NotFound("a projection - log a weight first, or the goal doesn't match the current trend direction"));
         }
 
-        if (request.goalDate() != null) {
-            return projectionService.projectWeightOn(request.goalDate())
+        var goalDate = request.parsedGoalDate();
+        if (goalDate != null) {
+            return projectionService.projectWeightOn(goalDate)
                     .<ToolResult>map(weight -> new ToolResult.Success(
-                            "Projected weight on %s: %.1f lbs at the current rate.".formatted(request.goalDate(), weight),
+                            "Projected weight on %s: %.1f lbs at the current rate.".formatted(goalDate, weight),
                             weight))
                     .orElseGet(() -> new ToolResult.NotFound("a projection - log a weight first"));
         }

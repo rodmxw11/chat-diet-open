@@ -1,0 +1,43 @@
+package com.chatdiet.openfoodfacts;
+
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+
+import java.util.Optional;
+
+@Service
+public class OpenFoodFactsClient {
+
+    private final RestClient restClient = RestClient.create();
+
+    public Optional<OffProduct> lookup(String upc) {
+        try {
+            var response = restClient.get()
+                    .uri("https://world.openfoodfacts.org/api/v2/product/{barcode}.json", upc)
+                    .retrieve()
+                    .body(OffApiResponse.class);
+
+            if (response == null || response.status() != 1 || response.product() == null) {
+                return Optional.empty();
+            }
+
+            var product = response.product();
+            var nutriments = product.nutriments();
+            if (nutriments == null || nutriments.caloriesPer100g() == null) {
+                // Product exists in OFF but has no usable nutrition data - treat like a miss
+                // rather than caching/logging a false "0 calories".
+                return Optional.empty();
+            }
+
+            return Optional.of(new OffProduct(
+                    product.productName(),
+                    nutriments.caloriesPer100g(),
+                    nutriments.proteinPer100g(),
+                    nutriments.carbsPer100g(),
+                    nutriments.fatPer100g(),
+                    product.servingQuantity()));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+}

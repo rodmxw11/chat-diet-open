@@ -4,6 +4,7 @@ import com.chatdiet.chat.ChatService;
 import com.chatdiet.digestive.DigestiveEventRepository;
 import com.chatdiet.exercise.ExerciseEntryRepository;
 import com.chatdiet.food.FoodEntryRepository;
+import com.chatdiet.fooditem.FoodItemRepository;
 import com.chatdiet.note.NoteRepository;
 import com.chatdiet.nutrition.DailyTargetRepository;
 import com.chatdiet.requirement.RequirementEntryRepository;
@@ -63,6 +64,9 @@ class IntentRoutingTest {
     @Autowired
     private DailyTargetRepository dailyTargetRepository;
 
+    @Autowired
+    private FoodItemRepository foodItemRepository;
+
     @BeforeEach
     void clearAll() {
         noteRepository.deleteAll();
@@ -73,6 +77,7 @@ class IntentRoutingTest {
         digestiveEventRepository.deleteAll();
         requirementEntryRepository.deleteAll();
         dailyTargetRepository.deleteAll();
+        foodItemRepository.deleteAll();
     }
 
     @Test
@@ -191,5 +196,30 @@ class IntentRoutingTest {
         var reply = chatService.reply("at my current rate, when will I reach 190 lbs?");
 
         assertThat(reply).as("get_weight_projection should have produced a non-empty reply").isNotBlank();
+    }
+
+    @Test
+    void routesUpcUtteranceToLogFoodByUpcToolAndCachesFoodItem() {
+        // Coca-Cola 330ml can - a stable, well-populated product on Open Food Facts.
+        chatService.reply("I scanned a UPC 5449000000996, I had one can");
+
+        assertThat(foodEntryRepository.findAll())
+                .as("log_food_by_upc should have looked up the product and persisted a FoodEntry")
+                .hasSize(1);
+        assertThat(foodItemRepository.findByUpc("5449000000996"))
+                .as("log_food_by_upc should have cached the product as a FoodItem")
+                .isPresent();
+    }
+
+    @Test
+    void routesRepeatedNamedUtteranceToLogCachedFoodTool() {
+        chatService.reply("I scanned a UPC 5449000000996, I had one can");
+        assertThat(foodEntryRepository.findAll()).hasSize(1);
+
+        chatService.reply("I had another Coca-Cola");
+
+        assertThat(foodEntryRepository.findAll())
+                .as("log_cached_food should have reused the cached FoodItem for a second entry")
+                .hasSize(2);
     }
 }
