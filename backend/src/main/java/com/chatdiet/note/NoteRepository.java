@@ -1,6 +1,6 @@
 package com.chatdiet.note;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.ListCrudRepository;
 
-public interface NoteRepository extends JpaRepository<Note, Long> {
+public interface NoteRepository extends ListCrudRepository<Note, Long> {
 }

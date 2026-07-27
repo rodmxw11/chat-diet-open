@@ -16,7 +16,7 @@ Version 1 scope. Written as the implementation brief for Claude Code.
 | Deployment | Docker Compose on a home server. |
 | Backend | Java 21 on Spring Boot, Spring AI for Anthropic. |
 | Frontend | React + Redux PWA, light mode, Recharts. |
-| Database | SQLite, Liquibase-managed schema. |
+| Database | H2 (embedded, file-mode), Liquibase-managed schema. |
 | Build | Gradle. Monorepo (backend + frontend). |
 | LLM | Claude API only. No local models. |
 | API budget | Under $10/month. This is a hard design driver. |
@@ -93,7 +93,7 @@ graph TB
         OFF[Open Food Facts]
     end
 
-    DB[(SQLite)]
+    DB[(H2)]
     FS[Photo storage<br/>filesystem]
 
     Chat --> API
@@ -443,7 +443,7 @@ sequenceDiagram
     participant R as IntentRegistry
     participant H as Claude Haiku
     participant T as Tool beans
-    participant D as SQLite
+    participant D as H2
 
     U->>P: utterance (voice or text)
     P->>C: POST /chat {sessionId, text, photos?}
@@ -652,7 +652,7 @@ sequenceDiagram
     participant A as SqlAgentService
     participant S as SAVED_QUERY
     participant O as Claude Opus
-    participant D as SQLite (read-only conn)
+    participant D as H2 (read-only conn)
 
     U->>A: "what are my most common dinners?"
     A->>S: list saved queries (name + description)
@@ -673,9 +673,10 @@ sequenceDiagram
 
 ### Non-negotiables
 
-- **Read-only enforced at the connection.** Open a second SQLite connection
-  with `file:diet.db?mode=ro`. Add a validator rejecting anything but `SELECT`
-  as a second layer. Both are cheap; neither alone is sufficient.
+- **Read-only enforced at the connection.** Open a second H2 connection with
+  `ACCESS_MODE_DATA=r` (e.g. `jdbc:h2:file:./data/chat-diet;ACCESS_MODE_DATA=r`).
+  Add a validator rejecting anything but `SELECT` as a second layer. Both are
+  cheap; neither alone is sufficient.
 - **Always display the generated SQL.** The user is a 40-year engineer and will
   spot a wrong join faster than a wrong number. This is the entire safety model.
 - **Row cap** (default 500) with "showing first N". CSV export carries the full
@@ -773,7 +774,7 @@ graph LR
             BE[chat-diet-backend<br/>Spring Boot]
             FE[chat-diet-web<br/>nginx + PWA build]
         end
-        VOL[(Volume:<br/>SQLite + photos)]
+        VOL[(Volume:<br/>H2 + photos)]
         BK[Daily backup job]
     end
 
@@ -789,9 +790,10 @@ graph LR
     Tablet[Tablet] --> TS
 ```
 
-- Two services. No database container — SQLite lives on a mounted volume.
-- **Daily automatic backup** of the SQLite file plus the photo directory.
-- **Export command** producing one archive: full SQLite file + photos.
+- Two services. No database container — H2 lives on a mounted volume as a
+  single `.mv.db` file.
+- **Daily automatic backup** of the H2 database file plus the photo directory.
+- **Export command** producing one archive: full H2 database file + photos.
 - **Photo purge job** — hard-delete photos past 90 days. Permanent, no archive
   tier.
 - Anthropic API key via environment variable, not committed.
@@ -804,7 +806,7 @@ Each phase should end with something usable. Do not build the whole data model
 before the first working chat turn.
 
 **Phase 1 — skeleton.** Gradle monorepo, Spring Boot + Java 21,
-SQLite + Liquibase, Spring AI wired to Haiku, minimal PWA chat that round-trips
+H2 + Liquibase, Spring AI wired to Haiku, minimal PWA chat that round-trips
 text. One tool: `save_note`. Prove the loop.
 
 **Phase 2 — intent registry.** `IntentDefinition`, YAML loading,
@@ -868,7 +870,8 @@ Documented to prevent relitigation.
 
 | Rejected | Reason |
 |---|---|
-| Postgres | SQLite is sufficient and backs up as one file. |
+| Postgres | H2 is sufficient and backs up as one file. |
+| SQLite | Spring Data JDBC's SQL-generation layer requires a registered `Dialect`; SQLite isn't one of the built-in ones (only H2, HSQL, MySQL/MariaDB, PostgreSQL, SQL Server, DB2, Oracle) and its JDBC driver also has real quirks with Hibernate (`AUTOINCREMENT` requires the literal type `INTEGER`, and its `getTimestamp()` doesn't round-trip Hibernate's default numeric datetime binding). H2 file-mode keeps the single-file simplicity SQLite offered without either problem. |
 | Local LLM (Ollama) | Hardware limits reliability below usefulness. |
 | Six agents in v1 | Latency and cost stacking; no benefit yet. |
 | Custom UI screens | Chat plus the SQL agent covers it. |

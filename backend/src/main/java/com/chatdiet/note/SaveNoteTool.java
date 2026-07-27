@@ -1,13 +1,19 @@
 package com.chatdiet.note;
 
-import org.springframework.ai.tool.annotation.Tool;
-import org.springframework.ai.tool.annotation.ToolParam;
+import com.chatdiet.intent.IntentTool;
+import com.chatdiet.intent.ToolResult;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.function.Function;
 
 @Component
-public class SaveNoteTool {
+@IntentTool(
+        name = "save_note",
+        intents = {"save_note"},
+        description = "Save a freeform timestamped note-to-self. Use for anything the user wants written down that isn't food, weight, vitals, or exercise."
+)
+public class SaveNoteTool implements Function<SaveNoteRequest, ToolResult> {
 
     private final NoteRepository noteRepository;
 
@@ -15,10 +21,10 @@ public class SaveNoteTool {
         this.noteRepository = noteRepository;
     }
 
-    @Tool(name = "save_note", description = "Save a freeform timestamped note-to-self. Use for anything the user wants written down that isn't food, weight, vitals, or exercise.")
-    public String saveNote(@ToolParam(description = "The note text, verbatim as the user said it") String text) {
-        var note = new Note(LocalDateTime.now(), text);
+    @Override
+    public ToolResult apply(SaveNoteRequest request) {
+        var note = new Note(LocalDateTime.now(), request.text());
         noteRepository.save(note);
-        return "Saved note: \"" + note.getText() + "\"";
+        return new ToolResult.Success("Saved note: \"" + note.text() + "\"", note.text());
     }
 }

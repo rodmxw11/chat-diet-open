@@ -1,0 +1,9 @@
+- name: save_note
+  description: Freeform timestamped notes-to-self
+  toolNames:
+    - save_note
+  promptFragment: >
+    Save freeform notes-to-self with the save_note tool whenever the user
+    wants something written down that isn't food, weight, vitals, or
+    exercise. Save immediately, no confirmation needed.
+  enabled: true
