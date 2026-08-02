@@ -23,3 +23,7 @@ databaseChangeLog:
       file: db/changelog/011-create-recipe-table.yaml
   - include:
       file: db/changelog/012-create-recipe-ingredient-table.yaml
+  - include:
+      file: db/changelog/013-create-shopping-item-table.yaml
+  - include:
+      file: db/changelog/014-create-purchase-history-table.yaml

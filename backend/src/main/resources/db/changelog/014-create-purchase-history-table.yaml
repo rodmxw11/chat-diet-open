@@ -1,0 +1,34 @@
+databaseChangeLog:
+  - changeSet:
+      id: 014-create-purchase-history-table
+      author: chat-diet
+      changes:
+        - createTable:
+            tableName: purchase_history
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: food_item_id
+                  type: BIGINT
+              - column:
+                  name: description
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: store
+                  type: VARCHAR(255)
+              - column:
+                  name: purchased_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cost_usd
+                  type: DOUBLE

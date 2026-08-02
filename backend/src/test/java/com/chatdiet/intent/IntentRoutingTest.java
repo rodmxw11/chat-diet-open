@@ -11,6 +11,8 @@ import com.chatdiet.nutrition.DailyTargetRepository;
 import com.chatdiet.recipe.RecipeIngredientRepository;
 import com.chatdiet.recipe.RecipeRepository;
 import com.chatdiet.requirement.RequirementEntryRepository;
+import com.chatdiet.shopping.PurchaseHistoryRepository;
+import com.chatdiet.shopping.ShoppingItemRepository;
 import com.chatdiet.vitals.VitalsEntryRepository;
 import com.chatdiet.weight.WeightEntryRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -79,6 +81,12 @@ class IntentRoutingTest {
     @Autowired
     private RecipeIngredientRepository recipeIngredientRepository;
 
+    @Autowired
+    private ShoppingItemRepository shoppingItemRepository;
+
+    @Autowired
+    private PurchaseHistoryRepository purchaseHistoryRepository;
+
     @BeforeEach
     void clearAll() {
         noteRepository.deleteAll();
@@ -93,6 +101,8 @@ class IntentRoutingTest {
         conversationHistoryStore.clearAll();
         recipeIngredientRepository.deleteAll();
         recipeRepository.deleteAll();
+        purchaseHistoryRepository.deleteAll();
+        shoppingItemRepository.deleteAll();
     }
 
     @Test
@@ -277,5 +287,31 @@ class IntentRoutingTest {
         assertThat(recipeRepository.findAll())
                 .as("delete_recipe should have removed the recipe")
                 .isEmpty();
+    }
+
+    @Test
+    void routesShoppingRequestToAddShoppingItemTool() {
+        chatService.reply("add almond milk to my shopping list");
+
+        assertThat(shoppingItemRepository.findAll())
+                .as("add_shopping_item should have been invoked and persisted a ShoppingItem")
+                .hasSize(1);
+    }
+
+    @Test
+    void routesPurchaseConfirmationToMarkShoppingItemPurchasedTool() {
+        chatService.reply("add almond milk to my shopping list");
+        assertThat(shoppingItemRepository.findAll()).hasSize(1);
+
+        chatService.reply("I bought the almond milk at Trader Joe's for $4.50");
+
+        var items = shoppingItemRepository.findAll();
+        assertThat(items).hasSize(1);
+        assertThat(items.iterator().next().status())
+                .as("mark_shopping_item_purchased should have updated the item's status in place")
+                .isEqualTo("PURCHASED");
+        assertThat(purchaseHistoryRepository.findAll())
+                .as("mark_shopping_item_purchased should have recorded a PurchaseHistory row")
+                .hasSize(1);
     }
 }

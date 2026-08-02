@@ -119,6 +119,22 @@
     confirms.
   enabled: true
 
+- name: manage_shopping
+  description: Add, list, and mark shopping list items as purchased
+  toolNames:
+    - add_shopping_item
+    - list_shopping_items
+    - mark_shopping_item_purchased
+  promptFragment: >
+    Add items to the shopping list with add_shopping_item whenever the user
+    says they need to buy something (a suggested store is filled in
+    automatically from purchase history, so never ask which store). Use
+    list_shopping_items when they ask what's on the list. Use
+    mark_shopping_item_purchased when they say they bought/picked up
+    something, passing the store and cost if mentioned. Save immediately, no
+    confirmation needed.
+  enabled: true
+
 - name: correct_entry
   description: Linguistically marked corrections to the most recent food, weight, or vitals entry
   toolNames:

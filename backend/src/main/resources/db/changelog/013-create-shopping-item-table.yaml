@@ -1,0 +1,42 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-create-shopping-item-table
+      author: chat-diet
+      changes:
+        - createTable:
+            tableName: shopping_item
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: description
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: food_item_id
+                  type: BIGINT
+              - column:
+                  name: suggested_store
+                  type: VARCHAR(255)
+              - column:
+                  name: status
+                  type: VARCHAR(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: added_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: purchased_at
+                  type: DATETIME
+              - column:
+                  name: estimated_cost_usd
+                  type: DOUBLE
