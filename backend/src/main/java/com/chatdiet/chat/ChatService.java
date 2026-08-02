@@ -11,15 +11,17 @@ public class ChatService {
 
     private final ChatClient chatClient;
     private final ConversationHistoryStore historyStore;
+    private final ChatSessionService chatSessionService;
 
     public ChatService(ChatClient.Builder chatClientBuilder, PromptAssembler promptAssembler,
-                        ConversationHistoryStore historyStore) {
+                        ConversationHistoryStore historyStore, ChatSessionService chatSessionService) {
         var assembled = promptAssembler.assemble();
         this.chatClient = chatClientBuilder
                 .defaultSystem(assembled.systemPrompt())
                 .defaultTools(assembled.tools().toArray())
                 .build();
         this.historyStore = historyStore;
+        this.chatSessionService = chatSessionService;
     }
 
     public String reply(String userText) {
@@ -34,6 +36,6 @@ public class ChatService {
                 .call()
                 .content();
         historyStore.append(sessionId, new UserMessage(userText), new AssistantMessage(content));
-        return content;
+        return chatSessionService.recordTurn(sessionId, userText, content);
     }
 }

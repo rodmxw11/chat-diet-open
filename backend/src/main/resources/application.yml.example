@@ -19,6 +19,13 @@ spring:
 chat-diet:
   day-rollover-hour: 4
 
+  chat:
+    # Rough chars/4 estimate crossing this triggers one gentle "start a new session" nudge.
+    token-warning-threshold: 6000
+
+  # Where the daily backup job (and the on-demand /api/export endpoint) write/read archives.
+  backup-dir: ./data/backups
+
   # Personal biometrics for Mifflin-St Jeor BMR. No user-profile table in v1
   # (single user, no auth) - these are config instead. See application.yml
   # (gitignored - copy this file to application.yml and fill in real values).

@@ -12,9 +12,14 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.time.Duration;
+import java.time.Instant;
 
 @RestController
 public class ChatController {
+
+    /** Below this, clock skew/normal round-trip latency isn't worth mentioning to the model. */
+    private static final Duration NOTEWORTHY_DELAY = Duration.ofMinutes(2);
 
     private final ChatService chatService;
     private final PhotoContext photoContext;
@@ -32,7 +37,8 @@ public class ChatController {
     @PostMapping(value = "/api/chat", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ChatResponse chat(@RequestBody ChatRequest request) {
         var sessionId = request.sessionId() != null ? request.sessionId() : ConversationHistoryStore.DEFAULT_SESSION;
-        var reply = chatService.reply(sessionId, request.text());
+        var text = withClientTimingNote(request.text(), request.clientSentAt());
+        var reply = chatService.reply(sessionId, text);
         return new ChatResponse(reply, chartResultContext.series().orElse(null), sqlResultContext.answer().orElse(null));
     }
 
@@ -50,5 +56,28 @@ public class ChatController {
         var textWithPhotoNote = text + "\n\n[A photo is attached to this message - use analyze_food_photo.]";
         var reply = chatService.reply(effectiveSession, textWithPhotoNote);
         return new ChatResponse(reply, chartResultContext.series().orElse(null), sqlResultContext.answer().orElse(null));
+    }
+
+    /**
+     * Queued-while-offline messages replay well after the user actually sent them. When the gap
+     * is noteworthy, tell the model the real composition time so it backdates anything it logs
+     * instead of using "now".
+     */
+    private String withClientTimingNote(String text, String clientSentAt) {
+        if (clientSentAt == null) {
+            return text;
+        }
+        try {
+            var sentAt = Instant.parse(clientSentAt);
+            var delay = Duration.between(sentAt, Instant.now());
+            if (delay.compareTo(NOTEWORTHY_DELAY) > 0) {
+                return "[This message was actually composed at " + clientSentAt + " (" + delay.toMinutes()
+                        + " minutes ago) - it was queued offline and just synced. Use that time, not now, "
+                        + "for anything you log from it.]\n\n" + text;
+            }
+        } catch (Exception ignored) {
+            // Malformed/missing timestamp - not worth failing the request over.
+        }
+        return text;
     }
 }

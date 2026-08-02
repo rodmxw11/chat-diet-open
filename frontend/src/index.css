@@ -43,6 +43,54 @@ body {
   min-height: 100svh;
 }
 
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-title {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-toggle {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.icon-toggle.active {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+}
+
+.new-session-button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.new-session-button:hover {
+  border-color: var(--accent);
+}
+
 .chat-window {
   flex: 1;
   overflow-y: auto;

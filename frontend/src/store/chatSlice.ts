@@ -28,13 +28,21 @@ export interface ChatMessage {
 }
 
 interface ChatState {
+  sessionId: string
   messages: ChatMessage[]
   status: 'idle' | 'loading' | 'error'
+  ttsEnabled: boolean
+}
+
+function newSessionId(): string {
+  return crypto.randomUUID()
 }
 
 const initialState: ChatState = {
+  sessionId: newSessionId(),
   messages: [],
   status: 'idle',
+  ttsEnabled: false,
 }
 
 interface ChatApiResponse {
@@ -45,24 +53,48 @@ interface ChatApiResponse {
 
 export const sendMessage = createAsyncThunk(
   'chat/sendMessage',
-  async (text: string) => {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-    })
-    if (!response.ok) {
-      throw new Error(`Chat request failed: ${response.status}`)
+  async (text: string, { getState, rejectWithValue }) => {
+    const { chat } = getState() as { chat: ChatState }
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          sessionId: chat.sessionId,
+          clientSentAt: new Date().toISOString(),
+        }),
+      })
+      if (!response.ok) {
+        throw new Error(`Chat request failed: ${response.status}`)
+      }
+      const data: ChatApiResponse = await response.json()
+      return data
+    } catch (error) {
+      // A service-worker background-sync queue replays this request later when back online -
+      // this fetch rejecting with a TypeError (not an HTTP error status) means it never reached
+      // the network at all, i.e. it's queued, not failed.
+      if (error instanceof TypeError) {
+        return rejectWithValue('offline')
+      }
+      throw error
     }
-    const data: ChatApiResponse = await response.json()
-    return data
   },
 )
 
 const chatSlice = createSlice({
   name: 'chat',
   initialState,
-  reducers: {},
+  reducers: {
+    startNewSession: (state) => {
+      state.sessionId = newSessionId()
+      state.messages = []
+      state.status = 'idle'
+    },
+    toggleTts: (state) => {
+      state.ttsEnabled = !state.ttsEnabled
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(sendMessage.pending, (state, action) => {
@@ -78,7 +110,15 @@ const chatSlice = createSlice({
           sqlAnswer: action.payload.sqlAnswer ?? undefined,
         })
       })
-      .addCase(sendMessage.rejected, (state) => {
+      .addCase(sendMessage.rejected, (state, action) => {
+        if (action.payload === 'offline') {
+          state.status = 'idle'
+          state.messages.push({
+            role: 'assistant',
+            text: "Offline - this message is queued and will send once you're back online.",
+          })
+          return
+        }
         state.status = 'error'
         state.messages.push({
           role: 'assistant',
@@ -88,4 +128,5 @@ const chatSlice = createSlice({
   },
 })
 
+export const { startNewSession, toggleTts } = chatSlice.actions
 export default chatSlice.reducer

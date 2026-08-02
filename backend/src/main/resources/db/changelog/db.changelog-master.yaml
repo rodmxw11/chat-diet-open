@@ -29,3 +29,7 @@ databaseChangeLog:
       file: db/changelog/014-create-purchase-history-table.yaml
   - include:
       file: db/changelog/015-create-saved-query-table.yaml
+  - include:
+      file: db/changelog/016-create-chat-session-table.yaml
+  - include:
+      file: db/changelog/017-create-chat-message-table.yaml
