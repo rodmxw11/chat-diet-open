@@ -1,3 +1,18 @@
+# Optional: serve HTTPS directly on 443 using a Tailscale-issued cert, so the app is
+# reachable from other tailnet devices (e.g. a phone) at https://<machine>.<tailnet>.ts.net
+# with no reverse proxy. Requires "HTTPS Certificates" enabled in the Tailscale admin
+# console (DNS tab), then run from backend/:
+#   tailscale cert --cert-file certs/<machine>.<tailnet>.ts.net.crt \
+#                   --key-file certs/<machine>.<tailnet>.ts.net.key \
+#                   <machine>.<tailnet>.ts.net
+# certs/ is gitignored - regenerate locally, never commit the private key.
+# Omit this whole `server:` block to fall back to plain HTTP on the default port (8080).
+server:
+  port: 443
+  ssl:
+    certificate: file:certs/<machine>.<tailnet>.ts.net.crt
+    certificate-private-key: file:certs/<machine>.<tailnet>.ts.net.key
+
 spring:
   application:
     name: backend
@@ -11,7 +26,9 @@ spring:
 
   ai:
     anthropic:
-      api-key: ${ANTHROPIC_API_KEY}
+      # Your Anthropic API key. This file is gitignored once copied to application.yml,
+      # so it's safe to put the literal key here directly.
+      api-key: your-anthropic-api-key-here
       chat:
         model: claude-haiku-4-5-20251001
         max-tokens: 1024

@@ -1,0 +1,14 @@
+build/*
+!build/libs/
+build/libs/*
+!build/libs/*.jar
+data/
+.gradle/
+*.log
+.idea/
+*.iml
+HELP.md
+src/
+gradle/
+gradlew
+gradlew.bat

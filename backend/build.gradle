@@ -1,3 +1,5 @@
+import org.gradle.internal.os.OperatingSystem
+
 plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.1.0'
@@ -29,6 +31,7 @@ dependencies {
 	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 	implementation 'com.google.zxing:core:3.5.3'
 	implementation 'com.google.zxing:javase:3.5.3'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0'
 	runtimeOnly 'com.h2database:h2'
 	testImplementation 'org.springframework.boot:spring-boot-starter-liquibase-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
@@ -43,4 +46,48 @@ dependencyManagement {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+tasks.register('dockerBuild', Exec) {
+	group = 'docker'
+	description = 'Builds the chat-diet-backend Docker image from the compiled jar.'
+	dependsOn tasks.named('bootJar')
+	workingDir = projectDir
+	commandLine 'docker', 'build', '-t', 'chat-diet-backend', '.'
+}
+
+def frontendDir = file('../frontend')
+def npmExecutable = OperatingSystem.current().isWindows() ? 'npm.cmd' : 'npm'
+
+tasks.register('installFrontendDeps', Exec) {
+	group = 'frontend'
+	description = 'Installs frontend npm dependencies.'
+	workingDir = frontendDir
+	commandLine npmExecutable, 'install'
+	inputs.file("${frontendDir}/package.json")
+	inputs.file("${frontendDir}/package-lock.json")
+	outputs.dir("${frontendDir}/node_modules")
+}
+
+tasks.register('buildFrontend', Exec) {
+	group = 'frontend'
+	description = 'Builds the frontend production bundle (npm run build).'
+	dependsOn tasks.named('installFrontendDeps')
+	workingDir = frontendDir
+	commandLine npmExecutable, 'run', 'build'
+	inputs.dir("${frontendDir}/src")
+	inputs.dir("${frontendDir}/public")
+	inputs.file("${frontendDir}/vite.config.ts")
+	inputs.file("${frontendDir}/index.html")
+	outputs.dir("${frontendDir}/dist")
+}
+
+// Bundles the built frontend into the jar's static resources so Spring Boot serves the
+// whole app (UI + API) from one origin/port - required for the PWA service worker to see
+// /api/* as same-origin, and to give the phone a single HTTPS endpoint over Tailscale.
+tasks.named('processResources') {
+	dependsOn tasks.named('buildFrontend')
+	from(frontendDir.toPath().resolve('dist')) {
+		into 'static'
+	}
 }

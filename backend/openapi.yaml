@@ -1,0 +1,235 @@
+openapi: 3.0.3
+info:
+  title: chat-diet API
+  description: >
+    HTTP surface for chat-diet's Spring Boot backend. Most functionality (logging food,
+    weight, exercise, recipes, etc.) is driven through the single /api/chat endpoint via
+    the model's tool-calling framework rather than dedicated REST routes; the remaining
+    endpoints below handle photo/barcode input and file downloads that don't fit that model.
+  version: "0.0.1"
+servers:
+  - url: http://localhost:8080
+
+tags:
+  - name: chat
+    description: Conversational turn endpoint
+  - name: barcode
+    description: Barcode decoding from a product photo
+  - name: export
+    description: Full database + photo export
+  - name: sql
+    description: SQL agent result downloads
+
+paths:
+  /api/chat:
+    post:
+      tags: [chat]
+      summary: Send a chat turn
+      description: >
+        Accepts either a plain-text turn (application/json) or a turn with an attached food
+        photo (multipart/form-data). Routes the message through the model and returns its
+        reply, plus any chart series or SQL answer produced as a side effect of tool calls
+        made during this turn.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChatWithPhotoRequest'
+      responses:
+        '200':
+          description: Model reply, with optional chart/SQL results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+
+  /api/barcode/decode:
+    post:
+      tags: [barcode]
+      summary: Decode a barcode from an uploaded photo
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: Uploaded product photo containing a barcode
+      responses:
+        '200':
+          description: Barcode decoded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BarcodeDecodeResponse'
+        '404':
+          description: No barcode could be decoded from the image
+
+  /api/export:
+    get:
+      tags: [export]
+      summary: Download a full database + photo export archive
+      description: Builds a fresh export archive on demand and streams it as a file attachment.
+      responses:
+        '200':
+          description: ZIP archive containing the database export and stored photos
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: 'attachment; filename="chat-diet-export-<date>.zip"'
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+  /api/sql-results/{id}/csv:
+    get:
+      tags: [sql]
+      summary: Download the full (uncapped) result of a previously run SQL agent query
+      description: >
+        Chat responses inline a display-capped preview of SQL agent results
+        (see ChatResponse.sqlAnswer). This endpoint streams the full, uncapped result set as
+        CSV, keyed by the csvId returned with that preview.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: csvId from a previous ChatResponse.sqlAnswer
+      responses:
+        '200':
+          description: CSV file
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: 'attachment; filename="query-result.csv"'
+          content:
+            text/csv:
+              schema:
+                type: string
+        '404':
+          description: No result cached under this id (it may have expired from the bounded cache)
+
+components:
+  schemas:
+    ChatRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          description: The user's message text
+        sessionId:
+          type: string
+          nullable: true
+          description: Conversation key. Defaults to the server's default session when omitted.
+        clientSentAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            ISO-8601 timestamp of when the user actually hit send, not when the request
+            reached the server. Used to backdate logged entries when a message was queued
+            offline and replayed later.
+      required: [text]
+
+    ChatWithPhotoRequest:
+      type: object
+      description: Multipart form fields for a chat turn with an attached food photo.
+      properties:
+        text:
+          type: string
+        sessionId:
+          type: string
+          nullable: true
+        photo:
+          type: string
+          format: binary
+          description: Food photo to analyze (server appends an analyze_food_photo instruction)
+      required: [text, photo]
+
+    ChatResponse:
+      type: object
+      properties:
+        reply:
+          type: string
+        chartSeries:
+          type: array
+          nullable: true
+          description: Present only when the model invoked show_chart during this turn
+          items:
+            $ref: '#/components/schemas/ChartSeries'
+        sqlAnswer:
+          allOf:
+            - $ref: '#/components/schemas/SqlAnswer'
+          nullable: true
+          description: Present only when the model invoked a SQL query tool during this turn
+
+    ChartSeries:
+      type: object
+      properties:
+        label:
+          type: string
+          example: Calories
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeriesPoint'
+
+    SeriesPoint:
+      type: object
+      properties:
+        at:
+          type: string
+          format: date-time
+        value:
+          type: number
+          format: double
+        target:
+          type: number
+          format: double
+          nullable: true
+          description: Goal value at this point, or null when the series has no goal overlay
+
+    SqlAnswer:
+      type: object
+      properties:
+        sqlText:
+          type: string
+          description: The SQL that was executed
+        columns:
+          type: array
+          items:
+            type: string
+        rows:
+          type: array
+          description: Up to a display cap of rows for inline rendering
+          items:
+            type: array
+            items: {}
+        truncated:
+          type: boolean
+          description: Whether rows was capped and doesn't contain every matching row
+        totalRows:
+          type: integer
+          description: True number of rows the query matched, regardless of truncation
+        csvId:
+          type: string
+          description: Key for downloading the full, uncapped result via /api/sql-results/{id}/csv
+
+    BarcodeDecodeResponse:
+      type: object
+      properties:
+        upc:
+          type: string

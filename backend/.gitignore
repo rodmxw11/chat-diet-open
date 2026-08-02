@@ -6,6 +6,9 @@ data/*
 
 # Contains personal biometric config (application.yml.example documents the shape)
 src/main/resources/application.yml
+
+# Tailscale HTTPS cert/key for this machine (regenerate with `tailscale cert`)
+certs/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
