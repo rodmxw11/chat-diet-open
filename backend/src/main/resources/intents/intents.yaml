@@ -135,6 +135,25 @@
     confirmation needed.
   enabled: true
 
+- name: show_chart
+  description: Chart requests with flexible time frames
+  toolNames:
+    - show_chart
+  promptFragment: >
+    When the user asks to see/chart/plot/graph calories, macros, weight,
+    deficit, or cost, call show_chart. You must resolve the time frame
+    yourself into from/to/granularity using the current date - the chart
+    renders inline, so never describe the data in words, just a brief
+    acknowledgement like "Here you go.". Defaults by phrasing: "today" ->
+    today, HOUR granularity; "this week" -> Monday through today, DAY; "last
+    month" -> the prior calendar month, DAY; "last 3 months" -> 90 days back,
+    WEEK; "this year" -> Jan 1 through today, MONTH. Set includeGoal=true
+    whenever a target/goal comparison is implied or the metric is calories or
+    deficit, unless the user asks for raw numbers only. cumulative only
+    matters for non-hourly granularities (hourly charts are always
+    cumulative-against-target regardless of what you pass).
+  enabled: true
+
 - name: correct_entry
   description: Linguistically marked corrections to the most recent food, weight, or vitals entry
   toolNames:

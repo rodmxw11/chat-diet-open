@@ -1,8 +1,20 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 
+export interface SeriesPoint {
+  at: string
+  value: number
+  target: number | null
+}
+
+export interface ChartSeries {
+  label: string
+  points: SeriesPoint[]
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant'
   text: string
+  chartSeries?: ChartSeries[]
 }
 
 interface ChatState {
@@ -13,6 +25,11 @@ interface ChatState {
 const initialState: ChatState = {
   messages: [],
   status: 'idle',
+}
+
+interface ChatApiResponse {
+  reply: string
+  chartSeries: ChartSeries[] | null
 }
 
 export const sendMessage = createAsyncThunk(
@@ -26,8 +43,8 @@ export const sendMessage = createAsyncThunk(
     if (!response.ok) {
       throw new Error(`Chat request failed: ${response.status}`)
     }
-    const data: { reply: string } = await response.json()
-    return data.reply
+    const data: ChatApiResponse = await response.json()
+    return data
   },
 )
 
@@ -43,7 +60,11 @@ const chatSlice = createSlice({
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
         state.status = 'idle'
-        state.messages.push({ role: 'assistant', text: action.payload })
+        state.messages.push({
+          role: 'assistant',
+          text: action.payload.reply,
+          chartSeries: action.payload.chartSeries ?? undefined,
+        })
       })
       .addCase(sendMessage.rejected, (state) => {
         state.status = 'error'

@@ -3,9 +3,14 @@ package com.chatdiet.shopping;
 import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.ListCrudRepository;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface PurchaseHistoryRepository extends ListCrudRepository<PurchaseHistory, Long> {
+
+    @Query("SELECT * FROM purchase_history WHERE purchased_at >= :start AND purchased_at < :end")
+    List<PurchaseHistory> findByPurchasedAtBetween(LocalDateTime start, LocalDateTime end);
 
     @Query("""
             SELECT store FROM purchase_history

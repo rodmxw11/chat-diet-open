@@ -15,15 +15,19 @@ import com.chatdiet.shopping.PurchaseHistoryRepository;
 import com.chatdiet.shopping.ShoppingItemRepository;
 import com.chatdiet.vitals.VitalsEntryRepository;
 import com.chatdiet.weight.WeightEntryRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.nio.file.Path;
 
@@ -89,6 +93,10 @@ class IntentRoutingTest {
 
     @BeforeEach
     void clearAll() {
+        // Tools like show_chart depend on request-scoped beans; bind a mock request so they
+        // resolve here too, not just when invoked through the real ChatController.
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(new MockHttpServletRequest()));
+
         noteRepository.deleteAll();
         foodEntryRepository.deleteAll();
         weightEntryRepository.deleteAll();
@@ -103,6 +111,11 @@ class IntentRoutingTest {
         recipeRepository.deleteAll();
         purchaseHistoryRepository.deleteAll();
         shoppingItemRepository.deleteAll();
+    }
+
+    @AfterEach
+    void clearRequestContext() {
+        RequestContextHolder.resetRequestAttributes();
     }
 
     @Test
@@ -313,5 +326,15 @@ class IntentRoutingTest {
         assertThat(purchaseHistoryRepository.findAll())
                 .as("mark_shopping_item_purchased should have recorded a PurchaseHistory row")
                 .hasSize(1);
+    }
+
+    @Test
+    void routesChartRequestToShowChartTool() {
+        chatService.reply("weight this morning was 200 lbs");
+        chatService.reply("I ate a chicken sandwich, 450 calories, 30g protein, 40g carbs, 15g fat");
+
+        var reply = chatService.reply("show me a chart of my calories this week");
+
+        assertThat(reply).as("show_chart should have produced a non-empty reply").isNotBlank();
     }
 }

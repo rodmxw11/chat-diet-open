@@ -1,5 +1,6 @@
 package com.chatdiet.chat;
 
+import com.chatdiet.chart.ChartResultContext;
 import com.chatdiet.photo.PhotoContext;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,16 +17,19 @@ public class ChatController {
 
     private final ChatService chatService;
     private final PhotoContext photoContext;
+    private final ChartResultContext chartResultContext;
 
-    public ChatController(ChatService chatService, PhotoContext photoContext) {
+    public ChatController(ChatService chatService, PhotoContext photoContext, ChartResultContext chartResultContext) {
         this.chatService = chatService;
         this.photoContext = photoContext;
+        this.chartResultContext = chartResultContext;
     }
 
     @PostMapping(value = "/api/chat", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ChatResponse chat(@RequestBody ChatRequest request) {
         var sessionId = request.sessionId() != null ? request.sessionId() : ConversationHistoryStore.DEFAULT_SESSION;
-        return new ChatResponse(chatService.reply(sessionId, request.text()));
+        var reply = chatService.reply(sessionId, request.text());
+        return new ChatResponse(reply, chartResultContext.series().orElse(null));
     }
 
     @PostMapping(value = "/api/chat", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -40,6 +44,7 @@ public class ChatController {
 
         var effectiveSession = sessionId != null ? sessionId : ConversationHistoryStore.DEFAULT_SESSION;
         var textWithPhotoNote = text + "\n\n[A photo is attached to this message - use analyze_food_photo.]";
-        return new ChatResponse(chatService.reply(effectiveSession, textWithPhotoNote));
+        var reply = chatService.reply(effectiveSession, textWithPhotoNote);
+        return new ChatResponse(reply, chartResultContext.series().orElse(null));
     }
 }

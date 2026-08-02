@@ -1,4 +1,12 @@
 package com.chatdiet.chat;
 
-public record ChatResponse(String reply) {
+import com.chatdiet.chart.ChartSeries;
+
+import java.util.List;
+
+public record ChatResponse(String reply, List<ChartSeries> chartSeries) {
+
+    public ChatResponse(String reply) {
+        this(reply, null);
+    }
 }

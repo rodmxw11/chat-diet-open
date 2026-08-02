@@ -1,4 +1,5 @@
 import { useAppSelector } from '../store/hooks'
+import ChartRenderer from './ChartRenderer'
 
 export default function ChatWindow() {
   const messages = useAppSelector((state) => state.chat.messages)
@@ -8,6 +9,9 @@ export default function ChatWindow() {
       {messages.map((message, index) => (
         <div key={index} className={`message ${message.role}`}>
           {message.text}
+          {message.chartSeries && message.chartSeries.length > 0 && (
+            <ChartRenderer series={message.chartSeries} />
+          )}
         </div>
       ))}
     </div>

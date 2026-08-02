@@ -71,6 +71,11 @@ body {
   border: 1px solid var(--border);
 }
 
+.chart-container {
+  margin-top: 8px;
+  width: min(100%, 480px);
+}
+
 .message-input {
   display: flex;
   gap: 8px;
