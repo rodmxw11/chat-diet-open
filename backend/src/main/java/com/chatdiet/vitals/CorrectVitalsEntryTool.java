@@ -6,6 +6,12 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
+/**
+ * IntentTool that corrects the value(s) of the most recently logged vitals entry, in place,
+ * rather than creating a new entry. Intended for linguistically marked corrections (e.g. "the
+ * correct BP is 156 over 65"); a bare new reading should instead be logged via
+ * {@link LogVitalsTool}.
+ */
 @Component
 @IntentTool(
         name = "correct_vitals_entry",
@@ -20,6 +26,13 @@ public class CorrectVitalsEntryTool implements Function<CorrectVitalsRequest, To
         this.vitalsEntryRepository = vitalsEntryRepository;
     }
 
+    /**
+     * Applies the correction to the most recently logged vitals entry, leaving any field not
+     * present in the request unchanged.
+     *
+     * @return a {@link ToolResult.NotFound} if there is no vitals entry to correct, otherwise a
+     *         {@link ToolResult.Success} wrapping the updated {@link VitalsEntry}
+     */
     @Override
     public ToolResult apply(CorrectVitalsRequest request) {
         var existing = vitalsEntryRepository.findMostRecent();

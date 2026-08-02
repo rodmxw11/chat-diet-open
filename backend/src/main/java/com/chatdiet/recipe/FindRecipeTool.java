@@ -7,6 +7,11 @@ import org.springframework.stereotype.Component;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * IntentTool callback for the {@code find_recipe} intent (under {@code recipe_intake} and
+ * {@code log_food}): looks up an existing recipe by (fuzzy) name and returns its per-100g
+ * nutrition, typical serving size, provisional flag, and which ingredients are marked variable.
+ */
 @Component
 @IntentTool(
         name = "find_recipe",
@@ -23,6 +28,10 @@ public class FindRecipeTool implements Function<FindRecipeRequest, ToolResult> {
         this.recipeIngredientRepository = recipeIngredientRepository;
     }
 
+    /**
+     * @return {@link ToolResult.Success} with the matched recipe and a summary noting any
+     *         variable ingredients, or {@link ToolResult.NotFound} if no recipe matches
+     */
     @Override
     public ToolResult apply(FindRecipeRequest request) {
         var recipe = recipeRepository.findBestMatchByName(request.name()).orElse(null);

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.function.Function;
 
+/** IntentTool implementation backing {@code log_weight}: persists a new weight reading timestamped now. */
 @Component
 @IntentTool(
         name = "log_weight",

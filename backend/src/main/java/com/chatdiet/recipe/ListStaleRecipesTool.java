@@ -8,6 +8,11 @@ import java.time.LocalDateTime;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * IntentTool callback for the {@code list_stale_recipes} intent (under {@code recipe_intake}):
+ * lists recipes that were logged once and never reused, as candidates to prompt the user to
+ * delete.
+ */
 @Component
 @IntentTool(
         name = "list_stale_recipes",
@@ -24,6 +29,11 @@ public class ListStaleRecipesTool implements Function<ListStaleRecipesRequest, T
         this.recipeRepository = recipeRepository;
     }
 
+    /**
+     * Finds recipes used at most once and untouched for {@code STALE_AFTER_DAYS} days.
+     *
+     * @return {@link ToolResult.Success} always, either noting no stale recipes or listing them
+     */
     @Override
     public ToolResult apply(ListStaleRecipesRequest request) {
         var stale = recipeRepository.findStale(LocalDateTime.now().minusDays(STALE_AFTER_DAYS));

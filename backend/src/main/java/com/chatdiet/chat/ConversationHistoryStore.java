@@ -23,10 +23,12 @@ public class ConversationHistoryStore {
 
     private final Map<String, Deque<Message>> bySession = new ConcurrentHashMap<>();
 
+    /** Returns an immutable snapshot of the recent messages for a session, oldest first. */
     public List<Message> get(String sessionId) {
         return List.copyOf(bySession.getOrDefault(sessionId, new ArrayDeque<>()));
     }
 
+    /** Appends messages to a session's history, evicting the oldest once {@link #MAX_MESSAGES} is exceeded. */
     public synchronized void append(String sessionId, Message... messages) {
         var deque = bySession.computeIfAbsent(sessionId, key -> new ArrayDeque<>());
         for (var message : messages) {
@@ -37,6 +39,7 @@ public class ConversationHistoryStore {
         }
     }
 
+    /** Drops all in-memory history for every session (e.g. for test isolation). */
     public void clearAll() {
         bySession.clear();
     }

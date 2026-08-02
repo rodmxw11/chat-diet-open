@@ -5,6 +5,7 @@ import org.springframework.data.annotation.PersistenceCreator;
 
 import java.time.LocalDateTime;
 
+/** Spring Data JDBC entity for a freeform timestamped note-to-self, saved via {@link SaveNoteTool}. */
 public record Note(@Id Long id, LocalDateTime loggedAt, String text) {
 
     @PersistenceCreator

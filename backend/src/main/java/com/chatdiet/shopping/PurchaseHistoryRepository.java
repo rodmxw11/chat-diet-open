@@ -7,11 +7,17 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+/** Spring Data JDBC repository for {@link PurchaseHistory} records. */
 public interface PurchaseHistoryRepository extends ListCrudRepository<PurchaseHistory, Long> {
 
+    /** Returns all purchases recorded within {@code [start, end)}. */
     @Query("SELECT * FROM purchase_history WHERE purchased_at >= :start AND purchased_at < :end")
     List<PurchaseHistory> findByPurchasedAtBetween(LocalDateTime start, LocalDateTime end);
 
+    /**
+     * Returns the store most frequently associated with purchases of the given food item, or
+     * empty if no purchase of it recorded a store.
+     */
     @Query("""
             SELECT store FROM purchase_history
             WHERE food_item_id = :foodItemId AND store IS NOT NULL
@@ -19,6 +25,11 @@ public interface PurchaseHistoryRepository extends ListCrudRepository<PurchaseHi
             """)
     Optional<String> findMostCommonStoreByFoodItemId(Long foodItemId);
 
+    /**
+     * Returns the store most frequently associated with purchases whose description
+     * bidirectionally substring-matches (case-insensitive) the given description, or empty if
+     * none match or none recorded a store.
+     */
     @Query("""
             SELECT store FROM purchase_history
             WHERE store IS NOT NULL

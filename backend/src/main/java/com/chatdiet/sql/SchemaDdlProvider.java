@@ -20,6 +20,10 @@ public class SchemaDdlProvider {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * Returns the cached {@code CREATE TABLE} DDL for all application tables (excluding
+     * Liquibase's changelog table), computed lazily on first call.
+     */
     public String ddl() {
         var local = ddl;
         if (local == null) {

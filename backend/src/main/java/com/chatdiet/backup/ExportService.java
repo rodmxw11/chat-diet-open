@@ -30,6 +30,16 @@ public class ExportService {
         this.photoArchiveDir = Path.of(photoArchiveDir);
     }
 
+    /**
+     * Builds a single zip archive containing a consistent H2 database backup plus every
+     * archived photo. Uses H2's {@code BACKUP TO} command to produce the database backup, so
+     * the resulting archive reflects a single point-in-time snapshot rather than a copy of the
+     * live .mv.db file taken mid-write.
+     *
+     * @return the built archive as an in-memory zip
+     * @throws UncheckedIOException if the H2 backup file or photo directory cannot be read, or
+     *         the zip cannot be assembled
+     */
     public byte[] buildArchive() {
         try {
             var tempBackup = Files.createTempFile("chat-diet-backup", ".zip");

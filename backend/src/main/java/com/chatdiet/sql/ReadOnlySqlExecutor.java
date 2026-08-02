@@ -33,6 +33,13 @@ public class ReadOnlySqlExecutor {
         this.readOnlyJdbcUrl = primaryJdbcUrl + ";ACCESS_MODE_DATA=r";
     }
 
+    /**
+     * Executes {@code sql} against a fresh read-only connection, binding {@code params} in order
+     * (coerced per {@code paramDefs}' declared types) and capping results at
+     * {@code SAFETY_ROW_LIMIT} rows.
+     *
+     * @throws SqlExecutionException if the query fails or the timeout is exceeded
+     */
     public QueryResult execute(String sql, List<ParamDef> paramDefs, List<Object> params) {
         try (var connection = DriverManager.getConnection(readOnlyJdbcUrl);
              var statement = connection.prepareStatement(sql)) {

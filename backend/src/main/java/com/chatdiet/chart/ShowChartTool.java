@@ -6,6 +6,11 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
+/**
+ * IntentTool implementation backing {@code show_chart}: computes the requested chart via
+ * {@link ChartService} and stashes it in the request-scoped {@link ChartResultContext} so
+ * {@code ChatController} can attach the raw series to the HTTP response for the frontend to render.
+ */
 @Component
 @IntentTool(
         name = "show_chart",

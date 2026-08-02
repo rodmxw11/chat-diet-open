@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
 
+/** Writes and deletes archived food-photo JPEGs on the local filesystem. */
 @Service
 public class PhotoArchiveService {
 
@@ -18,6 +19,13 @@ public class PhotoArchiveService {
         this.archiveDir = Path.of(archiveDir);
     }
 
+    /**
+     * Writes the given JPEG bytes to a new randomly-named file in the archive directory,
+     * creating the directory if needed.
+     *
+     * @return the filesystem path the photo was written to
+     * @throws UncheckedIOException if the write fails
+     */
     public String archive(byte[] jpegBytes) {
         try {
             Files.createDirectories(archiveDir);
@@ -30,6 +38,11 @@ public class PhotoArchiveService {
         }
     }
 
+    /**
+     * Deletes the archived photo at the given path, if it exists.
+     *
+     * @throws UncheckedIOException if the deletion fails
+     */
     public void delete(String archivePath) {
         try {
             Files.deleteIfExists(Path.of(archivePath));

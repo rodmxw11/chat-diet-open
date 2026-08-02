@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
+/** IntentTool that reports how long it has been since the last logged food entry. */
 @Component
 @IntentTool(
         name = "get_fasting_status",
@@ -20,6 +21,10 @@ public class GetFastingStatusTool implements Function<GetFastingStatusRequest, T
         this.fastingService = fastingService;
     }
 
+    /**
+     * @return a {@link ToolResult.Success} with the current fasting duration, or a
+     *         {@link ToolResult.NotFound} if no food has ever been logged
+     */
     @Override
     public ToolResult apply(GetFastingStatusRequest request) {
         return fastingService.currentFastDuration()

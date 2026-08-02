@@ -1,5 +1,9 @@
 package com.chatdiet.food;
 
+/**
+ * Request for the {@code correct_food_entry} tool. Any {@code null} field leaves the
+ * corresponding value on the existing entry unchanged.
+ */
 public record CorrectFoodRequest(
         Integer totalCalories,
         Double totalProteinG,

@@ -5,8 +5,10 @@ import org.springframework.data.repository.ListCrudRepository;
 
 import java.util.Optional;
 
+/** Spring Data JDBC repository for {@link FoodItem}. */
 public interface FoodItemRepository extends ListCrudRepository<FoodItem, Long> {
 
+    /** Returns the cached food item with the given barcode, if any. */
     @Query("SELECT * FROM food_item WHERE upc = :upc")
     Optional<FoodItem> findByUpc(String upc);
 

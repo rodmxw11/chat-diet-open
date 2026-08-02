@@ -7,6 +7,13 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
 
+/**
+ * Builds the single system prompt and tool list used to configure the app's one {@code ChatClient}.
+ * Combines a fixed base persona with the prompt fragments of every enabled {@link IntentDefinition}
+ * (from {@link IntentRegistry}), stamps in the current date/time and metabolic-day rollover hour,
+ * and resolves each enabled intent's tool names to actual {@link org.springframework.ai.tool.ToolCallback}s
+ * via {@link ToolRegistry}. Called once at {@code ChatService} startup.
+ */
 @Component
 public class PromptAssembler {
 
@@ -40,6 +47,11 @@ public class PromptAssembler {
         this.toolRegistry = toolRegistry;
     }
 
+    /**
+     * Assembles the full system prompt (base persona + current date/time + each enabled intent's
+     * prompt fragment) and the deduplicated list of tool callbacks for all enabled intents' tool
+     * names.
+     */
     public AssembledPrompt assemble() {
         var enabledIntents = intentRegistry.enabledIntents();
 

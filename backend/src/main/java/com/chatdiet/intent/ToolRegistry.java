@@ -12,6 +12,14 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * Discovers every Spring bean annotated {@link IntentTool} and wraps it in a Spring AI
+ * {@link ToolCallback}, keyed by the tool's declared name. Each callback's input schema is
+ * derived by reflecting on the bean's {@code Function<Req, ToolResult>} generic parameter, and
+ * its result is rendered to text for the model via {@link ToolResultConverter}. This is the
+ * bridge between the {@code @IntentTool}-annotated implementations scattered across the app's
+ * feature packages and the flat tool list {@link PromptAssembler} hands to the {@code ChatClient}.
+ */
 @Component
 public class ToolRegistry {
 
@@ -26,6 +34,10 @@ public class ToolRegistry {
                         ToolRegistry::buildCallback));
     }
 
+    /**
+     * Wraps a single {@code @IntentTool} bean in a {@link ToolCallback}, resolving its request
+     * type via reflection on the {@code Function<Req, ToolResult>} the bean implements.
+     */
     @SuppressWarnings("unchecked")
     private static ToolCallback buildCallback(Object bean) {
         var meta = bean.getClass().getAnnotation(IntentTool.class);
@@ -39,6 +51,10 @@ public class ToolRegistry {
                 .build();
     }
 
+    /**
+     * Resolves tool names to their registered callbacks, silently dropping any name that has no
+     * matching {@code @IntentTool} bean.
+     */
     public List<ToolCallback> toolsFor(Collection<String> toolNames) {
         return toolNames.stream()
                 .map(callbacksByName::get)

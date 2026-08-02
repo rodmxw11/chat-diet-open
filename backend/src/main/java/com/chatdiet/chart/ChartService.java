@@ -14,6 +14,12 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Computes chart series from the underlying food/exercise/weight/purchase data for
+ * {@link ShowChartTool}. Buckets the requested date range per the chosen {@link Granularity}
+ * (respecting the app's metabolic-day boundary rather than calendar midnight), aggregates the
+ * requested {@link ChartMetric} per bucket, and optionally converts to a running cumulative total.
+ */
 @Service
 public class ChartService {
 
@@ -35,6 +41,10 @@ public class ChartService {
         this.dayBoundaryService = dayBoundaryService;
     }
 
+    /**
+     * Builds the one or more series (e.g. MACROS yields three) for the requested metric and date
+     * range, applying cumulative totals where requested or forced (hourly granularity).
+     */
     public List<ChartSeries> compute(ChartRequest request) {
         var buckets = buildBuckets(request.from(), request.to(), request.granularity());
         // Intraday charts read as a step function per-hour; cumulative-against-target is the useful shape.

@@ -6,6 +6,11 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
+/**
+ * IntentTool callback for the {@code delete_recipe} intent (under {@code recipe_intake}):
+ * deletes a recipe by name, e.g. when the user confirms a stale or unwanted recipe should be
+ * removed.
+ */
 @Component
 @IntentTool(
         name = "delete_recipe",
@@ -22,6 +27,12 @@ public class DeleteRecipeTool implements Function<DeleteRecipeRequest, ToolResul
         this.recipeIngredientRepository = recipeIngredientRepository;
     }
 
+    /**
+     * Deletes the matched recipe and all of its ingredient lines.
+     *
+     * @return {@link ToolResult.NotFound} if no recipe matches {@code request.name()}, otherwise
+     *         {@link ToolResult.Success}
+     */
     @Override
     public ToolResult apply(DeleteRecipeRequest request) {
         var recipe = recipeRepository.findBestMatchByName(request.name()).orElse(null);

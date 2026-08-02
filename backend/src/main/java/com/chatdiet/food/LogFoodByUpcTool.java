@@ -10,6 +10,12 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
+/**
+ * IntentTool that logs a packaged food identified by UPC barcode, looking it up locally first
+ * and falling back to {@link OpenFoodFactsClient} (caching the result as a new
+ * {@link com.chatdiet.fooditem.FoodItem} for reuse), then scaling its nutrition by the amount
+ * eaten.
+ */
 @Component
 @IntentTool(
         name = "log_food_by_upc",
@@ -29,6 +35,14 @@ public class LogFoodByUpcTool implements Function<LogFoodByUpcRequest, ToolResul
         this.foodItemLogger = foodItemLogger;
     }
 
+    /**
+     * Looks up the product by UPC (locally, then via Open Food Facts, caching a new
+     * {@code FoodItem} on first lookup) and logs it scaled to the requested quantity.
+     *
+     * @return a {@link ToolResult.NotFound} if the UPC matches no known or lookup-able product,
+     *         a {@link ToolResult.NeedsClarification} if the quantity could not be resolved, or
+     *         the logging result otherwise
+     */
     @Override
     public ToolResult apply(LogFoodByUpcRequest request) {
         var item = foodItemRepository.findByUpc(request.upc()).orElse(null);

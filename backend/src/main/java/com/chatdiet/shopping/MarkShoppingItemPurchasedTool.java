@@ -6,6 +6,10 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
+/**
+ * IntentTool that marks a pending shopping list item as purchased and records the purchase in
+ * {@link PurchaseHistory}, feeding future store suggestions from {@link AddShoppingItemTool}.
+ */
 @Component
 @IntentTool(
         name = "mark_shopping_item_purchased",
@@ -23,6 +27,13 @@ public class MarkShoppingItemPurchasedTool implements Function<MarkShoppingItemP
         this.purchaseHistoryRepository = purchaseHistoryRepository;
     }
 
+    /**
+     * Finds the best-matching pending shopping item by description, marks it purchased, and
+     * records the purchase in history.
+     *
+     * @return a {@link ToolResult.NotFound} if no pending item matches, otherwise a
+     *         {@link ToolResult.Success} wrapping the updated {@link ShoppingItem}
+     */
     @Override
     public ToolResult apply(MarkShoppingItemPurchasedRequest request) {
         var existing = shoppingItemRepository.findBestPendingMatchByDescription(request.description()).orElse(null);

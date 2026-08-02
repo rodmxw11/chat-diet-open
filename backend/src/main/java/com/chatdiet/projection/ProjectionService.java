@@ -8,6 +8,10 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
+/**
+ * Projects future weight based on the most recent logged weight and the app's configured
+ * weekly weight-change rate.
+ */
 @Service
 public class ProjectionService {
 

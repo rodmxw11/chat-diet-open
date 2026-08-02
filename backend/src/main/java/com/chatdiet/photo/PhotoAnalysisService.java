@@ -45,6 +45,15 @@ public class PhotoAnalysisService {
                 .build();
     }
 
+    /**
+     * Sends a food photo to the Sonnet subchat and parses the JSON response into a result.
+     *
+     * @param imageBytes JPEG bytes of the (already resized) photo
+     * @param hint       optional user-supplied context to include in the prompt; may be
+     *                   {@code null} or blank
+     * @return the parsed estimate, or a low-confidence fallback result asking the user to
+     *         describe the photo if the model response could not be parsed
+     */
     public PhotoAnalysisResult analyze(byte[] imageBytes, String hint) {
         var media = Media.builder()
                 .mimeType(MimeTypeUtils.IMAGE_JPEG)

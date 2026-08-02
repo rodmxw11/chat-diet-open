@@ -20,6 +20,12 @@ import java.util.Optional;
 @Service
 public class BarcodeDecodeService {
 
+    /**
+     * Decodes a 1D/2D barcode from raw image bytes using ZXing.
+     *
+     * @return the decoded barcode text, or empty if no barcode could be found in the image
+     * @throws UncheckedIOException if the image bytes cannot be read/parsed as an image
+     */
     public Optional<String> decode(byte[] imageBytes) {
         try {
             var image = ImageIO.read(new ByteArrayInputStream(imageBytes));

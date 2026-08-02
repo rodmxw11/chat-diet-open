@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 
+/** REST endpoint for on-demand download of a full database + photo export archive. */
 @RestController
 public class ExportController {
 
@@ -17,6 +18,7 @@ public class ExportController {
         this.exportService = exportService;
     }
 
+    /** Builds and streams a fresh export archive as a file attachment download. */
     @GetMapping("/api/export")
     public ResponseEntity<byte[]> export() {
         var fileName = "chat-diet-export-" + LocalDate.now() + ".zip";

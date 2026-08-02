@@ -9,6 +9,11 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.List;
 
+/**
+ * Loads the static catalog of {@link IntentDefinition}s from {@code intents/intents.yaml} at
+ * startup and exposes the enabled subset that {@link PromptAssembler} builds the system prompt
+ * and tool list from.
+ */
 @Component
 public class IntentRegistry {
 
@@ -18,6 +23,9 @@ public class IntentRegistry {
         this.intents = loadIntents();
     }
 
+    /**
+     * @throws UncheckedIOException if {@code intents/intents.yaml} is missing or malformed
+     */
     private static List<IntentDefinition> loadIntents() {
         var mapper = new YAMLMapper();
         try (var input = new ClassPathResource("intents/intents.yaml").getInputStream()) {
@@ -28,6 +36,7 @@ public class IntentRegistry {
         }
     }
 
+    /** Returns the intents whose {@code enabled} flag is true, in YAML declaration order. */
     public List<IntentDefinition> enabledIntents() {
         return intents.stream().filter(IntentDefinition::enabled).toList();
     }

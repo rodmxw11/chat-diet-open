@@ -6,6 +6,12 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
+/**
+ * IntentTool callback for the {@code run_sql} intent: answers an analytical question by
+ * composing and running read-only SQL against the tracked data (trends, rankings, counts, and
+ * other aggregations not directly exposed by the other tools). On success, stashes the answer in
+ * {@link SqlResultContext} so it can be rendered inline for the current request.
+ */
 @Component
 @IntentTool(
         name = "run_sql",

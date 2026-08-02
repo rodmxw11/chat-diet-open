@@ -15,6 +15,12 @@ final class SqlValidator {
     private SqlValidator() {
     }
 
+    /**
+     * Rejects SQL that is blank, contains multiple statements, doesn't start with SELECT/WITH, or
+     * contains a disallowed write/DDL keyword.
+     *
+     * @throws IllegalArgumentException if the SQL fails any of these checks
+     */
     static void validate(String sql) {
         if (sql == null || sql.isBlank()) {
             throw new IllegalArgumentException("No SQL was generated");

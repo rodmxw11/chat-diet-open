@@ -5,6 +5,11 @@ import org.springframework.data.annotation.PersistenceCreator;
 
 import java.time.LocalDateTime;
 
+/**
+ * Spring Data JDBC entity for a logged exercise session.
+ *
+ * @param caloriesBurned optional estimate of calories burned; may be {@code null}
+ */
 public record ExerciseEntry(
         @Id Long id,
         LocalDateTime loggedAt,

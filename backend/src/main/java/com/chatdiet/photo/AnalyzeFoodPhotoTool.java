@@ -6,6 +6,12 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
+/**
+ * IntentTool that analyzes the food photo attached to the current chat message, resizing it
+ * for the vision model and returning an estimated description, calories, and macros. If the
+ * underlying {@link PhotoAnalysisService} is not confident in the estimate, a clarifying
+ * question is returned instead of a final answer.
+ */
 @Component
 @IntentTool(
         name = "analyze_food_photo",
@@ -27,6 +33,13 @@ public class AnalyzeFoodPhotoTool implements Function<AnalyzeFoodPhotoRequest, T
         this.photoAnalysisService = photoAnalysisService;
     }
 
+    /**
+     * Resizes the request-scoped attached photo and sends it for analysis.
+     *
+     * @return a {@link ToolResult.NotFound} if no photo is attached, a {@link ToolResult.Success}
+     *         with the estimate when confident, or a {@link ToolResult.NeedsClarification}
+     *         carrying the analysis question and best-effort numbers when not
+     */
     @Override
     public ToolResult apply(AnalyzeFoodPhotoRequest request) {
         var bytes = photoContext.photoBytes();

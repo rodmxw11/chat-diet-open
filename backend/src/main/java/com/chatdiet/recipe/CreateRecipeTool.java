@@ -6,6 +6,11 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
+/**
+ * IntentTool callback for the {@code create_recipe} intent (under {@code recipe_intake}):
+ * creates a new reusable recipe from total nutrition and weight, normalizing the given totals to
+ * per-100g values and saving any supplied ingredient lines.
+ */
 @Component
 @IntentTool(
         name = "create_recipe",
@@ -22,6 +27,10 @@ public class CreateRecipeTool implements Function<CreateRecipeRequest, ToolResul
         this.recipeIngredientRepository = recipeIngredientRepository;
     }
 
+    /**
+     * Saves a new {@link Recipe} with nutrition scaled to per-100g from {@code request}'s
+     * batch/serving totals, plus any ingredient lines.
+     */
     @Override
     public ToolResult apply(CreateRecipeRequest request) {
         double factor = 100.0 / request.totalWeightG();

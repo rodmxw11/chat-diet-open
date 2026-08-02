@@ -17,11 +17,18 @@ public class PhotoPurgeJob {
         this.photoArchiveService = photoArchiveService;
     }
 
+    /** Runs {@link #run()} daily at 3am. */
     @Scheduled(cron = "0 0 3 * * *")
     public void purgeExpiredPhotos() {
         run();
     }
 
+    /**
+     * Deletes every photo whose retention period has elapsed, both its archive file and its
+     * database record.
+     *
+     * @return the number of photos purged
+     */
     public int run() {
         var due = photoRepository.findDueForPurge(LocalDateTime.now());
         for (var photo : due) {

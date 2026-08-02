@@ -34,6 +34,13 @@ public class SqlComposerService {
                 .build();
     }
 
+    /**
+     * Asks the model to answer {@code question} with SQL, reusing one of {@code savedQueries} if
+     * a matching shape exists, otherwise composing new SQL.
+     *
+     * @throws SqlCompositionException if the model's response can't be parsed into a valid
+     *                                  composition
+     */
     public SqlComposition compose(String question, List<SavedQuery> savedQueries) {
         var responseText = chatClient.prompt()
                 .system(buildSystemPrompt(savedQueries))

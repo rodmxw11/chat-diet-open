@@ -7,6 +7,10 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.function.Function;
 
+/**
+ * IntentTool that records a feature request or complaint about the app itself (as opposed to
+ * diet/weight/vitals data) to the feature backlog.
+ */
 @Component
 @IntentTool(
         name = "save_requirement",
@@ -21,6 +25,7 @@ public class SaveRequirementTool implements Function<SaveRequirementRequest, Too
         this.requirementEntryRepository = requirementEntryRepository;
     }
 
+    /** Saves a new {@link RequirementEntry} with status {@code "OPEN"}. */
     @Override
     public ToolResult apply(SaveRequirementRequest request) {
         var entry = new RequirementEntry(LocalDateTime.now(), request.rawText(), request.summary());

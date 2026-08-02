@@ -5,11 +5,19 @@ import org.springframework.web.client.RestClient;
 
 import java.util.Optional;
 
+/** Looks up product nutrition data from the public Open Food Facts API by barcode (UPC). */
 @Service
 public class OpenFoodFactsClient {
 
     private final RestClient restClient = RestClient.create();
 
+    /**
+     * Looks up the given barcode against Open Food Facts.
+     *
+     * @param upc the product barcode
+     * @return the product's nutrition info, or empty if the barcode is unknown, the product has
+     *         no usable calorie data, or the request fails for any reason
+     */
     public Optional<OffProduct> lookup(String upc) {
         try {
             var response = restClient.get()

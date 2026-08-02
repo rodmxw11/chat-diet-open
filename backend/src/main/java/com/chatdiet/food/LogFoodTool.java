@@ -7,6 +7,10 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.function.Function;
 
+/**
+ * IntentTool that logs a named food item using model-estimated calories and macros supplied
+ * directly in the request (as opposed to UPC, photo, or cached-food lookups).
+ */
 @Component
 @IntentTool(
         name = "log_food",
@@ -21,6 +25,12 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
         this.foodEntryRepository = foodEntryRepository;
     }
 
+    /**
+     * Saves a new food entry from the given description and totals.
+     *
+     * @return a {@link ToolResult.Success} acknowledging without logging if under 10 calories,
+     *         otherwise a {@link ToolResult.Success} wrapping the saved {@link FoodEntry}
+     */
     @Override
     public ToolResult apply(LogFoodRequest request) {
         if (request.totalCalories() < 10) {

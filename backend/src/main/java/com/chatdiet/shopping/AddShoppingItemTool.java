@@ -7,6 +7,11 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
+/**
+ * IntentTool that adds an item to the shopping list, suggesting a store by looking up purchase
+ * history for a matching cached food item first, then falling back to purchase history matched
+ * by the item's raw description.
+ */
 @Component
 @IntentTool(
         name = "add_shopping_item",
@@ -26,6 +31,12 @@ public class AddShoppingItemTool implements Function<AddShoppingItemRequest, Too
         this.purchaseHistoryRepository = purchaseHistoryRepository;
     }
 
+    /**
+     * Saves a new pending shopping list item, resolving a suggested store from purchase history
+     * for a matching food item, or failing that, from purchase history matching the description.
+     *
+     * @return a {@link ToolResult.Success} wrapping the saved {@link ShoppingItem}
+     */
     @Override
     public ToolResult apply(AddShoppingItemRequest request) {
         var matchedFoodItem = foodItemRepository.findBestMatchByName(request.description()).orElse(null);

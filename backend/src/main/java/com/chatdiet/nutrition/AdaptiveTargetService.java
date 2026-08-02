@@ -12,9 +12,16 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Computes and caches each metabolic day's calorie target. Rather than a static BMR-based target,
+ * the "effective TDEE" is adaptively nudged toward whatever value would have actually predicted
+ * the user's observed weight change between their two most recent weigh-ins, so the target
+ * self-corrects over time for individual metabolic variance.
+ */
 @Service
 public class AdaptiveTargetService {
 
+    /** How aggressively the effective TDEE is nudged toward the fully-corrected value each adjustment; 0=none, 1=full correction. */
     private static final double DAMPING_FACTOR = 0.3;
 
     private final WeightEntryRepository weightEntryRepository;
@@ -35,6 +42,12 @@ public class AdaptiveTargetService {
         this.dayBoundaryService = dayBoundaryService;
     }
 
+    /**
+     * Returns the cached target for the given metabolic day, computing and persisting one first
+     * if it doesn't exist yet.
+     *
+     * @return empty if no weight has ever been logged, since there's no baseline to compute from
+     */
     public Optional<DailyTarget> getOrComputeTarget(LocalDate metabolicDate) {
         var existing = dailyTargetRepository.findByTargetDate(metabolicDate);
         if (existing.isPresent()) {

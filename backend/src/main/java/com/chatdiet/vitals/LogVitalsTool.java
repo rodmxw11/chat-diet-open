@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.function.Function;
 
+/** IntentTool that logs a new blood pressure reading, optionally with heart rate. */
 @Component
 @IntentTool(
         name = "log_vitals",
@@ -21,6 +22,11 @@ public class LogVitalsTool implements Function<LogVitalsRequest, ToolResult> {
         this.vitalsEntryRepository = vitalsEntryRepository;
     }
 
+    /**
+     * Saves a new timestamped {@link VitalsEntry} from the request.
+     *
+     * @return a {@link ToolResult.Success} wrapping the newly created entry
+     */
     @Override
     public ToolResult apply(LogVitalsRequest request) {
         var entry = new VitalsEntry(LocalDateTime.now(), request.systolic(), request.diastolic(), request.heartRate());

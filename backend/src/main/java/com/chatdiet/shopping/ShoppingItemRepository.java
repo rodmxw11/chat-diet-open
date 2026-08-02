@@ -6,8 +6,10 @@ import org.springframework.data.repository.ListCrudRepository;
 import java.util.List;
 import java.util.Optional;
 
+/** Spring Data JDBC repository for {@link ShoppingItem} records. */
 public interface ShoppingItemRepository extends ListCrudRepository<ShoppingItem, Long> {
 
+    /** Returns all pending (not yet purchased) items, oldest first. */
     @Query("SELECT * FROM shopping_item WHERE status = 'PENDING' ORDER BY added_at")
     List<ShoppingItem> findPending();
 

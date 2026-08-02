@@ -8,6 +8,10 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
+/**
+ * IntentTool that logs a previously-cached packaged food item found by best-match name lookup,
+ * scaling its per-100g nutrition by the requested quantity.
+ */
 @Component
 @IntentTool(
         name = "log_cached_food",
@@ -24,6 +28,14 @@ public class LogCachedFoodTool implements Function<LogCachedFoodRequest, ToolRes
         this.foodItemLogger = foodItemLogger;
     }
 
+    /**
+     * Finds the best-matching cached food item by name and logs it scaled to the requested
+     * quantity.
+     *
+     * @return a {@link ToolResult.NotFound} if no cached item matches, a
+     *         {@link ToolResult.NeedsClarification} if the quantity could not be resolved, or
+     *         the logging result otherwise
+     */
     @Override
     public ToolResult apply(LogCachedFoodRequest request) {
         var item = foodItemRepository.findBestMatchByName(request.foodName()).orElse(null);

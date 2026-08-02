@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.function.Function;
 
+/** IntentTool that logs a digestive event such as reflux or diarrhea, with optional freeform notes. */
 @Component
 @IntentTool(
         name = "log_digestive_event",
@@ -21,6 +22,7 @@ public class LogDigestiveEventTool implements Function<LogDigestiveEventRequest,
         this.digestiveEventRepository = digestiveEventRepository;
     }
 
+    /** Saves a new timestamped {@link DigestiveEvent}. */
     @Override
     public ToolResult apply(LogDigestiveEventRequest request) {
         var entry = new DigestiveEvent(LocalDateTime.now(), request.eventType(), request.notes());

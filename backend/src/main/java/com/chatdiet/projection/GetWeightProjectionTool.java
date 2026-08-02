@@ -6,6 +6,11 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
+/**
+ * IntentTool that projects either the date a goal weight will be reached, or the weight on a
+ * future date, based on the current weight trend. Exactly one of {@code goalWeightLbs} or
+ * {@code goalDate} should be provided on the request.
+ */
 @Component
 @IntentTool(
         name = "get_weight_projection",
@@ -20,6 +25,14 @@ public class GetWeightProjectionTool implements Function<GetWeightProjectionRequ
         this.projectionService = projectionService;
     }
 
+    /**
+     * Dispatches to a goal-date or goal-weight projection depending on which request field is
+     * populated.
+     *
+     * @return a {@link ToolResult.Success} with the projection, a {@link ToolResult.NotFound} if
+     *         no projection can be computed (e.g. no weight logged yet), or a
+     *         {@link ToolResult.NeedsClarification} if neither field was provided
+     */
     @Override
     public ToolResult apply(GetWeightProjectionRequest request) {
         if (request.goalWeightLbs() != null && request.goalWeightLbs() > 0) {

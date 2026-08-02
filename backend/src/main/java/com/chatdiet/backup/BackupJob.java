@@ -31,6 +31,13 @@ public class BackupJob {
         run();
     }
 
+    /**
+     * Builds and writes a dated backup archive to the backup directory, then prunes old backups
+     * beyond the retention count.
+     *
+     * @return the path of the newly written backup archive
+     * @throws UncheckedIOException if writing the archive or pruning old backups fails
+     */
     public Path run() {
         try {
             Files.createDirectories(backupDir);

@@ -6,6 +6,12 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
+/**
+ * IntentTool callback for the {@code refine_recipe} intent (under {@code recipe_intake}):
+ * refines an existing (usually provisional) recipe with better total weight and nutrition,
+ * clearing the provisional flag. Only applies to future logs - past entries are never
+ * recalculated.
+ */
 @Component
 @IntentTool(
         name = "refine_recipe",
@@ -20,6 +26,13 @@ public class RefineRecipeTool implements Function<RefineRecipeRequest, ToolResul
         this.recipeRepository = recipeRepository;
     }
 
+    /**
+     * Recomputes per-100g nutrition from {@code request}'s totals (when both weight and calories
+     * are given) and saves the refined {@link Recipe}.
+     *
+     * @return {@link ToolResult.NotFound} if no recipe matches {@code request.name()}, otherwise
+     *         {@link ToolResult.Success}
+     */
     @Override
     public ToolResult apply(RefineRecipeRequest request) {
         var recipe = recipeRepository.findBestMatchByName(request.name()).orElse(null);

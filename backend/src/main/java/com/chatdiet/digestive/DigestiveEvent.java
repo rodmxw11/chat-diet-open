@@ -5,6 +5,11 @@ import org.springframework.data.annotation.PersistenceCreator;
 
 import java.time.LocalDateTime;
 
+/**
+ * Spring Data JDBC entity for a logged digestive event (e.g. reflux, diarrhea).
+ *
+ * @param notes optional freeform notes; may be {@code null} or blank
+ */
 public record DigestiveEvent(
         @Id Long id,
         LocalDateTime loggedAt,

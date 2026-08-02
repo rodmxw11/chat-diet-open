@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.stream.Collectors;
 
+/** Serves CSV downloads of full (uncapped) SQL query results cached in {@link SqlResultStore}. */
 @RestController
 public class SqlResultController {
 
@@ -18,6 +19,12 @@ public class SqlResultController {
         this.sqlResultStore = sqlResultStore;
     }
 
+    /**
+     * Streams the stored result for {@code id} as a CSV attachment.
+     *
+     * @return 200 with the CSV body, or 404 if no result is cached under {@code id} (e.g. it
+     *         expired from the bounded {@link SqlResultStore} cache)
+     */
     @GetMapping("/api/sql-results/{id}/csv")
     public ResponseEntity<String> csv(@PathVariable String id) {
         var result = sqlResultStore.get(id);

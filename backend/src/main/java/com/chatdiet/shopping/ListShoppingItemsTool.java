@@ -7,6 +7,10 @@ import org.springframework.stereotype.Component;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * IntentTool that lists all pending (not yet purchased) shopping list items, summarizing each
+ * with its suggested store when known.
+ */
 @Component
 @IntentTool(
         name = "list_shopping_items",
@@ -21,6 +25,12 @@ public class ListShoppingItemsTool implements Function<ListShoppingItemsRequest,
         this.shoppingItemRepository = shoppingItemRepository;
     }
 
+    /**
+     * Builds a summary of all pending shopping items.
+     *
+     * @return a {@link ToolResult.Success} with a human-readable summary and the list of pending
+     *         {@link ShoppingItem}s (empty list if there are none)
+     */
     @Override
     public ToolResult apply(ListShoppingItemsRequest request) {
         var pending = shoppingItemRepository.findPending();

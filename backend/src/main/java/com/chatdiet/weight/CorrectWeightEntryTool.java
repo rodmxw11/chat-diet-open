@@ -6,6 +6,10 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
+/**
+ * IntentTool implementation backing {@code correct_weight_entry}: overwrites the most recently
+ * logged weight entry's value in place, marking it as corrected, rather than inserting a new row.
+ */
 @Component
 @IntentTool(
         name = "correct_weight_entry",
@@ -20,6 +24,10 @@ public class CorrectWeightEntryTool implements Function<CorrectWeightRequest, To
         this.weightEntryRepository = weightEntryRepository;
     }
 
+    /**
+     * @return {@link ToolResult.NotFound} if there is no weight entry to correct, otherwise a
+     *         {@link ToolResult.Success} echoing back the corrected value
+     */
     @Override
     public ToolResult apply(CorrectWeightRequest request) {
         var existing = weightEntryRepository.findMostRecent();

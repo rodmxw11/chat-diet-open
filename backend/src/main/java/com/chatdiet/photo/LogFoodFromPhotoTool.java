@@ -9,6 +9,12 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.function.Function;
 
+/**
+ * IntentTool that logs a {@link FoodEntry} from the photo attached to the current chat message,
+ * using caller-supplied final calories/macros, and archives a small resized copy of the photo
+ * alongside it (purged automatically after {@value #PURGE_AFTER_DAYS} days by
+ * {@link PhotoPurgeJob}). Entries under 10 calories are acknowledged but not persisted.
+ */
 @Component
 @IntentTool(
         name = "log_food_from_photo",
@@ -37,6 +43,13 @@ public class LogFoodFromPhotoTool implements Function<LogFoodFromPhotoRequest, T
         this.photoRepository = photoRepository;
     }
 
+    /**
+     * Saves a food entry for the attached photo and archives a resized copy of it.
+     *
+     * @return a {@link ToolResult.NotFound} if no photo is attached, a {@link ToolResult.Success}
+     *         acknowledging without logging if under 10 calories, or a {@link ToolResult.Success}
+     *         wrapping the saved {@link FoodEntry} otherwise
+     */
     @Override
     public ToolResult apply(LogFoodFromPhotoRequest request) {
         var bytes = photoContext.photoBytes();

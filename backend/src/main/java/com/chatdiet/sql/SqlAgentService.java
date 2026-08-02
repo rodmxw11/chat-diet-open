@@ -3,6 +3,12 @@ package com.chatdiet.sql;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
+/**
+ * Orchestrates the end-to-end "answer a natural-language question with SQL" flow: composes SQL
+ * (reusing a saved query when possible), validates and executes it read-only, persists/bumps the
+ * {@link SavedQuery}, caches the full result for CSV export, and returns a display-capped
+ * {@link SqlAnswer}.
+ */
 @Service
 public class SqlAgentService {
 
@@ -23,6 +29,16 @@ public class SqlAgentService {
         this.sqlResultStore = sqlResultStore;
     }
 
+    /**
+     * Composes, validates, and runs SQL to answer {@code question}, then persists the query for
+     * reuse and caches the full result for CSV download.
+     *
+     * @return a display-capped answer (at most {@code DISPLAY_ROW_CAP} rows), with
+     *         {@link SqlAnswer#totalRows()} reporting the true match count
+     * @throws SqlCompositionException if a valid SQL composition can't be produced
+     * @throws IllegalArgumentException if the composed SQL fails {@link SqlValidator}
+     * @throws SqlExecutionException if the query fails to execute
+     */
     public SqlAnswer answer(String question) {
         var savedQueries = savedQueryRepository.findAllOrderByUseCountDesc();
         var composition = sqlComposerService.compose(question, savedQueries);

@@ -7,6 +7,10 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
+/**
+ * IntentTool that revises the calories/macros of the most recently logged {@link FoodEntry},
+ * preserving the pre-correction values as JSON on the entry for audit purposes.
+ */
 @Component
 @IntentTool(
         name = "correct_food_entry",
@@ -23,6 +27,14 @@ public class CorrectFoodEntryTool implements Function<CorrectFoodRequest, ToolRe
         this.foodEntryRepository = foodEntryRepository;
     }
 
+    /**
+     * Applies the given corrections (any {@code null} field keeps its prior value) to the most
+     * recently logged food entry and saves it.
+     *
+     * @return a {@link ToolResult.NotFound} if there is no food entry to correct, otherwise a
+     *         {@link ToolResult.Success} wrapping the updated {@link FoodEntry}
+     * @throws RuntimeException if the prior entry values fail to serialize to JSON
+     */
     @Override
     public ToolResult apply(CorrectFoodRequest request) {
         var existing = foodEntryRepository.findMostRecent();

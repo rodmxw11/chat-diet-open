@@ -19,6 +19,13 @@ public class FoodItemLogger {
         this.foodItemRepository = foodItemRepository;
     }
 
+    /**
+     * Logs a {@link com.chatdiet.food.FoodEntry} for the given cached food item scaled to the
+     * given portion size, and bumps the item's usage count/timestamp.
+     *
+     * @param grams portion size in grams
+     * @return a {@link ToolResult.Success} describing the logged entry
+     */
     public ToolResult.Success logScaled(FoodItem item, double grams) {
         var scaled = item.scaledTo(grams);
         var entry = new FoodEntry(LocalDateTime.now(), item.name(), scaled.calories(),

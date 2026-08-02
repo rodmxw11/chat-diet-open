@@ -8,6 +8,11 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
+/**
+ * IntentTool implementation backing {@code get_daily_target}: reports today's calorie target,
+ * the effective TDEE it was derived from, and how many calories have been consumed and remain
+ * for the current metabolic day.
+ */
 @Component
 @IntentTool(
         name = "get_daily_target",
@@ -27,6 +32,10 @@ public class GetDailyTargetTool implements Function<GetDailyTargetRequest, ToolR
         this.dayBoundaryService = dayBoundaryService;
     }
 
+    /**
+     * @return {@link ToolResult.NotFound} if no target can be computed (no weight logged yet),
+     *         otherwise a {@link ToolResult.Success} summarizing today's target/consumed/remaining
+     */
     @Override
     public ToolResult apply(GetDailyTargetRequest request) {
         var today = dayBoundaryService.today();

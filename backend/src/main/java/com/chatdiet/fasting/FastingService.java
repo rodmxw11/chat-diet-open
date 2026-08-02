@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+/** Computes fasting duration and eating-window information from logged food entries. */
 @Service
 public class FastingService {
 
@@ -27,6 +28,12 @@ public class FastingService {
                 .map(entry -> Duration.between(entry.loggedAt(), LocalDateTime.now()));
     }
 
+    /**
+     * Returns the first and last food-logging timestamps within the given metabolic day, or
+     * empty if nothing was logged that day.
+     *
+     * @param metabolicDate a date as defined by {@link DayBoundaryService}'s day-rollover rule
+     */
     public Optional<EatingWindow> eatingWindowFor(LocalDate metabolicDate) {
         var start = dayBoundaryService.startOfMetabolicDay(metabolicDate);
         var end = dayBoundaryService.endOfMetabolicDay(metabolicDate);
@@ -37,6 +44,7 @@ public class FastingService {
         return Optional.of(new EatingWindow(entries.get(0).loggedAt(), entries.get(entries.size() - 1).loggedAt()));
     }
 
+    /** The first and last time food was logged within a given day. */
     public record EatingWindow(LocalDateTime firstAte, LocalDateTime lastAte) {
     }
 }

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.function.Function;
 
+/** IntentTool that logs an exercise session by name and duration, with an optional calorie burn estimate. */
 @Component
 @IntentTool(
         name = "log_exercise",
@@ -21,6 +22,7 @@ public class LogExerciseTool implements Function<LogExerciseRequest, ToolResult>
         this.exerciseEntryRepository = exerciseEntryRepository;
     }
 
+    /** Saves a new timestamped {@link ExerciseEntry}. */
     @Override
     public ToolResult apply(LogExerciseRequest request) {
         var entry = new ExerciseEntry(LocalDateTime.now(), request.exerciseName(),

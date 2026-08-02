@@ -7,6 +7,10 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.function.Function;
 
+/**
+ * IntentTool that saves a freeform timestamped note-to-self, for anything the user wants
+ * written down that isn't food, weight, vitals, or exercise.
+ */
 @Component
 @IntentTool(
         name = "save_note",
@@ -21,6 +25,7 @@ public class SaveNoteTool implements Function<SaveNoteRequest, ToolResult> {
         this.noteRepository = noteRepository;
     }
 
+    /** Saves a new timestamped {@link Note}. */
     @Override
     public ToolResult apply(SaveNoteRequest request) {
         var note = new Note(LocalDateTime.now(), request.text());

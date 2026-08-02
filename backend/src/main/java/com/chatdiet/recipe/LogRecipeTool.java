@@ -9,6 +9,12 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.function.Function;
 
+/**
+ * IntentTool callback for the {@code log_recipe} intent (under {@code log_food}): logs a meal
+ * based on an existing recipe using final totals already computed by the model (the recipe
+ * scaled to the amount eaten, plus any extras). Falls through to {@link ToolResult.NotFound} if
+ * no recipe matches.
+ */
 @Component
 @IntentTool(
         name = "log_recipe",
@@ -25,6 +31,13 @@ public class LogRecipeTool implements Function<LogRecipeRequest, ToolResult> {
         this.foodEntryRepository = foodEntryRepository;
     }
 
+    /**
+     * Records a {@link FoodEntry} for the matched recipe and bumps its use count. Totals under 10
+     * calories are treated as noise and not logged.
+     *
+     * @return {@link ToolResult.NotFound} if no recipe matches {@code request.recipeName()},
+     *         otherwise {@link ToolResult.Success}
+     */
     @Override
     public ToolResult apply(LogRecipeRequest request) {
         var recipe = recipeRepository.findBestMatchByName(request.recipeName()).orElse(null);

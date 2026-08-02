@@ -15,6 +15,12 @@ import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.time.Instant;
 
+/**
+ * HTTP entry point for the chat feature. Accepts a plain-text turn or a multipart turn with an
+ * attached food photo, routes it through {@link ChatService}, and enriches the reply with any
+ * chart series or SQL answer produced as a side effect of the model's tool calls during this
+ * request (via the request-scoped {@link ChartResultContext} / {@link SqlResultContext}).
+ */
 @RestController
 public class ChatController {
 
@@ -34,6 +40,10 @@ public class ChatController {
         this.sqlResultContext = sqlResultContext;
     }
 
+    /**
+     * Handles a plain-text chat turn: resolves the session, notes any offline-queue timing skew,
+     * and returns the model's reply along with whatever chart/SQL results the turn produced.
+     */
     @PostMapping(value = "/api/chat", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ChatResponse chat(@RequestBody ChatRequest request) {
         var sessionId = request.sessionId() != null ? request.sessionId() : ConversationHistoryStore.DEFAULT_SESSION;
@@ -42,6 +52,11 @@ public class ChatController {
         return new ChatResponse(reply, chartResultContext.series().orElse(null), sqlResultContext.answer().orElse(null));
     }
 
+    /**
+     * Handles a chat turn with an attached food photo: stashes the photo bytes in the
+     * request-scoped {@link PhotoContext} and appends a note instructing the model to call
+     * {@code analyze_food_photo}.
+     */
     @PostMapping(value = "/api/chat", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ChatResponse chatWithPhoto(@RequestParam("text") String text,
                                        @RequestParam(value = "sessionId", required = false) String sessionId,
