@@ -11,10 +11,20 @@ export interface ChartSeries {
   points: SeriesPoint[]
 }
 
+export interface SqlAnswer {
+  sqlText: string
+  columns: string[]
+  rows: unknown[][]
+  truncated: boolean
+  totalRows: number
+  csvId: string
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant'
   text: string
   chartSeries?: ChartSeries[]
+  sqlAnswer?: SqlAnswer
 }
 
 interface ChatState {
@@ -30,6 +40,7 @@ const initialState: ChatState = {
 interface ChatApiResponse {
   reply: string
   chartSeries: ChartSeries[] | null
+  sqlAnswer: SqlAnswer | null
 }
 
 export const sendMessage = createAsyncThunk(
@@ -64,6 +75,7 @@ const chatSlice = createSlice({
           role: 'assistant',
           text: action.payload.reply,
           chartSeries: action.payload.chartSeries ?? undefined,
+          sqlAnswer: action.payload.sqlAnswer ?? undefined,
         })
       })
       .addCase(sendMessage.rejected, (state) => {

@@ -13,6 +13,7 @@ import com.chatdiet.recipe.RecipeRepository;
 import com.chatdiet.requirement.RequirementEntryRepository;
 import com.chatdiet.shopping.PurchaseHistoryRepository;
 import com.chatdiet.shopping.ShoppingItemRepository;
+import com.chatdiet.sql.SavedQueryRepository;
 import com.chatdiet.vitals.VitalsEntryRepository;
 import com.chatdiet.weight.WeightEntryRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -91,6 +92,9 @@ class IntentRoutingTest {
     @Autowired
     private PurchaseHistoryRepository purchaseHistoryRepository;
 
+    @Autowired
+    private SavedQueryRepository savedQueryRepository;
+
     @BeforeEach
     void clearAll() {
         // Tools like show_chart depend on request-scoped beans; bind a mock request so they
@@ -111,6 +115,7 @@ class IntentRoutingTest {
         recipeRepository.deleteAll();
         purchaseHistoryRepository.deleteAll();
         shoppingItemRepository.deleteAll();
+        savedQueryRepository.deleteAll();
     }
 
     @AfterEach
@@ -336,5 +341,17 @@ class IntentRoutingTest {
         var reply = chatService.reply("show me a chart of my calories this week");
 
         assertThat(reply).as("show_chart should have produced a non-empty reply").isNotBlank();
+    }
+
+    @Test
+    void routesAnalyticalQuestionToRunSqlTool() {
+        chatService.reply("I ate a chicken sandwich, 450 calories, 30g protein, 40g carbs, 15g fat");
+
+        var reply = chatService.reply("how many times have I logged food this week?");
+
+        assertThat(reply).as("run_sql should have produced a non-empty reply").isNotBlank();
+        assertThat(savedQueryRepository.findAll())
+                .as("run_sql should have saved the composed query for reuse")
+                .isNotEmpty();
     }
 }

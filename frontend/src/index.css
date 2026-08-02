@@ -76,6 +76,60 @@ body {
   width: min(100%, 480px);
 }
 
+.sql-result {
+  margin-top: 8px;
+  width: min(100%, 480px);
+}
+
+.sql-text {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--accent-bg);
+  color: var(--text-h);
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.sql-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.sql-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+
+.sql-table th,
+.sql-table td {
+  padding: 6px 10px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+
+.sql-table th {
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.sql-result-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.sql-result-footer a {
+  color: var(--accent);
+}
+
 .message-input {
   display: flex;
   gap: 8px;

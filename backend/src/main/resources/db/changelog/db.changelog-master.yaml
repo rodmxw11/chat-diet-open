@@ -27,3 +27,5 @@ databaseChangeLog:
       file: db/changelog/013-create-shopping-item-table.yaml
   - include:
       file: db/changelog/014-create-purchase-history-table.yaml
+  - include:
+      file: db/changelog/015-create-saved-query-table.yaml

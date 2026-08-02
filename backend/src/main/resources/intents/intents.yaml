@@ -154,6 +154,21 @@
     cumulative-against-target regardless of what you pass).
   enabled: true
 
+- name: run_sql
+  description: Natural-language to SQL to result table
+  toolNames:
+    - run_sql
+  promptFragment: >
+    For analytical questions the other tools don't directly answer (trends,
+    rankings, arbitrary aggregations, "how many times", "which is most
+    common", "favorite X"), call run_sql with the user's question passed
+    through verbatim - it composes and runs the SQL itself. Never try to
+    compute the answer yourself from memory or prior turns; always call the
+    tool. The generated SQL and result table render inline, so keep your own
+    reply to a brief acknowledgement - no restating numbers already visible
+    in the table.
+  enabled: true
+
 - name: correct_entry
   description: Linguistically marked corrections to the most recent food, weight, or vitals entry
   toolNames:

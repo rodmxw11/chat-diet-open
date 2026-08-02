@@ -1,0 +1,39 @@
+databaseChangeLog:
+  - changeSet:
+      id: 015-create-saved-query-table
+      author: chat-diet
+      changes:
+        - createTable:
+            tableName: saved_query
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: VARCHAR(1000)
+              - column:
+                  name: sql_text
+                  type: CLOB
+                  constraints:
+                    nullable: false
+              - column:
+                  name: param_defs_json
+                  type: CLOB
+              - column:
+                  name: use_count
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_used_at
+                  type: DATETIME

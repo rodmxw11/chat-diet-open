@@ -1,5 +1,6 @@
 import { useAppSelector } from '../store/hooks'
 import ChartRenderer from './ChartRenderer'
+import SqlResultTable from './SqlResultTable'
 
 export default function ChatWindow() {
   const messages = useAppSelector((state) => state.chat.messages)
@@ -12,6 +13,7 @@ export default function ChatWindow() {
           {message.chartSeries && message.chartSeries.length > 0 && (
             <ChartRenderer series={message.chartSeries} />
           )}
+          {message.sqlAnswer && <SqlResultTable answer={message.sqlAnswer} />}
         </div>
       ))}
     </div>
