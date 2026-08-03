@@ -210,9 +210,15 @@ body {
   border-top: 1px solid var(--border);
 }
 
-.message-input input {
+.message-input-field {
+  position: relative;
   flex: 1;
-  padding: 10px 12px;
+  display: flex;
+}
+
+.message-input-field input {
+  flex: 1;
+  padding: 10px 34px 10px 12px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--bg);
@@ -233,4 +239,23 @@ body {
 .message-input button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.clear-input-button {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.clear-input-button:hover {
+  color: var(--text-h);
 }

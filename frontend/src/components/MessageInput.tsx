@@ -16,12 +16,25 @@ export default function MessageInput() {
 
   return (
     <form className="message-input" onSubmit={submit}>
-      <input
-        value={text}
-        onChange={(event) => dispatch(setDraftText(event.target.value))}
-        placeholder="Say something..."
-        disabled={status === 'loading'}
-      />
+      <div className="message-input-field">
+        <input
+          value={text}
+          onChange={(event) => dispatch(setDraftText(event.target.value))}
+          placeholder="Say something..."
+          disabled={status === 'loading'}
+        />
+        {text && (
+          <button
+            type="button"
+            className="clear-input-button"
+            onClick={() => dispatch(setDraftText(''))}
+            title="Clear text"
+            aria-label="Clear text"
+          >
+            ✕
+          </button>
+        )}
+      </div>
       <button type="submit" disabled={status === 'loading'}>
         Send
       </button>
