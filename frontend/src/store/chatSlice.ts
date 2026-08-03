@@ -1,4 +1,4 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
+import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit'
 
 export interface SeriesPoint {
   at: string
@@ -25,6 +25,7 @@ export interface ChatMessage {
   text: string
   chartSeries?: ChartSeries[]
   sqlAnswer?: SqlAnswer
+  imageUrl?: string
 }
 
 interface ChatState {
@@ -32,6 +33,7 @@ interface ChatState {
   messages: ChatMessage[]
   status: 'idle' | 'loading' | 'error'
   ttsEnabled: boolean
+  draftText: string
 }
 
 function newSessionId(): string {
@@ -43,6 +45,7 @@ const initialState: ChatState = {
   messages: [],
   status: 'idle',
   ttsEnabled: false,
+  draftText: '',
 }
 
 interface ChatApiResponse {
@@ -82,6 +85,39 @@ export const sendMessage = createAsyncThunk(
   },
 )
 
+interface SendPhotoArg {
+  file: File
+  previewUrl: string
+}
+
+export const sendPhoto = createAsyncThunk(
+  'chat/sendPhoto',
+  async ({ file }: SendPhotoArg, { getState, rejectWithValue }) => {
+    const { chat } = getState() as { chat: ChatState }
+    try {
+      const formData = new FormData()
+      formData.append('text', "Here's a photo of my food.")
+      formData.append('sessionId', chat.sessionId)
+      formData.append('photo', file)
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        body: formData,
+      })
+      if (!response.ok) {
+        throw new Error(`Chat request failed: ${response.status}`)
+      }
+      const data: ChatApiResponse = await response.json()
+      return data
+    } catch (error) {
+      // Same offline/background-sync handling as sendMessage - see comment there.
+      if (error instanceof TypeError) {
+        return rejectWithValue('offline')
+      }
+      throw error
+    }
+  },
+)
+
 const chatSlice = createSlice({
   name: 'chat',
   initialState,
@@ -93,6 +129,12 @@ const chatSlice = createSlice({
     },
     toggleTts: (state) => {
       state.ttsEnabled = !state.ttsEnabled
+    },
+    setDraftText: (state, action: PayloadAction<string>) => {
+      state.draftText = action.payload
+    },
+    appendDraftText: (state, action: PayloadAction<string>) => {
+      state.draftText = state.draftText ? `${state.draftText} ${action.payload}` : action.payload
     },
   },
   extraReducers: (builder) => {
@@ -125,8 +167,40 @@ const chatSlice = createSlice({
           text: 'Something went wrong sending that message.',
         })
       })
+      .addCase(sendPhoto.pending, (state, action) => {
+        state.status = 'loading'
+        state.messages.push({
+          role: 'user',
+          text: 'Photo of my food',
+          imageUrl: action.meta.arg.previewUrl,
+        })
+      })
+      .addCase(sendPhoto.fulfilled, (state, action) => {
+        state.status = 'idle'
+        state.messages.push({
+          role: 'assistant',
+          text: action.payload.reply,
+          chartSeries: action.payload.chartSeries ?? undefined,
+          sqlAnswer: action.payload.sqlAnswer ?? undefined,
+        })
+      })
+      .addCase(sendPhoto.rejected, (state, action) => {
+        if (action.payload === 'offline') {
+          state.status = 'idle'
+          state.messages.push({
+            role: 'assistant',
+            text: "Offline - this photo is queued and will send once you're back online.",
+          })
+          return
+        }
+        state.status = 'error'
+        state.messages.push({
+          role: 'assistant',
+          text: 'Something went wrong sending that photo.',
+        })
+      })
   },
 })
 
-export const { startNewSession, toggleTts } = chatSlice.actions
+export const { startNewSession, toggleTts, setDraftText, appendDraftText } = chatSlice.actions
 export default chatSlice.reducer

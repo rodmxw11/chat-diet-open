@@ -22,6 +22,9 @@ export default function ChatWindow() {
     <div className="chat-window">
       {messages.map((message, index) => (
         <div key={index} className={`message ${message.role}`}>
+          {message.imageUrl && (
+            <img className="message-photo" src={message.imageUrl} alt="Attached food photo" />
+          )}
           {message.text}
           {message.chartSeries && message.chartSeries.length > 0 && (
             <ChartRenderer series={message.chartSeries} />

@@ -1,10 +1,9 @@
-import { useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
-import { sendMessage } from '../store/chatSlice'
+import { sendMessage, setDraftText } from '../store/chatSlice'
 
 export default function MessageInput() {
-  const [text, setText] = useState('')
   const dispatch = useAppDispatch()
+  const text = useAppSelector((state) => state.chat.draftText)
   const status = useAppSelector((state) => state.chat.status)
 
   const submit = (event: React.FormEvent) => {
@@ -12,14 +11,14 @@ export default function MessageInput() {
     const trimmed = text.trim()
     if (!trimmed || status === 'loading') return
     dispatch(sendMessage(trimmed))
-    setText('')
+    dispatch(setDraftText(''))
   }
 
   return (
     <form className="message-input" onSubmit={submit}>
       <input
         value={text}
-        onChange={(event) => setText(event.target.value)}
+        onChange={(event) => dispatch(setDraftText(event.target.value))}
         placeholder="Say something..."
         disabled={status === 'loading'}
       />
