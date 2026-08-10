@@ -2,7 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/chat-diet-icon-192.png" />
+    <!-- SVG first so supporting browsers rasterize at the exact tab size; the PNG/ICO are
+         rendered from the same source at 32px rather than being the 192px art shrunk down. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="alternate icon" href="/favicon.ico" sizes="48x48 32x32 16x16" />
+    <link rel="apple-touch-icon" href="/chat-diet-icon-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>chat-diet</title>
   </head>
