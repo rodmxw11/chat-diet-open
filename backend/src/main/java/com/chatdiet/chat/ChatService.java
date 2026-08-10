@@ -1,54 +1,58 @@
 package com.chatdiet.chat;
 
+import com.chatdiet.day.DayBoundaryService;
 import com.chatdiet.intent.PromptAssembler;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * The main chat loop: builds a single {@link ChatClient} at startup from the assembled system
- * prompt and tool set ({@link PromptAssembler}), then for each turn replays the short in-memory
- * history from {@link ConversationHistoryStore}, sends the new user message, appends the
- * exchange back to that store, and hands the reply to {@link ChatSessionService} to persist
- * durably and possibly append a session-size warning.
+ * prompt and tool set ({@link PromptAssembler}), then for each turn replays the current metabolic
+ * day's recent history from {@link ConversationHistoryStore}, sends the new user message, and
+ * hands the exchange back to that store to persist and cache.
  */
 @Service
 public class ChatService {
 
     private final ChatClient chatClient;
     private final ConversationHistoryStore historyStore;
-    private final ChatSessionService chatSessionService;
+    private final DayBoundaryService dayBoundaryService;
 
     public ChatService(ChatClient.Builder chatClientBuilder, PromptAssembler promptAssembler,
-                        ConversationHistoryStore historyStore, ChatSessionService chatSessionService) {
+                        ConversationHistoryStore historyStore, DayBoundaryService dayBoundaryService) {
         var assembled = promptAssembler.assemble();
         this.chatClient = chatClientBuilder
                 .defaultSystem(assembled.systemPrompt())
                 .defaultTools(assembled.tools().toArray())
                 .build();
         this.historyStore = historyStore;
-        this.chatSessionService = chatSessionService;
+        this.dayBoundaryService = dayBoundaryService;
     }
 
-    /** Replies within the default session. See {@link #reply(String, String)}. */
+    /** Replies as of now, within the current metabolic day. See {@link #reply}. */
     public String reply(String userText) {
-        return reply(ConversationHistoryStore.DEFAULT_SESSION, userText);
+        var now = LocalDateTime.now();
+        return reply(dayBoundaryService.metabolicDateOf(now), now, userText);
     }
 
     /**
-     * Runs one chat turn: sends {@code userText} to the model with the session's recent history,
-     * records both halves of the exchange, and returns the reply (possibly with a size warning
-     * appended).
+     * Runs one chat turn: sends {@code userText} to the model with the day's recent history and
+     * records both halves of the exchange against that day.
+     *
+     * @param occurredAt when the message was composed, which for an offline-queued message is
+     *                   earlier than now and is what {@code metabolicDate} was derived from
      */
-    public String reply(String sessionId, String userText) {
-        var history = historyStore.get(sessionId);
+    public String reply(LocalDate metabolicDate, LocalDateTime occurredAt, String userText) {
+        var history = historyStore.get(metabolicDate);
         var content = chatClient.prompt()
                 .messages(history)
                 .user(userText)
                 .call()
                 .content();
-        historyStore.append(sessionId, new UserMessage(userText), new AssistantMessage(content));
-        return chatSessionService.recordTurn(sessionId, userText, content);
+        historyStore.append(metabolicDate, occurredAt, userText, content);
+        return content;
     }
 }

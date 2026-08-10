@@ -1,46 +1,121 @@
 package com.chatdiet.chat;
 
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * In-memory only - short-lived conversational context, not the durable CHAT_SESSION/CHAT_MESSAGE
- * history SPEC describes. That needs its own persistence, "New Session" UI, and token-size
- * warnings; this just gives the model enough of the last few turns to do things like resolve a
- * photo-analysis clarifying question without re-sending the photo.
+ * Owns the conversation history for each metabolic day - both the durable CHAT_MESSAGE log and
+ * the short in-memory window actually replayed to the model.
+ *
+ * <p>There is no session concept: the metabolic day is the conversation, so every device and
+ * channel writing on the same day appends to the same thread.
+ *
+ * <p>The in-memory window is a cache, not the source of truth. It is rebuilt from the database
+ * on first access of a day, which matters because the UI can display a whole day's transcript
+ * ({@link #messagesFor}) - without rehydration a backend restart would leave the model with
+ * amnesia about a conversation the user can plainly still see on screen.
  */
 @Component
 public class ConversationHistoryStore {
 
-    public static final String DEFAULT_SESSION = "default";
-    private static final int MAX_MESSAGES = 20;
+    /**
+     * How many messages of the current day are replayed to the model. The DB is the real memory
+     * - recall of earlier facts happens through DB-reading tools, not by holding a long
+     * transcript in context - so this stays small deliberately.
+     */
+    private static final int MAX_CONTEXT_MESSAGES = 10;
 
-    private final Map<String, Deque<Message>> bySession = new ConcurrentHashMap<>();
+    private final ChatMessageRepository chatMessageRepository;
 
-    /** Returns an immutable snapshot of the recent messages for a session, oldest first. */
-    public List<Message> get(String sessionId) {
-        return List.copyOf(bySession.getOrDefault(sessionId, new ArrayDeque<>()));
+    private final Map<LocalDate, Deque<Message>> byDate = new ConcurrentHashMap<>();
+
+    public ConversationHistoryStore(ChatMessageRepository chatMessageRepository) {
+        this.chatMessageRepository = chatMessageRepository;
     }
 
-    /** Appends messages to a session's history, evicting the oldest once {@link #MAX_MESSAGES} is exceeded. */
-    public synchronized void append(String sessionId, Message... messages) {
-        var deque = bySession.computeIfAbsent(sessionId, key -> new ArrayDeque<>());
-        for (var message : messages) {
-            deque.addLast(message);
-            while (deque.size() > MAX_MESSAGES) {
-                deque.removeFirst();
-            }
+    /**
+     * Returns the model-facing context for a day, oldest first, loading it from the database if
+     * this day isn't cached yet.
+     */
+    public synchronized List<Message> get(LocalDate metabolicDate) {
+        evictOlderThanYesterday(metabolicDate);
+        return List.copyOf(byDate.computeIfAbsent(metabolicDate, this::rehydrate));
+    }
+
+    /**
+     * Records both halves of a turn: persists them to the durable log and adds them to the
+     * day's in-memory context window.
+     *
+     * @param occurredAt when the turn was composed - for an offline-queued message this is
+     *                   earlier than now, and it must match the day {@code metabolicDate} was
+     *                   derived from
+     */
+    public synchronized void append(LocalDate metabolicDate, LocalDateTime occurredAt,
+                                     String userText, String assistantText) {
+        evictOlderThanYesterday(metabolicDate);
+
+        chatMessageRepository.save(new ChatMessage(metabolicDate, "user", userText, occurredAt));
+        chatMessageRepository.save(new ChatMessage(metabolicDate, "assistant", assistantText, occurredAt));
+
+        var deque = byDate.computeIfAbsent(metabolicDate, this::rehydrate);
+        deque.addLast(new UserMessage(userText));
+        deque.addLast(new AssistantMessage(assistantText));
+        while (deque.size() > MAX_CONTEXT_MESSAGES) {
+            deque.removeFirst();
         }
     }
 
-    /** Drops all in-memory history for every session (e.g. for test isolation). */
-    public void clearAll() {
-        bySession.clear();
+    /** A whole day's durable transcript, oldest first, for display. */
+    public List<ChatMessage> messagesFor(LocalDate metabolicDate) {
+        return chatMessageRepository.findByMetabolicDate(metabolicDate);
+    }
+
+    /** Drops all cached history, forcing the next read to reload from the database. */
+    public synchronized void clearAll() {
+        byDate.clear();
+    }
+
+    /** Number of days currently cached. Exposed for tests to verify eviction. */
+    synchronized int cachedDayCount() {
+        return byDate.size();
+    }
+
+    /**
+     * Loads the tail of a day's persisted conversation into a fresh context window. Returns an
+     * empty deque for a day with no messages, which is still cached so a quiet day doesn't
+     * re-query on every turn.
+     */
+    private Deque<Message> rehydrate(LocalDate metabolicDate) {
+        var recent = new ArrayList<>(chatMessageRepository
+                .findRecentByMetabolicDate(metabolicDate, MAX_CONTEXT_MESSAGES));
+        Collections.reverse(recent);
+
+        var deque = new ArrayDeque<Message>();
+        for (var message : recent) {
+            deque.addLast("assistant".equals(message.role())
+                    ? new AssistantMessage(message.content())
+                    : new UserMessage(message.content()));
+        }
+        return deque;
+    }
+
+    /**
+     * Keeps the cache from growing one entry per day forever. Yesterday is retained because an
+     * offline message composed late last night can still arrive today.
+     */
+    private void evictOlderThanYesterday(LocalDate metabolicDate) {
+        byDate.keySet().removeIf(cached -> cached.isBefore(metabolicDate.minusDays(1)));
     }
 }

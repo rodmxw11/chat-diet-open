@@ -1,0 +1,70 @@
+databaseChangeLog:
+  # Replaces the explicit chat-session concept with the metabolic day: chat_message rows are
+  # now grouped by the day they belong to, and chat_session goes away entirely along with its
+  # token-estimate/size-warning machinery.
+  - changeSet:
+      id: 018-1-add-chat-message-metabolic-date
+      author: chat-diet
+      changes:
+        - addColumn:
+            tableName: chat_message
+            columns:
+              - column:
+                  name: metabolic_date
+                  type: DATE
+
+  - changeSet:
+      id: 018-2-backfill-chat-message-metabolic-date
+      author: chat-diet
+      # The rollover hour is configurable (chat-diet.day-rollover-hour) but Liquibase SQL is
+      # static, so 4 is hardcoded here: this is a one-time backfill against the value that was
+      # in force when these rows were written. Unlike food/weight - which re-bucket on read -
+      # chat history keeps whatever day it was filed under, so changing the rollover hour later
+      # does NOT retroactively re-group old conversations. That asymmetry is intended.
+      changes:
+        - sql:
+            sql: >
+              UPDATE chat_message
+              SET metabolic_date = CASE
+                  WHEN HOUR(created_at) < 4 THEN CAST(DATEADD('DAY', -1, created_at) AS DATE)
+                  ELSE CAST(created_at AS DATE)
+              END
+
+  - changeSet:
+      id: 018-3-chat-message-metabolic-date-not-null
+      author: chat-diet
+      changes:
+        - addNotNullConstraint:
+            tableName: chat_message
+            columnName: metabolic_date
+            columnDataType: DATE
+
+  - changeSet:
+      id: 018-4-index-chat-message-metabolic-date
+      author: chat-diet
+      # The only index in the schema, and deliberate: chat_message is the fastest-growing table
+      # and GET /api/chat/history reads it (filtered by day, ordered by time) on every page load.
+      changes:
+        - createIndex:
+            tableName: chat_message
+            indexName: idx_chat_message_metabolic_date
+            columns:
+              - column:
+                  name: metabolic_date
+              - column:
+                  name: created_at
+
+  - changeSet:
+      id: 018-5-drop-chat-message-session-key
+      author: chat-diet
+      changes:
+        - dropColumn:
+            tableName: chat_message
+            columnName: session_key
+
+  - changeSet:
+      id: 018-6-drop-chat-session-table
+      author: chat-diet
+      changes:
+        - dropTable:
+            tableName: chat_session

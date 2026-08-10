@@ -1,5 +1,6 @@
 package com.chatdiet.intent;
 
+import com.chatdiet.chat.ChatMessageRepository;
 import com.chatdiet.chat.ChatService;
 import com.chatdiet.chat.ConversationHistoryStore;
 import com.chatdiet.digestive.DigestiveEventRepository;
@@ -81,6 +82,9 @@ class IntentRoutingTest {
     private ConversationHistoryStore conversationHistoryStore;
 
     @Autowired
+    private ChatMessageRepository chatMessageRepository;
+
+    @Autowired
     private RecipeRepository recipeRepository;
 
     @Autowired
@@ -110,7 +114,11 @@ class IntentRoutingTest {
         requirementEntryRepository.deleteAll();
         dailyTargetRepository.deleteAll();
         foodItemRepository.deleteAll();
+        // Both are needed: clearAll() only drops the in-memory cache, and the store reloads a
+        // day's context from chat_message on next access - so without this the previous test's
+        // turns would be replayed into this one.
         conversationHistoryStore.clearAll();
+        chatMessageRepository.deleteAll();
         recipeIngredientRepository.deleteAll();
         recipeRepository.deleteAll();
         purchaseHistoryRepository.deleteAll();
