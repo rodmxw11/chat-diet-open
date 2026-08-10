@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
-import { appendDraftText, sendPhoto, startNewSession, toggleTts } from '../store/chatSlice'
+import { appendDraftText, sendPhoto, toggleTts } from '../store/chatSlice'
 
 const SpeechRecognitionCtor = window.SpeechRecognition ?? window.webkitSpeechRecognition
 
@@ -88,16 +88,6 @@ export default function Header() {
           title={ttsEnabled ? 'Voice replies on' : 'Voice replies off'}
         >
           {ttsEnabled ? '🔊' : '🔇'}
-        </button>
-        <button
-          type="button"
-          className="new-session-button"
-          onClick={() => {
-            window.speechSynthesis?.cancel()
-            dispatch(startNewSession())
-          }}
-        >
-          New Session
         </button>
       </div>
     </header>

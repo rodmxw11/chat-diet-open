@@ -95,20 +95,6 @@ body {
   border-color: var(--accent);
 }
 
-.new-session-button {
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text-h);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.new-session-button:hover {
-  border-color: var(--accent);
-}
-
 .chat-window {
   flex: 1;
   overflow-y: auto;
