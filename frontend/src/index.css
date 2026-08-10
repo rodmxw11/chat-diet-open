@@ -191,20 +191,15 @@ body {
 
 .message-input {
   display: flex;
+  align-items: center;
   gap: 8px;
   padding: 12px;
   border-top: 1px solid var(--border);
 }
 
-.message-input-field {
-  position: relative;
+.message-input input {
   flex: 1;
-  display: flex;
-}
-
-.message-input-field input {
-  flex: 1;
-  padding: 10px 34px 10px 12px;
+  padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--bg);
@@ -227,21 +222,23 @@ body {
   cursor: default;
 }
 
-.clear-input-button {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  padding: 4px 6px;
+/* Needs to out-specify `.message-input button`, which would otherwise give this the Send
+   button's accent fill and padding. */
+.message-input .clear-input-button {
+  padding: 6px 8px;
   border-radius: 6px;
   border: none;
   background: transparent;
   color: var(--text);
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1;
   cursor: pointer;
 }
 
-.clear-input-button:hover {
+.message-input .clear-input-button:hover {
   color: var(--text-h);
+}
+
+.message-input .clear-input-button.is-hidden {
+  visibility: hidden;
 }

@@ -16,25 +16,23 @@ export default function MessageInput() {
 
   return (
     <form className="message-input" onSubmit={submit}>
-      <div className="message-input-field">
-        <input
-          value={text}
-          onChange={(event) => dispatch(setDraftText(event.target.value))}
-          placeholder="Say something..."
-          disabled={status === 'loading'}
-        />
-        {text && (
-          <button
-            type="button"
-            className="clear-input-button"
-            onClick={() => dispatch(setDraftText(''))}
-            title="Clear text"
-            aria-label="Clear text"
-          >
-            ✕
-          </button>
-        )}
-      </div>
+      {/* Kept mounted but hidden when empty so the input doesn't shift sideways on the first
+          keystroke; visibility:hidden also keeps it out of the tab order. */}
+      <button
+        type="button"
+        className={`clear-input-button ${text ? '' : 'is-hidden'}`}
+        onClick={() => dispatch(setDraftText(''))}
+        title="Clear text"
+        aria-label="Clear text"
+      >
+        ✕
+      </button>
+      <input
+        value={text}
+        onChange={(event) => dispatch(setDraftText(event.target.value))}
+        placeholder="Say something..."
+        disabled={status === 'loading'}
+      />
       <button type="submit" disabled={status === 'loading'}>
         Send
       </button>
