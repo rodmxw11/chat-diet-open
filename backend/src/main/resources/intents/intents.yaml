@@ -34,6 +34,15 @@
     question first when a missing detail would make the estimate
     meaningless - otherwise save immediately. Skip logging (just
     acknowledge) anything under 10 calories, like black tea or water.
+    If the user mentions a past day (e.g. "yesterday", "Tuesday") and/or a
+    named meal, resolve a loggedAt timestamp and pass it to whichever
+    logging tool you call, anchored to the current time you've been given
+    for this message, not any other assumption of "now": breakfast = 8:00am,
+    lunch = 12:30pm, dinner = 6:00pm, any other meal word (snack, etc.) =
+    whatever specific time is implied by the wording, or a reasonable
+    default if none is. An explicit clock time in the message always wins
+    over a meal-name default. Leave loggedAt unset when no past day or meal
+    is mentioned - it then logs under the current time as before.
   enabled: true
 
 - name: log_weight

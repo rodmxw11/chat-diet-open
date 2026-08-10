@@ -2,6 +2,7 @@ package com.chatdiet.photo;
 
 import com.chatdiet.food.FoodEntry;
 import com.chatdiet.food.FoodEntryRepository;
+import com.chatdiet.food.LoggedAtResolver;
 import com.chatdiet.intent.IntentTool;
 import com.chatdiet.intent.ToolResult;
 import org.springframework.stereotype.Component;
@@ -63,7 +64,7 @@ public class LogFoodFromPhotoTool implements Function<LogFoodFromPhotoRequest, T
         }
 
         var now = LocalDateTime.now();
-        var entry = new FoodEntry(now, request.description(), request.totalCalories(),
+        var entry = new FoodEntry(LoggedAtResolver.resolve(request.loggedAt()), request.description(), request.totalCalories(),
                 request.totalProteinG(), request.totalCarbsG(), request.totalFatG(), "PHOTO_ESTIMATE");
         entry = foodEntryRepository.save(entry);
 

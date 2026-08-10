@@ -4,7 +4,6 @@ import com.chatdiet.intent.IntentTool;
 import com.chatdiet.intent.ToolResult;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
 import java.util.function.Function;
 
 /**
@@ -38,7 +37,7 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
                     "Noted \"" + request.description() + "\" - under 10 calories, not logged.", null);
         }
 
-        var entry = new FoodEntry(LocalDateTime.now(), request.description(), request.totalCalories(),
+        var entry = new FoodEntry(LoggedAtResolver.resolve(request.loggedAt()), request.description(), request.totalCalories(),
                 request.totalProteinG(), request.totalCarbsG(), request.totalFatG(), "MANUAL");
         foodEntryRepository.save(entry);
 

@@ -2,11 +2,11 @@ package com.chatdiet.recipe;
 
 import com.chatdiet.food.FoodEntry;
 import com.chatdiet.food.FoodEntryRepository;
+import com.chatdiet.food.LoggedAtResolver;
 import com.chatdiet.intent.IntentTool;
 import com.chatdiet.intent.ToolResult;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
 import java.util.function.Function;
 
 /**
@@ -49,7 +49,7 @@ public class LogRecipeTool implements Function<LogRecipeRequest, ToolResult> {
             return new ToolResult.Success("Noted \"" + recipe.name() + "\" - under 10 calories, not logged.", null);
         }
 
-        var entry = new FoodEntry(LocalDateTime.now(), recipe.name(), request.totalCalories(),
+        var entry = new FoodEntry(LoggedAtResolver.resolve(request.loggedAt()), recipe.name(), request.totalCalories(),
                 request.totalProteinG(), request.totalCarbsG(), request.totalFatG(), "RECIPE");
         foodEntryRepository.save(entry);
         recipeRepository.save(recipe.withUsageBumped());

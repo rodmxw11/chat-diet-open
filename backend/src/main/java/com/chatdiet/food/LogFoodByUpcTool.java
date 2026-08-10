@@ -62,6 +62,6 @@ public class LogFoodByUpcTool implements Function<LogFoodByUpcRequest, ToolResul
                     "How many servings (or how many grams) did you have of " + item.name() + "?", item.name());
         }
 
-        return foodItemLogger.logScaled(item, grams.getAsDouble());
+        return foodItemLogger.logScaled(item, grams.getAsDouble(), request.loggedAt());
     }
 }
