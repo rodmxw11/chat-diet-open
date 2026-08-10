@@ -39,12 +39,18 @@ public class AdaptiveTargetService {
     private static final int MIN_DAYS_BETWEEN_WEIGH_INS = 2;
 
     /**
-     * Physiological sanity bounds. A value outside these means the adaptive loop has been fed
-     * bad data; clamping keeps one bad pair of weigh-ins from poisoning every later target,
-     * since each day's computation builds on the previous day's stored value.
+     * Corruption detectors, not health advice. A stored value outside these means the adaptive
+     * loop was fed bad data at some point, and since each day builds on the previous day's
+     * stored value, one bad result would otherwise propagate forever.
+     *
+     * <p>Suspect values are <em>rejected</em> in favour of a freshly computed BMR rather than
+     * clamped to the nearest bound. Clamping was the original approach and it was worse than
+     * useless: pinning to 800 produced a number that passed every later plausibility check
+     * while still being wrong, and a target of 800 - 750 = 50 kcal on top of it.
      */
     private static final double MIN_PLAUSIBLE_TDEE = 800.0;
     private static final double MAX_PLAUSIBLE_TDEE = 6000.0;
+    private static final int MIN_PLAUSIBLE_TARGET = 800;
 
     private final WeightEntryRepository weightEntryRepository;
     private final FoodEntryRepository foodEntryRepository;
@@ -72,10 +78,16 @@ public class AdaptiveTargetService {
      */
     public Optional<DailyTarget> getOrComputeTarget(LocalDate metabolicDate) {
         var existing = dailyTargetRepository.findByTargetDate(metabolicDate);
-        if (existing.isPresent()) {
+        if (existing.filter(AdaptiveTargetService::isSane).isPresent()) {
             return existing;
         }
-        return compute(metabolicDate).map(target -> {
+        // A cached-but-suspect row is recomputed in place, so a day already poisoned by an
+        // earlier bug heals itself instead of needing the row deleted by hand.
+        return compute(metabolicDate).map(computed -> {
+            var target = existing
+                    .map(stale -> new DailyTarget(stale.id(), computed.targetDate(), computed.targetCalories(),
+                            computed.effectiveTdee(), computed.weightLbsUsed()))
+                    .orElse(computed);
             dailyTargetRepository.save(target);
             return target;
         });
@@ -89,16 +101,33 @@ public class AdaptiveTargetService {
 
         double currentWeight = recentWeights.get(0).weightLbs();
         double baselineEffectiveTdee = dailyTargetRepository.findMostRecent()
+                .filter(AdaptiveTargetService::isSane)
                 .map(DailyTarget::effectiveTdee)
                 .orElseGet(() -> nutritionService.bmr(currentWeight));
 
         double adjusted = recentWeights.size() == 2
                 ? adjustForActualWeightChange(recentWeights, baselineEffectiveTdee)
                 : baselineEffectiveTdee;
-        double effectiveTdee = Math.clamp(adjusted, MIN_PLAUSIBLE_TDEE, MAX_PLAUSIBLE_TDEE);
+        double effectiveTdee = isPlausibleTdee(adjusted) ? adjusted : nutritionService.bmr(currentWeight);
 
         int targetCalories = (int) Math.round(effectiveTdee + nutritionService.dailyGoalDeltaCalories());
         return Optional.of(new DailyTarget(metabolicDate, targetCalories, effectiveTdee, currentWeight));
+    }
+
+    private static boolean isPlausibleTdee(double effectiveTdee) {
+        return effectiveTdee >= MIN_PLAUSIBLE_TDEE && effectiveTdee <= MAX_PLAUSIBLE_TDEE;
+    }
+
+    /**
+     * Whether a stored target can be trusted, either to serve or to build the next day on. The
+     * target is checked as well as the TDEE because the goal deficit is applied afterwards: a
+     * TDEE sitting right on the lower bound still yields a starvation-level target.
+     */
+    private static boolean isSane(DailyTarget target) {
+        return target.effectiveTdee() != null
+                && isPlausibleTdee(target.effectiveTdee())
+                && target.targetCalories() != null
+                && target.targetCalories() >= MIN_PLAUSIBLE_TARGET;
     }
 
     /**

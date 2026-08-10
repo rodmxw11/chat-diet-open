@@ -147,6 +147,29 @@ class AdaptiveTargetServiceTest {
                 .isEqualTo(first.effectiveTdee());
     }
 
+    /**
+     * The starvation-target bug: a poisoned baseline was clamped to the lower TDEE bound rather
+     * than rejected, so the day's target came out at bound-minus-deficit - 50 kcal in the real
+     * case - and the clamped value then looked plausible to every later check.
+     */
+    @Test
+    void aTargetAlreadyStoredForTodayIsRecomputedWhenItIsImplausible() {
+        var poisoned = dailyTargetRepository.save(new DailyTarget(latestWeighIn, 50, 800.0, END_WEIGHT));
+
+        var target = requireTarget(latestWeighIn);
+
+        assertThat(target.targetCalories())
+                .as("a starvation-level cached target must be recomputed, not served")
+                .isGreaterThanOrEqualTo(800);
+        assertThat(target.effectiveTdee()).isGreaterThan(800.0);
+        assertThat(target.id())
+                .as("recomputed in place rather than inserted alongside the bad row")
+                .isEqualTo(poisoned.id());
+        assertThat(dailyTargetRepository.findAll())
+                .filteredOn(row -> row.targetDate().equals(latestWeighIn))
+                .hasSize(1);
+    }
+
     /** A target already poisoned by the old bug must be pulled back into a plausible range, not inherited. */
     @Test
     void recoversFromAnAlreadyPoisonedBaseline() {
