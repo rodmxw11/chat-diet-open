@@ -235,10 +235,12 @@ body {
   cursor: pointer;
 }
 
-.message-input .clear-input-button:hover {
+.message-input .clear-input-button:hover:not(:disabled) {
   color: var(--text-h);
 }
 
-.message-input .clear-input-button.is-hidden {
-  visibility: hidden;
+/* Stays in place with nothing to clear, just faded - the position never moves. */
+.message-input .clear-input-button:disabled {
+  opacity: 0.35;
+  cursor: default;
 }

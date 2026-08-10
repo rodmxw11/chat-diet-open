@@ -16,12 +16,14 @@ export default function MessageInput() {
 
   return (
     <form className="message-input" onSubmit={submit}>
-      {/* Kept mounted but hidden when empty so the input doesn't shift sideways on the first
-          keystroke; visibility:hidden also keeps it out of the tab order. */}
+      {/* Always displayed rather than appearing with the first keystroke: a control that comes
+          and goes shifts the input sideways and is hard to find when you want it. Disabled
+          while empty so it reads as inert instead of merely doing nothing when pressed. */}
       <button
         type="button"
-        className={`clear-input-button ${text ? '' : 'is-hidden'}`}
+        className="clear-input-button"
         onClick={() => dispatch(setDraftText(''))}
+        disabled={!text}
         title="Clear text"
         aria-label="Clear text"
       >
