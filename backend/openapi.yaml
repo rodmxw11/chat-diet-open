@@ -47,6 +47,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/ChatResponse'
 
+  /api/chat/history:
+    get:
+      tags: [chat]
+      summary: Get the current metabolic day's conversation
+      description: >
+        Returns the whole conversation for the metabolic day in progress, oldest first.
+        There is no session concept - the day is the conversation - so any device asking
+        gets the same thread, which is how a reload or a second device restores the
+        transcript. Text only: chart series, SQL result tables, and photo attachments are
+        not persisted and so are absent from restored history.
+      responses:
+        '200':
+          description: The day's messages
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatHistoryResponse'
+
   /api/barcode/decode:
     post:
       tags: [barcode]
@@ -130,18 +148,16 @@ components:
         text:
           type: string
           description: The user's message text
-        sessionId:
-          type: string
-          nullable: true
-          description: Conversation key. Defaults to the server's default session when omitted.
         clientSentAt:
           type: string
           format: date-time
           nullable: true
           description: >
             ISO-8601 timestamp of when the user actually hit send, not when the request
-            reached the server. Used to backdate logged entries when a message was queued
-            offline and replayed later.
+            reached the server. Determines which metabolic day the turn is filed under and
+            what timestamp it is stored with, and is used to backdate logged entries when a
+            message was queued offline and replayed later. Timestamps in the future are
+            clamped to now. Defaults to the server's clock when omitted.
       required: [text]
 
     ChatWithPhotoRequest:
@@ -150,14 +166,40 @@ components:
       properties:
         text:
           type: string
-        sessionId:
+        clientSentAt:
           type: string
+          format: date-time
           nullable: true
+          description: As on ChatRequest.
         photo:
           type: string
           format: binary
           description: Food photo to analyze (server appends an analyze_food_photo instruction)
       required: [text, photo]
+
+    ChatHistoryResponse:
+      type: object
+      properties:
+        metabolicDate:
+          type: string
+          format: date
+          description: The metabolic day these messages belong to
+        messages:
+          type: array
+          items:
+            type: object
+            properties:
+              role:
+                type: string
+                enum: [user, assistant]
+              text:
+                type: string
+              at:
+                type: string
+                format: date-time
+                description: When the message was composed, not when the server received it
+            required: [role, text, at]
+      required: [metabolicDate, messages]
 
     ChatResponse:
       type: object

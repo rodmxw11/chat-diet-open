@@ -76,7 +76,7 @@ graph TB
 
     subgraph Backend["Spring Boot / Java 21"]
         API[REST controllers]
-        CSS[ChatSessionService]
+        CS[ChatService]
         IR[IntentRegistry<br/>YAML-loaded]
         PA[PromptAssembler]
         TR[ToolRegistry<br/>annotation-scanned]
@@ -98,11 +98,11 @@ graph TB
 
     Chat --> API
     SW --> API
-    API --> CSS
-    CSS --> IR
+    API --> CS
+    CS --> IR
     IR --> PA
     PA --> Haiku
-    CSS --> TR
+    CS --> TR
     TR --> Tools
     Tools --> DB
     Tools --> Nutri
@@ -301,17 +301,9 @@ erDiagram
         datetime last_used_at
     }
 
-    CHAT_SESSION {
-        long id PK
-        datetime started_at
-        datetime ended_at
-        int token_estimate
-        boolean size_warned
-    }
-
     CHAT_MESSAGE {
         long id PK
-        long session_id FK
+        date metabolic_date
         string role
         string content
         datetime created_at
@@ -339,10 +331,15 @@ erDiagram
 
 ### Day boundary
 
-Daily totals roll over at a **configurable hour, default 04:00** — not calendar
-midnight. Late-night eating counts toward the prior day. This is independent of
-chat sessions: sessions are conversational scope, days are metabolic scope, and
-conflating them means forgetting to press "New Session" silently corrupts data.
+Daily totals roll over at a **configurable hour, default 04:00**
+(`chat-diet.day-rollover-hour`) — not calendar midnight. Late-night eating counts
+toward the prior day.
+
+The metabolic day is **also the conversation boundary** — there is no separate
+session concept. An earlier design kept the two independent so conversational
+scope could outlive a day, but that required a manual "New Session" button whose
+real failure mode was forgetting to press it. Making the day *be* the session
+removes the button and the failure mode together.
 
 ---
 
@@ -373,7 +370,7 @@ The system prompt is **assembled, not hand-written**:
 ```
 
 Adding an intent is one YAML block plus any new tool beans. Zero edits to
-existing intents, to the base prompt, or to `ChatSessionService`.
+existing intents, to the base prompt, or to `ChatService`.
 
 **Keep prompt fragments to 2–4 sentences.** The failure mode of this design is
 an assembled prompt that bloats and self-contradicts as intents multiply.
@@ -418,7 +415,7 @@ public class SaveRequirementTool implements Function<SaveRequirementRequest, Too
 ```
 
 `ToolResult` as a sealed interface gives exhaustive pattern matching in
-`ChatSessionService` when marshalling results back to the model:
+`ChatService` when marshalling results back to the model:
 
 ```java
 String rendered = switch (result) {
@@ -439,14 +436,14 @@ maintaining a manual mapping. New tool = new class.
 sequenceDiagram
     actor U as User
     participant P as PWA
-    participant C as ChatSessionService
+    participant C as ChatService
     participant R as IntentRegistry
     participant H as Claude Haiku
     participant T as Tool beans
     participant D as H2
 
     U->>P: utterance (voice or text)
-    P->>C: POST /chat {sessionId, text, photos?}
+    P->>C: POST /chat {text, clientSentAt, photos?}
     C->>D: load recent turns + priming block
     C->>R: enabled intents
     R-->>C: prompt fragments + tool defs
@@ -462,21 +459,27 @@ sequenceDiagram
     P-->>U: render
 ```
 
-### Session behavior
+### Daily virtual sessions
 
-- Sessions are **explicit**. Created by a "New Session" button. No timeout, no
-  auto-reset. Pending conversational context (fridge inventory, "I'm about to
-  eat X") survives naturally.
-- Expected rhythm is roughly one session per day.
-- When `token_estimate` crosses a configurable threshold, emit **one** gentle
-  one-line suggestion to start a new session. Set `size_warned` so it never
-  repeats.
+- Sessions are **implicit**: one per metabolic day, created lazily on the day's
+  first message. No button, no timeout, no explicit end. Pending conversational
+  context (fridge inventory, "I'm about to eat X") survives naturally within the
+  day.
+- All channels — PWA, desktop, voice — share the same daily conversation, so the
+  thread follows the user across devices rather than per tab.
+- A turn is filed under the day it was **composed**, not the day it arrived, so a
+  message queued offline before the rollover stays with its own day.
+- The model is replayed the **last 10 messages** of the current metabolic day.
+  `GET /api/chat/history` returns the whole day for display, so reloading or
+  opening another device restores the visible transcript. Chart, SQL-table, and
+  photo attachments are not persisted, so a restored transcript is text-only —
+  the prose reply still carries the numbers.
 - **The DB is the real memory.** Chat context stays short; recall of earlier
   facts ("same as breakfast") happens through DB-reading tools, not by keeping
   long transcripts in context. This is the primary cost control.
-- Priming block at session start: current weight and trend, today's running
-  total, any due reminders (e.g. BP not logged twice this week). Reminders are
-  chat-only — no push notifications, no ntfy.
+- Priming block on the day's first turn: current weight and trend, today's
+  running total, any due reminders (e.g. BP not logged twice this week).
+  Reminders are chat-only — no push notifications, no ntfy.
 
 ### Offline
 
@@ -760,7 +763,6 @@ Components:
 - **Push-to-talk** — Web Speech API for input; TTS output as an optional toggle
 - **Camera / file input** — `<input type="file" capture>`, multiple photos per
   entry
-- **New Session button**
 - **Service worker** — offline queue with replay
 
 ---
@@ -841,7 +843,8 @@ parsing.
 `SAVED_QUERY` reuse, build-time DDL generation, CSV export.
 
 **Phase 11 — offline and polish.** Service worker queue, TTS toggle, session
-size warning, daily backup, export command.
+size warning (since removed with explicit sessions), daily backup, export
+command.
 
 ---
 

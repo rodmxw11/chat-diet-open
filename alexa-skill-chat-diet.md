@@ -43,7 +43,7 @@ New file `backend/src/main/java/com/chatdiet/security/ApiKeyFilter.java` — a `
    - Exclude the `show_chart` and `run_sql` intents (by name) from `enabledIntents` before building `fragments`/`toolNames`.
    - Append a voice-specific instruction to the system prompt: no screen, speak full numbers aloud, never mention charts/tables, keep replies to 1-3 sentences.
    - Keep a no-arg `assemble()` delegating to `assemble(false)` so nothing else changes.
-3. `ChatService` — build both `webChatClient` and `voiceChatClient` at construction; add `reply(String sessionId, String userText, boolean voiceChannel)`, with the existing `reply(String, String)` delegating with `voiceChannel=false`.
+3. `ChatService` — build both `webChatClient` and `voiceChatClient` at construction; add a `boolean voiceChannel` parameter to `reply(LocalDate, LocalDateTime, String)`, with the existing overload delegating with `voiceChannel=false`.
 4. `ChatController.chat(...)` (`ChatController.java:47-53`) — pass `"voice".equals(request.channel())` through to `chatService.reply(...)`. The multipart photo endpoint is unchanged (Alexa can't send photos).
 
 ### A4. Frontend: send the new header
@@ -82,7 +82,8 @@ alexa-skill/
 
 ### B2. Session handling
 
-- Use `handlerInput.requestEnvelope.session.user.userId` (stable per user+skill) directly as the backend's `sessionId`, so `ConversationHistoryStore` keeps a durable, Alexa-specific conversation thread — must never be left null, or it'd fall back to `DEFAULT_SESSION` and collide with the web PWA's conversation.
+- The skill sends **no session key at all**. The backend has no session concept any more: a turn is filed under the metabolic day it was composed on, so Alexa's turns land in the *same* conversation as the PWA's. That's a feature, not a collision — you can ask Alexa about the sandwich you photographed on your phone an hour earlier.
+- `channel: "voice"` is a **prompt-style discriminator only** (which `ChatClient`/system prompt to use), never a history key. Don't let it grow into one.
 - `shouldEndSession` heuristic: `true` unless the backend's `reply` ends in `?` (keep session open for a likely follow-up question from the model, e.g. an ambiguous `log_food` clarification).
 - `SessionEndedRequestHandler`: no-op, just return the response — conversation state lives server-side.
 
@@ -98,7 +99,7 @@ alexa-skill/
 ### B4. Backend client (`lambda/chatClient.js`)
 
 - Node's built-in `https` module (no `axios`/`node-fetch` dependency — keeps the Lambda zip dependency-free) unless the pinned Lambda Node runtime is confirmed to ship global `fetch`, in which case that's fine too and simpler.
-- POST `{ text, sessionId, channel: "voice" }` to `BACKEND_URL + "/api/chat"` with header `X-Api-Key: BACKEND_API_KEY`.
+- POST `{ text, clientSentAt, channel: "voice" }` to `BACKEND_URL + "/api/chat"` with header `X-Api-Key: BACKEND_API_KEY`.
 - Timeout well under Alexa's ~8s response budget (e.g. 7s) — note the Claude Haiku turnaround plus network must reliably fit in that window or the skill reads a generic Alexa timeout instead of the real reply.
 
 ### B5. Config/secrets
@@ -122,7 +123,8 @@ alexa-skill/
    - One-shot factual query ("how many calories do I have left") → full spoken sentence via `get_daily_target`.
    - A log action ("I ate a banana") → saves and echoes the number back.
    - A chart/SQL-shaped query ("show me my weight trend") → confirms voice-channel exclusion makes the model answer in words instead of "here you go."
-   - Multi-turn continuity within one Alexa session (e.g. a fasting-status question followed by a pronoun-referencing follow-up) → confirms `sessionId`-keyed history carries over correctly.
+   - Multi-turn continuity within one Alexa session (e.g. a fasting-status question followed by a pronoun-referencing follow-up) → confirms the day's history carries over correctly.
+   - Cross-channel continuity: start a thread in the PWA, then continue it on Alexa → confirms both land in the same daily conversation.
 
 ### Critical files
 
