@@ -3,6 +3,7 @@ package com.chatdiet.chat;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -30,19 +31,22 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class ConversationHistoryStore {
 
+    private final ChatMessageRepository chatMessageRepository;
+
     /**
      * How many messages of the current day are replayed to the model. The DB is the real memory
      * - recall of earlier facts happens through DB-reading tools, not by holding a long
-     * transcript in context - so this stays small deliberately.
+     * transcript in context - so this stays small deliberately. Independent of what the UI
+     * shows: {@link #messagesFor} always returns the whole day.
      */
-    private static final int MAX_CONTEXT_MESSAGES = 10;
-
-    private final ChatMessageRepository chatMessageRepository;
+    private final int maxContextMessages;
 
     private final Map<LocalDate, Deque<Message>> byDate = new ConcurrentHashMap<>();
 
-    public ConversationHistoryStore(ChatMessageRepository chatMessageRepository) {
+    public ConversationHistoryStore(ChatMessageRepository chatMessageRepository,
+                                     @Value("${chat-diet.chat.context-messages:10}") int maxContextMessages) {
         this.chatMessageRepository = chatMessageRepository;
+        this.maxContextMessages = maxContextMessages;
     }
 
     /**
@@ -72,7 +76,7 @@ public class ConversationHistoryStore {
         var deque = byDate.computeIfAbsent(metabolicDate, this::rehydrate);
         deque.addLast(new UserMessage(userText));
         deque.addLast(new AssistantMessage(assistantText));
-        while (deque.size() > MAX_CONTEXT_MESSAGES) {
+        while (deque.size() > maxContextMessages) {
             deque.removeFirst();
         }
     }
@@ -99,7 +103,7 @@ public class ConversationHistoryStore {
      */
     private Deque<Message> rehydrate(LocalDate metabolicDate) {
         var recent = new ArrayList<>(chatMessageRepository
-                .findRecentByMetabolicDate(metabolicDate, MAX_CONTEXT_MESSAGES));
+                .findRecentByMetabolicDate(metabolicDate, maxContextMessages));
         Collections.reverse(recent);
 
         var deque = new ArrayDeque<Message>();

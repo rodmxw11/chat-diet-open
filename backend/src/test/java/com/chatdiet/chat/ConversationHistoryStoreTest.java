@@ -20,8 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class ConversationHistoryStoreTest {
 
-    /** Mirrors ConversationHistoryStore.MAX_CONTEXT_MESSAGES. */
-    private static final int MAX_CONTEXT_MESSAGES = 10;
+    /** Deliberately not the default of 10, so these also prove the property is wired through. */
+    private static final int CONTEXT_MESSAGES = 6;
 
     private static final LocalDate TODAY = LocalDate.of(2026, 8, 9);
     private static final LocalDate YESTERDAY = TODAY.minusDays(1);
@@ -32,6 +32,7 @@ class ConversationHistoryStoreTest {
     @DynamicPropertySource
     static void datasource(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", () -> "jdbc:h2:file:" + tempDir.resolve("history-store-test"));
+        registry.add("chat-diet.chat.context-messages", () -> String.valueOf(CONTEXT_MESSAGES));
     }
 
     @Autowired
@@ -65,10 +66,12 @@ class ConversationHistoryStoreTest {
 
         var context = historyStore.get(TODAY);
 
-        assertThat(context).hasSize(MAX_CONTEXT_MESSAGES);
+        assertThat(context)
+                .as("window honours the configured size, not the built-in default")
+                .hasSize(CONTEXT_MESSAGES);
         assertThat(textOf(context))
                 .as("oldest turns are evicted, newest retained")
-                .doesNotContain("question 0")
+                .doesNotContain("question 0", "question 4")
                 .contains("question 7", "answer 7");
     }
 
@@ -101,13 +104,13 @@ class ConversationHistoryStoreTest {
 
         var context = historyStore.get(TODAY);
 
-        assertThat(context).hasSize(MAX_CONTEXT_MESSAGES);
+        assertThat(context).hasSize(CONTEXT_MESSAGES);
         var texts = textOf(context);
-        assertThat(texts).doesNotContain("question 0");
+        assertThat(texts).doesNotContain("question 0").contains("question 5");
         assertThat(texts.indexOf("question 7"))
                 .as("oldest first, so the last turn's question precedes its answer")
                 .isLessThan(texts.indexOf("answer 7"))
-                .isGreaterThan(texts.indexOf("question 3"));
+                .isGreaterThan(texts.indexOf("question 5"));
     }
 
     @Test

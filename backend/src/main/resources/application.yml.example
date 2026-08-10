@@ -37,8 +37,11 @@ chat-diet:
   day-rollover-hour: 4
 
   chat:
-    # Rough chars/4 estimate crossing this triggers one gentle "start a new session" nudge.
-    token-warning-threshold: 6000
+    # How many of the current day's messages are replayed to the model each turn. The DB is the
+    # real memory - the model recalls earlier facts through its data-reading tools, not from a
+    # long transcript - so this is a cost/latency control and stays small. It does not affect
+    # what the UI displays: GET /api/chat/history always returns the whole day.
+    context-messages: 10
 
   # Where the daily backup job (and the on-demand /api/export endpoint) write/read archives.
   backup-dir: ./data/backups
