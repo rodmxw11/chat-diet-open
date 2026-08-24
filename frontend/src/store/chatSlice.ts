@@ -1,4 +1,5 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit'
+import { enqueue, listQueued, removeQueued, type QueuedRequest } from '../lib/offlineQueue'
 
 export interface SeriesPoint {
   at: string
@@ -20,12 +21,22 @@ export interface SqlAnswer {
   csvId: string
 }
 
+export interface FoodItemOption {
+  id: number
+  name: string
+  typicalServingG: number | null
+}
+
 export interface ChatMessage {
+  id: string
   role: 'user' | 'assistant'
   text: string
   chartSeries?: ChartSeries[]
   sqlAnswer?: SqlAnswer
-  imageUrl?: string
+  foodItemOptions?: FoodItemOption[]
+  /** True while this message is sitting in the offline queue, not yet delivered to the server. */
+  queued?: boolean
+  queuedAt?: string
 }
 
 interface ChatState {
@@ -33,6 +44,8 @@ interface ChatState {
   status: 'idle' | 'loading' | 'error'
   ttsEnabled: boolean
   draftText: string
+  /** Mirrors the IndexedDB offline queue for the queue panel; kept in sync by queue-touching thunks. */
+  queue: QueuedRequest[]
 }
 
 const initialState: ChatState = {
@@ -40,74 +53,75 @@ const initialState: ChatState = {
   status: 'idle',
   ttsEnabled: false,
   draftText: '',
+  queue: [],
 }
 
 interface ChatApiResponse {
   reply: string
   chartSeries: ChartSeries[] | null
   sqlAnswer: SqlAnswer | null
+  foodItemOptions: FoodItemOption[] | null
 }
 
-export const sendMessage = createAsyncThunk(
+async function postChat(text: string, clientSentAt: string): Promise<ChatApiResponse> {
+  const response = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, clientSentAt }),
+  })
+  if (!response.ok) {
+    throw new Error(`Chat request failed: ${response.status}`)
+  }
+  return (await response.json()) as ChatApiResponse
+}
+
+interface QueuedRejection {
+  queued: true
+  record: QueuedRequest
+}
+
+export const sendMessage = createAsyncThunk<ChatApiResponse, string, { rejectValue: QueuedRejection }>(
   'chat/sendMessage',
-  async (text: string, { rejectWithValue }) => {
+  async (text, { rejectWithValue }) => {
+    const clientSentAt = new Date().toISOString()
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          clientSentAt: new Date().toISOString(),
-        }),
-      })
-      if (!response.ok) {
-        throw new Error(`Chat request failed: ${response.status}`)
-      }
-      const data: ChatApiResponse = await response.json()
-      return data
+      return await postChat(text, clientSentAt)
     } catch (error) {
-      // A service-worker background-sync queue replays this request later when back online -
-      // this fetch rejecting with a TypeError (not an HTTP error status) means it never reached
-      // the network at all, i.e. it's queued, not failed.
+      // A TypeError here means the fetch never reached the network at all (offline/DNS/etc.), as
+      // opposed to the server responding with an HTTP error status. Queue it in our own IndexedDB
+      // queue - explicit and inspectable, unlike the old invisible Workbox background-sync queue.
       if (error instanceof TypeError) {
-        return rejectWithValue('offline')
+        const record = await enqueue(text, clientSentAt)
+        return rejectWithValue({ queued: true, record })
       }
       throw error
     }
   },
 )
 
-interface SendPhotoArg {
-  file: File
-  previewUrl: string
-}
-
-export const sendPhoto = createAsyncThunk(
-  'chat/sendPhoto',
-  async ({ file }: SendPhotoArg, { rejectWithValue }) => {
+// Replays every queued request in order, stopping at the first failure so the rest stay queued -
+// order matters because ChatController.replyAt depends on clientSentAt ordering.
+export const drainQueue = createAsyncThunk('chat/drainQueue', async (_, { dispatch }) => {
+  const items = await listQueued()
+  for (const item of items) {
     try {
-      const formData = new FormData()
-      formData.append('text', "Here's a photo of my food.")
-      formData.append('clientSentAt', new Date().toISOString())
-      formData.append('photo', file)
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        body: formData,
-      })
-      if (!response.ok) {
-        throw new Error(`Chat request failed: ${response.status}`)
-      }
-      const data: ChatApiResponse = await response.json()
-      return data
-    } catch (error) {
-      // Same offline/background-sync handling as sendMessage - see comment there.
-      if (error instanceof TypeError) {
-        return rejectWithValue('offline')
-      }
-      throw error
+      const data = await postChat(item.text, item.clientSentAt)
+      await removeQueued(item.id)
+      dispatch(queueItemSent({ id: item.id, response: data }))
+    } catch {
+      break
     }
-  },
-)
+  }
+})
+
+// Hydrates queued-but-unsent messages back into the chat window on app boot, since redux state
+// doesn't survive a reload but the IndexedDB queue does.
+export const loadQueue = createAsyncThunk('chat/loadQueue', async () => listQueued())
+
+export const deleteQueuedMessage = createAsyncThunk('chat/deleteQueuedMessage', async (id: string) => {
+  await removeQueued(id)
+  return id
+})
 
 interface HistoryApiMessage {
   role: 'user' | 'assistant'
@@ -121,15 +135,19 @@ interface HistoryApiResponse {
 }
 
 // The conversation is scoped to the metabolic day, not to this tab, so a reload or a second
-// device picks up the thread already in progress. Text only - charts, tables, and photos aren't
-// persisted server-side, so they don't come back.
+// device picks up the thread already in progress. Text only - charts and tables aren't persisted
+// server-side, so they don't come back.
 export const loadHistory = createAsyncThunk('chat/loadHistory', async () => {
   const response = await fetch('/api/chat/history')
   if (!response.ok) {
     throw new Error(`History request failed: ${response.status}`)
   }
   const data: HistoryApiResponse = await response.json()
-  return data.messages.map((message) => ({ role: message.role, text: message.text }))
+  return data.messages.map((message, index) => ({
+    id: `history-${index}`,
+    role: message.role,
+    text: message.text,
+  }))
 })
 
 const chatSlice = createSlice({
@@ -145,6 +163,21 @@ const chatSlice = createSlice({
     appendDraftText: (state, action: PayloadAction<string>) => {
       state.draftText = state.draftText ? `${state.draftText} ${action.payload}` : action.payload
     },
+    queueItemSent: (state, action: PayloadAction<{ id: string; response: ChatApiResponse }>) => {
+      state.queue = state.queue.filter((item) => item.id !== action.payload.id)
+      const message = state.messages.find((m) => m.id === action.payload.id)
+      if (message) {
+        message.queued = false
+      }
+      state.messages.push({
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        text: action.payload.response.reply,
+        chartSeries: action.payload.response.chartSeries ?? undefined,
+        sqlAnswer: action.payload.response.sqlAnswer ?? undefined,
+        foodItemOptions: action.payload.response.foodItemOptions ?? undefined,
+      })
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -157,68 +190,60 @@ const chatSlice = createSlice({
       })
       // A failed history load is left silent on purpose - offline cold start should open an
       // empty chat, not an error.
+      .addCase(loadQueue.fulfilled, (state, action) => {
+        state.queue = action.payload
+        for (const item of action.payload) {
+          if (state.messages.some((m) => m.id === item.id)) continue
+          state.messages.push({
+            id: item.id,
+            role: 'user',
+            text: item.text,
+            queued: true,
+            queuedAt: item.createdAt,
+          })
+        }
+      })
+      .addCase(deleteQueuedMessage.fulfilled, (state, action) => {
+        state.queue = state.queue.filter((item) => item.id !== action.payload)
+        state.messages = state.messages.filter((m) => m.id !== action.payload)
+      })
       .addCase(sendMessage.pending, (state, action) => {
         state.status = 'loading'
-        state.messages.push({ role: 'user', text: action.meta.arg })
+        state.messages.push({ id: action.meta.requestId, role: 'user', text: action.meta.arg })
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
         state.status = 'idle'
         state.messages.push({
+          id: crypto.randomUUID(),
           role: 'assistant',
           text: action.payload.reply,
           chartSeries: action.payload.chartSeries ?? undefined,
           sqlAnswer: action.payload.sqlAnswer ?? undefined,
+          foodItemOptions: action.payload.foodItemOptions ?? undefined,
         })
       })
       .addCase(sendMessage.rejected, (state, action) => {
-        if (action.payload === 'offline') {
-          state.status = 'idle'
-          state.messages.push({
-            role: 'assistant',
-            text: "Offline - this message is queued and will send once you're back online.",
-          })
+        state.status = 'idle'
+        if (action.payload?.queued) {
+          const { record } = action.payload
+          const message = state.messages.find((m) => m.id === action.meta.requestId)
+          if (message) {
+            message.id = record.id
+            message.queued = true
+            message.queuedAt = record.createdAt
+          }
+          state.queue.push(record)
           return
         }
         state.status = 'error'
         state.messages.push({
+          id: crypto.randomUUID(),
           role: 'assistant',
           text: 'Something went wrong sending that message.',
-        })
-      })
-      .addCase(sendPhoto.pending, (state, action) => {
-        state.status = 'loading'
-        state.messages.push({
-          role: 'user',
-          text: 'Photo of my food',
-          imageUrl: action.meta.arg.previewUrl,
-        })
-      })
-      .addCase(sendPhoto.fulfilled, (state, action) => {
-        state.status = 'idle'
-        state.messages.push({
-          role: 'assistant',
-          text: action.payload.reply,
-          chartSeries: action.payload.chartSeries ?? undefined,
-          sqlAnswer: action.payload.sqlAnswer ?? undefined,
-        })
-      })
-      .addCase(sendPhoto.rejected, (state, action) => {
-        if (action.payload === 'offline') {
-          state.status = 'idle'
-          state.messages.push({
-            role: 'assistant',
-            text: "Offline - this photo is queued and will send once you're back online.",
-          })
-          return
-        }
-        state.status = 'error'
-        state.messages.push({
-          role: 'assistant',
-          text: 'Something went wrong sending that photo.',
         })
       })
   },
 })
 
-export const { toggleTts, setDraftText, appendDraftText } = chatSlice.actions
+export const { toggleTts, setDraftText, appendDraftText, queueItemSent } = chatSlice.actions
 export default chatSlice.reducer

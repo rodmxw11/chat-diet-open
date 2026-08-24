@@ -24,7 +24,7 @@ class BackupJobTest {
 
     @DynamicPropertySource
     static void overrideDatasourceAndBackupDir(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> "jdbc:h2:file:" + tempDir.resolve("backup-job-test"));
+        registry.add("spring.datasource.url", () -> "jdbc:sqlite:" + tempDir.resolve("backup-job-test.db"));
         registry.add("chat-diet.backup-dir", () -> tempDir.resolve("backups").toString());
     }
 

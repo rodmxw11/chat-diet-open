@@ -21,7 +21,7 @@ class SchemaDdlProviderTest {
 
     @DynamicPropertySource
     static void overrideDatasource(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> "jdbc:h2:file:" + tempDir.resolve("schema-ddl-test"));
+        registry.add("spring.datasource.url", () -> "jdbc:sqlite:" + tempDir.resolve("schema-ddl-test.db"));
     }
 
     @Autowired
@@ -31,11 +31,11 @@ class SchemaDdlProviderTest {
     void includesApplicationTablesButNotLiquibaseBookkeepingTables() {
         var ddl = schemaDdlProvider.ddl();
 
-        assertThat(ddl).contains("FOOD_ENTRY").contains("WEIGHT_ENTRY").contains("SAVED_QUERY");
-        assertThat(ddl).doesNotContain("DATABASECHANGELOG");
-        // Guards the 018 migration: a dropped table must not linger in the schema the SQL agent
-        // sees, or the model will happily write queries against a table that no longer exists.
-        assertThat(ddl).doesNotContain("CHAT_SESSION");
+        assertThat(ddl).contains("food_entry").contains("weight_entry").contains("saved_query");
+        assertThat(ddl).doesNotContainIgnoringCase("DATABASECHANGELOG");
+        // Guards against the removed session concept lingering in the schema the SQL agent sees,
+        // or the model would happily write queries against a table that no longer exists.
+        assertThat(ddl).doesNotContainIgnoringCase("chat_session");
     }
 
     @Test

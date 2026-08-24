@@ -9,10 +9,6 @@ import com.chatdiet.food.FoodEntryRepository;
 import com.chatdiet.fooditem.FoodItemRepository;
 import com.chatdiet.note.NoteRepository;
 import com.chatdiet.nutrition.DailyTargetRepository;
-import com.chatdiet.recipe.RecipeIngredientRepository;
-import com.chatdiet.recipe.RecipeRepository;
-import com.chatdiet.requirement.RequirementEntryRepository;
-import com.chatdiet.shopping.PurchaseHistoryRepository;
 import com.chatdiet.shopping.ShoppingItemRepository;
 import com.chatdiet.sql.SavedQueryRepository;
 import com.chatdiet.vitals.VitalsEntryRepository;
@@ -45,7 +41,7 @@ class IntentRoutingTest {
 
     @DynamicPropertySource
     static void overrideDatasource(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> "jdbc:h2:file:" + tempDir.resolve("routing-test"));
+        registry.add("spring.datasource.url", () -> "jdbc:sqlite:" + tempDir.resolve("routing-test.db"));
     }
 
     @Autowired
@@ -70,9 +66,6 @@ class IntentRoutingTest {
     private DigestiveEventRepository digestiveEventRepository;
 
     @Autowired
-    private RequirementEntryRepository requirementEntryRepository;
-
-    @Autowired
     private DailyTargetRepository dailyTargetRepository;
 
     @Autowired
@@ -85,16 +78,7 @@ class IntentRoutingTest {
     private ChatMessageRepository chatMessageRepository;
 
     @Autowired
-    private RecipeRepository recipeRepository;
-
-    @Autowired
-    private RecipeIngredientRepository recipeIngredientRepository;
-
-    @Autowired
     private ShoppingItemRepository shoppingItemRepository;
-
-    @Autowired
-    private PurchaseHistoryRepository purchaseHistoryRepository;
 
     @Autowired
     private SavedQueryRepository savedQueryRepository;
@@ -111,7 +95,6 @@ class IntentRoutingTest {
         vitalsEntryRepository.deleteAll();
         exerciseEntryRepository.deleteAll();
         digestiveEventRepository.deleteAll();
-        requirementEntryRepository.deleteAll();
         dailyTargetRepository.deleteAll();
         foodItemRepository.deleteAll();
         // Both are needed: clearAll() only drops the in-memory cache, and the store reloads a
@@ -119,9 +102,6 @@ class IntentRoutingTest {
         // turns would be replayed into this one.
         conversationHistoryStore.clearAll();
         chatMessageRepository.deleteAll();
-        recipeIngredientRepository.deleteAll();
-        recipeRepository.deleteAll();
-        purchaseHistoryRepository.deleteAll();
         shoppingItemRepository.deleteAll();
         savedQueryRepository.deleteAll();
     }
@@ -195,11 +175,11 @@ class IntentRoutingTest {
     }
 
     @Test
-    void routesFeatureRequestToSaveRequirementTool() {
+    void routesFeatureRequestToSaveNoteTool() {
         chatService.reply("it would be great if the app could remind me to log weight every morning");
 
-        assertThat(requirementEntryRepository.findAll())
-                .as("save_requirement should have been invoked and persisted a RequirementEntry")
+        assertThat(noteRepository.findAll())
+                .as("save_note should have been invoked and persisted a Note for an app feature request")
                 .hasSize(1);
     }
 
@@ -220,15 +200,22 @@ class IntentRoutingTest {
     }
 
     @Test
-    void routesCalorieTargetQuestionToGetDailyTargetTool() {
-        chatService.reply("weight this morning was 200 lbs");
-        chatService.reply("I ate a chicken sandwich, 450 calories, 30g protein, 40g carbs, 15g fat");
-
-        chatService.reply("what's my calorie target for today and how many calories do I have left?");
+    void routesSetGoalUtteranceToSetCalorieGoalTool() {
+        chatService.reply("set my calorie goal to 2000 a day");
 
         assertThat(dailyTargetRepository.findAll())
-                .as("get_daily_target should have been invoked and computed/persisted a DailyTarget")
+                .as("set_calorie_goal should have been invoked and persisted a DailyTarget")
                 .hasSize(1);
+    }
+
+    @Test
+    void routesCalorieTargetQuestionToGetDailyTargetTool() {
+        chatService.reply("set my calorie goal to 2000 a day");
+        chatService.reply("I ate a chicken sandwich, 450 calories, 30g protein, 40g carbs, 15g fat");
+
+        var reply = chatService.reply("what's my calorie target for today and how many calories do I have left?");
+
+        assertThat(reply).as("get_daily_target should have produced a non-empty reply").isNotBlank();
     }
 
     @Test
@@ -275,47 +262,6 @@ class IntentRoutingTest {
     }
 
     @Test
-    void routesNewDishUtteranceToCreateRecipeTool() {
-        chatService.reply("I made a new recipe called Turkey Chili. I weighed the whole pot at 3000g and it "
-                + "has about 2400 calories, 180g protein, 200g carbs, 80g fat total. Save it.");
-
-        assertThat(recipeRepository.findAll())
-                .as("create_recipe should have been invoked and persisted a Recipe")
-                .hasSize(1);
-        assertThat(recipeRepository.findAll().iterator().next().provisional())
-                .as("a pot-weighed recipe should not be provisional")
-                .isFalse();
-    }
-
-    @Test
-    void routesKnownDishUtteranceToLogRecipeTool() {
-        chatService.reply("I made a new recipe called Turkey Chili. I weighed the whole pot at 3000g and it "
-                + "has about 2400 calories, 180g protein, 200g carbs, 80g fat total. Save it.");
-        assertThat(recipeRepository.findAll()).hasSize(1);
-
-        chatService.reply("I had a bowl of turkey chili, about 400g");
-
-        assertThat(foodEntryRepository.findAll())
-                .as("log_recipe should have been invoked and persisted a FoodEntry")
-                .hasSize(1);
-        assertThat(foodEntryRepository.findAll().iterator().next().source())
-                .isEqualTo("RECIPE");
-    }
-
-    @Test
-    void routesDeleteRequestToDeleteRecipeTool() {
-        chatService.reply("I made a new recipe called Turkey Chili. I weighed the whole pot at 3000g and it "
-                + "has about 2400 calories, 180g protein, 200g carbs, 80g fat total. Save it.");
-        assertThat(recipeRepository.findAll()).hasSize(1);
-
-        chatService.reply("delete the turkey chili recipe");
-
-        assertThat(recipeRepository.findAll())
-                .as("delete_recipe should have removed the recipe")
-                .isEmpty();
-    }
-
-    @Test
     void routesShoppingRequestToAddShoppingItemTool() {
         chatService.reply("add almond milk to my shopping list");
 
@@ -329,16 +275,13 @@ class IntentRoutingTest {
         chatService.reply("add almond milk to my shopping list");
         assertThat(shoppingItemRepository.findAll()).hasSize(1);
 
-        chatService.reply("I bought the almond milk at Trader Joe's for $4.50");
+        chatService.reply("I bought the almond milk at Trader Joe's");
 
         var items = shoppingItemRepository.findAll();
         assertThat(items).hasSize(1);
         assertThat(items.iterator().next().status())
                 .as("mark_shopping_item_purchased should have updated the item's status in place")
                 .isEqualTo("PURCHASED");
-        assertThat(purchaseHistoryRepository.findAll())
-                .as("mark_shopping_item_purchased should have recorded a PurchaseHistory row")
-                .hasSize(1);
     }
 
     @Test

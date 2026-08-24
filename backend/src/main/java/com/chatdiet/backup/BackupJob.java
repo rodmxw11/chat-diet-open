@@ -12,7 +12,7 @@ import java.nio.file.attribute.FileTime;
 import java.time.LocalDate;
 import java.util.Comparator;
 
-/** Daily automatic backup of the H2 database plus photos, with simple retention. */
+/** Daily automatic backup of the SQLite database, with simple retention. */
 @Component
 public class BackupJob {
 

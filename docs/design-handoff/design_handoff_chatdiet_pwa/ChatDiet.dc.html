@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#f6f2fb; color:#2b2140; font-family:'IBM Plex Sans', system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  a { color:#6b4fae; text-decoration:none; }
+  a:hover { color:#8a6bc9; }
+  input, button, textarea { font-family:inherit; }
+  @keyframes cd-pulse { 0%,100% { opacity:1 } 50% { opacity:.35 } }
+</style>
+</helmet>
+<div style="height:100dvh; display:flex; justify-content:center; background:#f6f2fb">
+  <div style="flex:1; display:flex; height:100dvh; max-width:{{ shellMax }}; position:relative; overflow:hidden">
+
+    <sc-if value="{{ shopPage }}" hint-placeholder-val="{{ false }}">
+      <main style="flex:1; display:flex; flex-direction:column; min-width:0; min-height:0">
+        <header style="display:flex; align-items:center; gap:12px; padding:14px 16px; padding-top:max(14px, env(safe-area-inset-top)); border-bottom:1px solid #e5dcf3; background:#faf8fd">
+          <button onClick="{{ closeShopPage }}" style="width:38px; height:38px; display:flex; align-items:center; justify-content:center; background:#ffffff; border:1px solid #e2d7f0; border-radius:9px; color:#4a3d68; font-size:16px; cursor:pointer" style-hover="background:#f2ecfa">←</button>
+          <div style="flex:1; display:flex; flex-direction:column; gap:2px">
+            <div style="font-size:16px; font-weight:600; color:#2b2140">Shopping</div>
+            <div style="font-family:'IBM Plex Mono', monospace; font-size:11px; color:#756a8f">{{ shopProgress }}</div>
+          </div>
+        </header>
+        <div style="flex:1; min-height:0; overflow-y:auto; display:flex; justify-content:center; padding-bottom:max(8px, env(safe-area-inset-bottom))">
+          <div style="width:100%; max-width:640px; display:flex; flex-direction:column">
+            <sc-for list="{{ shopItems }}" as="s" hint-placeholder-count="8">
+              <button onClick="{{ s.toggle }}" style="display:flex; align-items:center; gap:14px; width:100%; text-align:left; background:none; border:none; border-bottom:1px solid #ece4f7; padding:0 18px; min-height:58px; cursor:pointer; color:{{ s.color }}; font-size:16.5px; text-decoration:{{ s.strike }}" style-hover="background:#f8f4fc">
+                <span style="width:24px; height:24px; flex:none; border-radius:6px; border:1.5px solid {{ s.boxBorder }}; background:{{ s.boxBg }}; color:#ffffff; font-size:14px; display:flex; align-items:center; justify-content:center">{{ s.mark }}</span>
+                <span style="flex:1">{{ s.label }}</span>
+                <span style="font-family:'IBM Plex Mono', monospace; font-size:12px; color:#9086a8">{{ s.qty }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </main>
+    </sc-if>
+
+    <sc-if value="{{ chatPage }}" hint-placeholder-val="{{ true }}">
+    <main style="flex:1; display:flex; flex-direction:column; min-width:0; min-height:0">
+
+      <header style="display:flex; align-items:center; gap:14px; padding:14px 16px calc(14px) 16px; padding-top:max(14px, env(safe-area-inset-top)); border-bottom:1px solid #e5dcf3; background:#faf8fd; position:relative; z-index:30">
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.06em; color:#756a8f; text-transform:lowercase">chatdiet</div>
+
+        <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:2px">
+          <div style="font-size:15px; font-weight:500; color:#2b2140; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ goalHeadline }}</div>
+          <div style="font-family:'IBM Plex Mono', monospace; font-size:11px; color:#756a8f">{{ goalSub }}</div>
+        </div>
+
+        <button onClick="{{ cycleConnection }}" title="connectivity" style="display:flex; align-items:center; gap:7px; background:none; border:none; padding:6px; margin:0; cursor:pointer; color:#756a8f; font-size:11px">
+          <span style="width:9px; height:9px; border-radius:50%; background:{{ dotColor }}; animation:{{ dotAnim }}"></span>
+          <span style="font-family:'IBM Plex Mono', monospace">{{ dotLabel }}</span>
+        </button>
+
+        <button onClick="{{ toggleMenu }}" style="width:38px; height:38px; display:flex; align-items:center; justify-content:center; background:#ffffff; border:1px solid #e2d7f0; border-radius:9px; color:#4a3d68; font-size:15px; cursor:pointer" style-hover="background:#f2ecfa">≡</button>
+
+        <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute; top:100%; right:12px; margin-top:6px; width:230px; background:#ffffff; border:1px solid #e5dcf3; border-radius:12px; padding:6px; box-shadow:0 18px 40px rgba(80,50,120,.18); z-index:60; display:flex; flex-direction:column">
+            <sc-for list="{{ menuItems }}" as="mi" hint-placeholder-count="4">
+              <button onClick="{{ mi.go }}" style="display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; text-align:left; background:none; border:none; padding:11px 12px; border-radius:8px; color:#372c52; font-size:14px; cursor:pointer" style-hover="background:#f2ecfa">
+                <span>{{ mi.label }}</span>
+                <span style="font-family:'IBM Plex Mono', monospace; font-size:11px; color:#9086a8">{{ mi.hint }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </sc-if>
+      </header>
+
+      <div style="flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; align-items:center; padding:20px 16px 8px">
+        <div style="width:100%; max-width:660px; display:flex; flex-direction:column; gap:16px">
+
+          <div style="align-self:center; font-family:'IBM Plex Mono', monospace; font-size:11px; color:#9086a8; padding:2px 0 6px">today</div>
+
+          <div style="align-self:flex-end; max-width:86%; background:#ece3f9; border-radius:14px 14px 4px 14px; padding:12px 14px; font-size:15px; line-height:1.5; color:#3a2a5c">today my weight is 320 lbs</div>
+
+          <div style="align-self:flex-start; max-width:86%; background:#ffffff; border:1px solid #e5dcf3; border-radius:14px 14px 14px 4px; padding:12px 14px; font-size:15px; line-height:1.5; color:#372c52">Logged: 320 lbs.</div>
+
+          <div style="align-self:flex-end; max-width:86%; background:#ece3f9; border-radius:14px 14px 4px 14px; padding:12px 14px; font-size:15px; line-height:1.5; color:#3a2a5c">for dinner i ate 10 oz grilled ny strip steak, 1 container idaho instant mashed potatoes, 4 tbsp spicy steak sauce, and one slice hawaiian bread</div>
+
+          <div style="align-self:flex-start; max-width:96%; background:#ffffff; border:1px solid #e5dcf3; border-radius:14px 14px 14px 4px; padding:12px 14px; display:flex; flex-direction:column; gap:11px">
+            <div style="font-size:15px; line-height:1.5; color:#372c52">Dinner logged, 1,030 cal. 306 left.</div>
+            <div style="border:1px solid #e9e2f4; border-radius:9px; overflow:hidden">
+              <div style="display:grid; grid-template-columns:1fr 62px 52px 52px; gap:0; font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#756a8f; background:#f5f0fa; padding:7px 10px">
+                <span>item</span><span style="text-align:right">cal</span><span style="text-align:right">p</span><span style="text-align:right">c</span>
+              </div>
+              <sc-for list="{{ logRows }}" as="r" hint-placeholder-count="3">
+                <div style="display:grid; grid-template-columns:1fr 62px 52px 52px; font-family:'IBM Plex Mono', monospace; font-size:12.5px; color:#3a2f56; padding:7px 10px; border-top:1px solid #eee8f8">
+                  <span>{{ r.item }}</span><span style="text-align:right">{{ r.cal }}</span><span style="text-align:right; color:#ef6b52">{{ r.p }}</span><span style="text-align:right; color:#4fb987">{{ r.c }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="align-self:flex-end; max-width:86%; background:#ece3f9; border-radius:14px 14px 4px 14px; padding:12px 14px; font-size:15px; line-height:1.5; color:#3a2a5c">plot my weight loss</div>
+
+          <div style="align-self:flex-start; max-width:96%; background:#ffffff; border:1px solid #e5dcf3; border-radius:14px 14px 14px 4px; padding:12px 14px; font-size:15px; line-height:1.5; color:#372c52">Down 2.1 lb over 14 days. Trend is 300.5. Full chart is in the weight trend panel.</div>
+
+          <div style="align-self:flex-end; max-width:86%; background:#ece3f9; border-radius:14px 14px 4px 14px; padding:12px 14px; font-size:15px; line-height:1.5; color:#3a2a5c">food item shopping list for this week</div>
+
+          <div style="align-self:flex-start; max-width:96%; background:#ffffff; border:1px solid #e5dcf3; border-radius:14px 14px 14px 4px; padding:12px 14px; display:flex; flex-direction:column; gap:11px">
+            <div style="font-size:15px; line-height:1.5; color:#372c52">Pick what to add.</div>
+            <div style="background:#f5f0fa; border:1px solid #e9e2f4; border-radius:9px; display:flex; flex-direction:column">
+              <sc-for list="{{ foodOptions }}" as="f" hint-placeholder-count="5">
+                <button onClick="{{ f.toggle }}" style="display:flex; align-items:center; gap:11px; width:100%; text-align:left; background:none; border:none; border-top:1px solid #eee8f8; padding:11px 12px; color:#372c52; font-size:14.5px; cursor:pointer; min-height:44px" style-hover="background:#efe8f8">
+                  <span style="width:19px; height:19px; flex:none; border-radius:5px; border:1px solid {{ f.boxBorder }}; background:{{ f.boxBg }}; color:#ffffff; font-size:12px; display:flex; align-items:center; justify-content:center">{{ f.mark }}</span>
+                  <span style="flex:1">{{ f.label }}</span>
+                  <span style="font-family:'IBM Plex Mono', monospace; font-size:11px; color:#9086a8">{{ f.qty }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <button onClick="{{ confirmFoods }}" style="align-self:flex-start; background:#6b4fae; color:#ffffff; border:none; border-radius:9px; padding:10px 16px; font-size:14px; font-weight:500; cursor:pointer; min-height:44px" style-hover="background:#5a3f9c">{{ confirmLabel }}</button>
+          </div>
+
+          <sc-if value="{{ showQueued }}" hint-placeholder-val="{{ false }}">
+            <div style="align-self:flex-end; max-width:86%; display:flex; flex-direction:column; align-items:flex-end; gap:5px">
+              <div style="background:#f2ecfa; border:1px dashed #cabbe4; border-radius:14px 14px 4px 14px; padding:12px 14px; font-size:15px; line-height:1.5; color:#6b6084">add oat milk to the list</div>
+              <div style="font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:#c99a2a">queued · waiting for network</div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid #e5dcf3; background:#faf8fd; padding:12px 16px; padding-bottom:max(12px, env(safe-area-inset-bottom))">
+        <div style="max-width:660px; margin:0 auto; display:flex; align-items:flex-end; gap:9px">
+          <div style="flex:1; min-width:0; display:flex; align-items:flex-end; gap:8px; background:#ffffff; border:1px solid #e2d7f0; border-radius:13px; padding:8px 10px">
+            <textarea rows="1" placeholder="what did you eat?" value="{{ draft }}" onChange="{{ onDraft }}" style="flex:1; min-width:0; resize:none; background:none; border:none; outline:none; color:#2b2140; font-size:16px; line-height:1.45; max-height:120px; padding:6px 2px"></textarea>
+            <button onClick="{{ clearDraft }}" title="clear" style="width:34px; height:34px; flex:none; background:none; border:none; border-radius:8px; color:#756a8f; font-size:15px; cursor:pointer" style-hover="background:#f2ecfa">✕</button>
+          </div>
+          <button onClick="{{ toggleMic }}" title="voice input" style="width:46px; height:46px; flex:none; display:flex; align-items:center; justify-content:center; background:{{ micBg }}; border:1px solid #e2d7f0; border-radius:12px; color:{{ micColor }}; cursor:pointer">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"></rect><path d="M5 10a7 7 0 0 0 14 0"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+          </button>
+          <button onClick="{{ toggleSpeak }}" title="read replies aloud" style="width:46px; height:46px; flex:none; display:flex; align-items:center; justify-content:center; background:{{ speakBg }}; border:1px solid #e2d7f0; border-radius:12px; color:{{ speakColor }}; cursor:pointer">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="4,9 8,9 12,5 12,19 8,15 4,15"></polygon><path d="M16 8a5 5 0 0 1 0 8"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg>
+          </button>
+          <button onClick="{{ send }}" style="height:46px; flex:none; padding:0 18px; background:#6b4fae; border:none; border-radius:12px; color:#ffffff; font-size:14.5px; font-weight:600; cursor:pointer" style-hover="background:#5a3f9c">send</button>
+        </div>
+      </div>
+    </main>
+    </sc-if>
+
+    <sc-if value="{{ chartsVisible }}" hint-placeholder-val="{{ false }}">
+      <aside style="display:flex; flex-direction:column; gap:16px; background:#ffffff; overflow-y:{{ chartsOverflow }}; padding:16px; padding-bottom:max(16px, env(safe-area-inset-bottom)); border-left:1px solid #e5dcf3; box-shadow:{{ chartsShadow }}; position:{{ chartsPos }}; left:{{ chartsInline }}; right:{{ chartsInline }}; bottom:{{ chartsInline }}; width:{{ chartsWidth }}; max-height:{{ chartsMaxH }}; border-top-left-radius:{{ chartsRadius }}; border-top-right-radius:{{ chartsRadius }}; z-index:{{ chartsZ }}">
+        <sc-if value="{{ chartsDismissable }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; align-items:center; justify-content:space-between">
+            <div style="font-size:15px; font-weight:600; color:#2b2140">{{ chartsSheetTitle }}</div>
+            <button onClick="{{ closeOverlay }}" style="width:36px; height:36px; background:#f5f0fa; border:1px solid #e2d7f0; border-radius:9px; color:#4a3d68; cursor:pointer">✕</button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showMacros }}" hint-placeholder-val="{{ true }}">
+        <section style="background:#fbf9fd; border:1px solid #e9e2f4; border-radius:14px; padding:14px">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px">
+            <div style="font-size:13px; font-weight:600; color:#4a3d68; letter-spacing:.01em">Calories &amp; macros</div>
+            <div style="display:flex; gap:4px; background:#f2ecfa; border:1px solid #e5dcf3; border-radius:8px; padding:3px">
+              <sc-for list="{{ ranges }}" as="rg" hint-placeholder-count="2">
+                <button onClick="{{ rg.pick }}" style="background:{{ rg.bg }}; color:{{ rg.color }}; border:none; border-radius:6px; padding:5px 10px; font-family:'IBM Plex Mono', monospace; font-size:11px; cursor:pointer">{{ rg.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex; align-items:flex-end; gap:{{ barGap }}; height:250px">
+            <sc-for list="{{ bars }}" as="b" hint-placeholder-count="7">
+              <div style="flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:5px">
+                <div style="background:#6b4fae; color:#ffffff; font-family:'IBM Plex Mono', monospace; font-size:{{ badgeSize }}; padding:2px 6px; border-radius:999px; white-space:nowrap">{{ b.kcal }}</div>
+                <div style="width:100%; display:flex; flex-direction:column; gap:2px">
+                  <div style="height:{{ b.ph }}; background:#ef6b52; border-radius:4px; color:#3a1109; font-family:'IBM Plex Mono', monospace; font-size:{{ segSize }}; display:flex; align-items:center; justify-content:center; overflow:hidden">{{ b.pl }}</div>
+                  <div style="height:{{ b.fh }}; background:#f2c14e; border-radius:4px; color:#3a2c07; font-family:'IBM Plex Mono', monospace; font-size:{{ segSize }}; display:flex; align-items:center; justify-content:center; overflow:hidden">{{ b.fl }}</div>
+                  <div style="height:{{ b.ch }}; background:#4fb987; border-radius:4px; color:#0c2b1d; font-family:'IBM Plex Mono', monospace; font-size:{{ segSize }}; display:flex; align-items:center; justify-content:center; overflow:hidden">{{ b.cl }}</div>
+                </div>
+                <div style="font-family:'IBM Plex Mono', monospace; font-size:11px; color:#9086a8">{{ b.day }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+        </sc-if>
+
+        <sc-if value="{{ showWeight }}" hint-placeholder-val="{{ true }}">
+        <section style="background:#fbf9fd; border:1px solid #e9e2f4; border-radius:14px; padding:14px">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px">
+            <div style="font-size:13px; font-weight:600; color:#4a3d68">Weight trend</div>
+            <div style="font-family:'IBM Plex Mono', monospace; font-size:11px; color:#9086a8">30 days</div>
+          </div>
+          <svg viewBox="0 0 340 170" style="width:100%; height:auto; display:block">
+            <sc-for list="{{ wGrid }}" as="g" hint-placeholder-count="4">
+              <line x1="34" y1="{{ g.y }}" x2="332" y2="{{ g.y }}" stroke="#ece4f7" stroke-width="1"></line>
+            </sc-for>
+            <sc-for list="{{ wGrid }}" as="g" hint-placeholder-count="4">
+              <text x="28" y="{{ g.ty }}" text-anchor="end" fill="#9086a8" font-family="IBM Plex Mono, monospace" font-size="9">{{ g.label }}</text>
+            </sc-for>
+            <line x1="{{ goalX1 }}" y1="{{ goalY1 }}" x2="{{ goalX2 }}" y2="{{ goalY2 }}" stroke="#c99a2a" stroke-width="1.4" stroke-dasharray="5 4"></line>
+            <polyline points="{{ trendPoints }}" fill="none" stroke="#6b4fae" stroke-width="2.2" stroke-linejoin="round"></polyline>
+            <sc-for list="{{ wDots }}" as="d" hint-placeholder-count="10">
+              <circle cx="{{ d.x }}" cy="{{ d.y }}" r="2.8" fill="#2b2140"></circle>
+            </sc-for>
+          </svg>
+          <div style="display:flex; gap:14px; margin:10px 0 12px; font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:#756a8f; flex-wrap:wrap">
+            <span>● weigh-in</span><span style="color:#6b4fae">— trend</span><span style="color:#c99a2a">-- goal</span>
+          </div>
+          <div style="border:1px solid #e9e2f4; border-radius:9px; overflow:hidden">
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; font-family:'IBM Plex Mono', monospace; font-size:11px; color:#756a8f; background:#f5f0fa; padding:7px 10px">
+              <span>date</span><span style="text-align:right">weight</span><span style="text-align:right">trend</span><span style="text-align:right">var</span>
+            </div>
+            <sc-for list="{{ wRows }}" as="w" hint-placeholder-count="8">
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; font-family:'IBM Plex Mono', monospace; font-size:12px; color:#3a2f56; padding:7px 10px; border-top:1px solid #eee8f8">
+                <span style="color:#756a8f">{{ w.date }}</span>
+                <span style="text-align:right">{{ w.weight }}</span>
+                <span style="text-align:right">{{ w.trend }}</span>
+                <span style="text-align:right; color:{{ w.varColor }}">{{ w.varr }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+        </sc-if>
+      </aside>
+    </sc-if>
+
+    <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ closeOverlay }}" style="position:fixed; inset:0; background:rgba(60,40,90,.28); z-index:60"></div>
+    </sc-if>
+
+    <sc-if value="{{ queueOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed; left:0; right:0; bottom:0; top:{{ sheetTop }}; display:flex; align-items:{{ sheetAlign }}; justify-content:center; padding:{{ sheetPad }}; z-index:70; pointer-events:none">
+        <div style="pointer-events:auto; width:100%; max-width:{{ sheetMax }}; display:flex; flex-direction:column; background:#ffffff; border:1px solid #e5dcf3; border-radius:{{ sheetRadius }}; overflow:hidden; box-shadow:0 -24px 60px rgba(80,50,120,.22)">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:16px; border-bottom:1px solid #e5dcf3">
+            <div style="display:flex; flex-direction:column; gap:3px">
+              <div style="font-size:16px; font-weight:600">Waiting to send</div>
+              <div style="font-family:'IBM Plex Mono', monospace; font-size:11px; color:{{ dotColor }}">{{ dotLabel }}</div>
+            </div>
+            <button onClick="{{ closeOverlay }}" style="width:38px; height:38px; background:#f5f0fa; border:1px solid #e2d7f0; border-radius:9px; color:#4a3d68; font-size:14px; cursor:pointer">✕</button>
+          </div>
+          <div style="display:flex; flex-direction:column">
+            <sc-for list="{{ queued }}" as="q" hint-placeholder-count="2">
+              <div style="display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid #ece4f7">
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:4px">
+                  <div style="font-size:15px; color:#372c52">{{ q.text }}</div>
+                  <div style="font-family:'IBM Plex Mono', monospace; font-size:11px; color:#756a8f">{{ q.when }}</div>
+                </div>
+                <button onClick="{{ q.remove }}" style="height:40px; padding:0 12px; background:none; border:1px solid #ecb9ac; border-radius:9px; color:#c1503a; font-size:13px; cursor:pointer" style-hover="background:#fbeceb">delete</button>
+              </div>
+            </sc-for>
+            <sc-if value="{{ queueEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:26px 18px; font-size:14px; color:#756a8f">Nothing queued.</div>
+            </sc-if>
+          </div>
+          <div style="padding:14px 18px; padding-bottom:max(14px, env(safe-area-inset-bottom)); display:flex; justify-content:flex-start">
+            <button onClick="{{ retry }}" style="min-height:44px; padding:0 16px; background:#f5f0fa; border:1px solid #e2d7f0; border-radius:10px; color:#372c52; font-size:14px; cursor:pointer" style-hover="background:#efe6f8">try to reconnect now</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;viewport&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;phone&quot;,&quot;tablet&quot;,&quot;desktop&quot;],&quot;default&quot;:&quot;auto&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Preview&quot;},&quot;connection&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;online&quot;,&quot;retrying&quot;,&quot;offline&quot;],&quot;default&quot;:&quot;online&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;State&quot;},&quot;goalSet&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;State&quot;},&quot;showQueuedMessage&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;State&quot;}}">
+class Component extends DCLogic {
+  state = {
+    w: typeof window !== 'undefined' ? window.innerWidth : 1200,
+    overlay: null, screen: 'chat', menu: false, range: 7, draft: '', mic: false, speak: true,
+    conn: null,
+    picked: { 0: true, 2: true },
+    done: {},
+    queue: [{ id: 1, text: 'add oat milk to the list', when: 'queued 4 min ago' }, { id: 2, text: 'weighed 300.4 this morning', when: 'queued 12 min ago' }]
+  };
+
+  componentDidMount() {
+    this._r = () => this.setState({ w: window.innerWidth });
+    window.addEventListener('resize', this._r);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this._r); }
+
+  mode() {
+    const forced = this.props.viewport;
+    if (forced && forced !== 'auto') return forced;
+    const w = this.state.w;
+    return w < 620 ? 'phone' : (w < 1080 ? 'tablet' : 'desktop');
+  }
+
+  conn() { return this.state.conn || this.props.connection || 'online'; }
+
+  macroData(n) {
+    const base = [[140, 61, 185, 1856], [140, 61, 185, 1856], [140, 61, 185, 1856], [140, 61, 185, 1856], [140, 69, 212, 2042], [140, 69, 212, 2042], [140, 61, 185, 1856]];
+    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const b = base[i % 7];
+      const jitter = n > 7 ? [0, 1, -1, 2, -2][i % 5] * 6 : 0;
+      out.push({ p: b[0] + jitter, f: b[1], c: b[2] - jitter, kcal: b[3] + jitter * 2, day: days[i % 7] });
+    }
+    return out;
+  }
+
+  weightSeries() {
+    const pts = [];
+    let trend = 302.6;
+    for (let i = 0; i < 30; i++) {
+      trend -= 0.14 + (i % 7 === 0 ? 0.05 : 0);
+      const noise = [0.9, -0.4, 1.4, -1.1, 0.3, -0.8, 0.6][i % 7];
+      const logged = [0, 1, 4, 6, 9, 12, 13, 16, 19, 21, 24, 27, 29].indexOf(i) >= 0;
+      pts.push({ i, trend: trend, weight: logged ? trend + noise : null });
+    }
+    return pts;
+  }
+
+  renderVals() {
+    const mode = this.mode();
+    const isDesktop = mode === 'desktop';
+    const overlay = this.state.overlay;
+    const conn = this.conn();
+    const goalSet = this.props.goalSet !== false;
+
+    const connMap = {
+      online: ['#4fb987', 'online', 'none'],
+      retrying: ['#c99a2a', 'retrying', 'cd-pulse 1.2s ease-in-out infinite'],
+      offline: ['#d1533e', 'offline', 'none']
+    };
+    const c = connMap[conn] || connMap.online;
+
+    const n = this.state.range;
+    const data = this.macroData(n);
+    const maxTotal = Math.max.apply(null, data.map(d => d.p + d.f + d.c));
+    const H = 196;
+    const px = g => Math.round((g / maxTotal) * H) + 'px';
+    const wide = n === 7;
+    const bars = data.map((d, i) => ({
+      day: d.day, kcal: d.kcal.toLocaleString(),
+      ph: px(d.p), fh: px(d.f), ch: px(d.c),
+      pl: wide ? d.p + ' P' : '', fl: wide ? d.f + ' F' : '', cl: wide ? d.c + ' C' : ''
+    }));
+
+    const series = this.weightSeries();
+    const vals = series.map(s => s.trend).concat(series.filter(s => s.weight).map(s => s.weight));
+    const lo = Math.floor(Math.min.apply(null, vals) - 1), hi = Math.ceil(Math.max.apply(null, vals) + 1);
+    const X = i => 34 + (i / 29) * 298;
+    const Y = v => 12 + (1 - (v - lo) / (hi - lo)) * 130;
+    const trendPoints = series.map(s => X(s.i).toFixed(1) + ',' + Y(s.trend).toFixed(1)).join(' ');
+    const wDots = series.filter(s => s.weight).map(s => ({ x: X(s.i).toFixed(1), y: Y(s.weight).toFixed(1) }));
+    const gridVals = [hi, hi - (hi - lo) / 3, lo + (hi - lo) / 3, lo];
+    const wGrid = gridVals.map(v => ({ y: Y(v).toFixed(1), ty: (Y(v) + 3).toFixed(1), label: v.toFixed(1) }));
+    const goalStart = series[0].trend, goalEnd = goalStart - 6;
+
+    const wRows = series.slice(-8).map((s, k, arr) => {
+      const prev = k > 0 ? arr[k - 1].trend : s.trend;
+      const v = s.weight ? (s.weight - prev) : null;
+      return {
+        date: 'day ' + (s.i + 1),
+        weight: s.weight ? s.weight.toFixed(1) : '—',
+        trend: s.trend.toFixed(1),
+        varr: v === null ? '' : (v > 0 ? '+' : '') + v.toFixed(1),
+        varColor: v === null ? '#9086a8' : (v > 0 ? '#ef6b52' : '#4fb987')
+      };
+    });
+
+    const foods = ['chicken thighs', 'greek yogurt', 'oats', 'spinach', 'eggs'];
+    const qtys = ['1 kg', '2 tubs', '500 g', '2 bags', '12'];
+    const foodOptions = foods.map((label, i) => {
+      const on = !!this.state.picked[i];
+      return {
+        label, qty: qtys[i], mark: on ? '✓' : '',
+        boxBg: on ? '#6b4fae' : 'transparent', boxBorder: on ? '#6b4fae' : '#cabfe0',
+        toggle: () => this.setState(s => ({ picked: Object.assign({}, s.picked, { [i]: !s.picked[i] }) }))
+      };
+    });
+    const pickedCount = Object.keys(this.state.picked).filter(k => this.state.picked[k]).length;
+
+    const shopRaw = [
+      ['chicken thighs', '1 kg'], ['greek yogurt', '2 tubs'], ['oats', '500 g'], ['spinach', '2 bags'],
+      ['eggs', '12'], ['olive oil', '1 bottle'], ['black coffee', '250 g'], ['tomatoes', '6']
+    ];
+    const pending = [], doneList = [];
+    shopRaw.forEach(([label, qty], i) => {
+      const on = !!this.state.done[i];
+      const row = {
+        label, qty, mark: on ? '✓' : '',
+        color: on ? '#a79bc0' : '#2b2140',
+        strike: on ? 'line-through' : 'none',
+        boxBg: on ? '#c9bcdf' : 'transparent',
+        boxBorder: on ? '#c9bcdf' : '#cabfe0',
+        toggle: () => this.setState(s => ({ done: Object.assign({}, s.done, { [i]: !s.done[i] }) }))
+      };
+      (on ? doneList : pending).push(row);
+    });
+    const shopItems = pending.concat(doneList);
+
+    const open = k => () => this.setState({ overlay: k, menu: false });
+    const goShop = () => this.setState({ screen: 'shop', menu: false, overlay: null });
+    const chartsAsSheet = !isDesktop && (overlay === 'chartsMacros' || overlay === 'chartsWeight');
+
+    return {
+      shellMax: isDesktop ? '1440px' : (mode === 'tablet' ? '860px' : '520px'),
+      goalHeadline: goalSet ? '1,588 left of 2,000' : 'No goal set yet',
+      goalSub: goalSet ? '412 eaten · 3 entries' : 'say “set my goal to 1800”',
+      dotColor: c[0], dotLabel: c[1], dotAnim: c[2],
+      cycleConnection: () => this.setState(s => ({ conn: s.conn === 'offline' ? 'online' : (s.conn === 'retrying' ? 'offline' : 'retrying'), overlay: (this.conn() === 'offline' ? 'queue' : s.overlay) })),
+      toggleMenu: () => this.setState(s => ({ menu: !s.menu })),
+      menuOpen: this.state.menu,
+      menuItems: [
+        { label: 'Calories & macros', hint: isDesktop ? 'panel' : 'sheet', go: open('chartsMacros') },
+        { label: 'Weight trend', hint: isDesktop ? 'panel' : 'sheet', go: open('chartsWeight') },
+        { label: 'Shopping mode', hint: '8 items', go: goShop },
+        { label: 'Waiting to send', hint: String(this.state.queue.length), go: open('queue') }
+      ],
+      logRows: [
+        { item: 'ny strip steak, 10 oz', cal: '710', p: '55', c: '0' },
+        { item: 'instant mashed potatoes', cal: '160', p: '3', c: '34' },
+        { item: 'spicy steak sauce, 4 tbsp', cal: '40', p: '0', c: '9' },
+        { item: 'hawaiian bread, 1 slice', cal: '120', p: '3', c: '22' }
+      ],
+      inlineTrend: [302.4, 302.0, 301.7, 301.6, 301.2, 300.9, 300.5].map((v, i) => (10 + i * 50) + ',' + (98 - (v - 300) * 26).toFixed(1)).join(' '),
+      inlineDots: [303.1, 301.4, 302.0, 300.6, 300.9].map((v, i) => ({ x: 10 + i * 62, y: (98 - (v - 300) * 26).toFixed(1) })),
+      foodOptions,
+      confirmFoods: goShop,
+      confirmLabel: pickedCount ? 'Add ' + pickedCount + ' to list' : 'Add to list',
+      showQueued: this.props.showQueuedMessage !== false && conn !== 'online',
+      draft: this.state.draft,
+      onDraft: e => this.setState({ draft: e.target.value }),
+      clearDraft: () => this.setState({ draft: '' }),
+      send: () => this.setState({ draft: '' }),
+      toggleMic: () => this.setState(s => ({ mic: !s.mic })),
+      toggleSpeak: () => this.setState(s => ({ speak: !s.speak })),
+      micBg: this.state.mic ? '#ece3f9' : '#ffffff',
+      micColor: this.state.mic ? '#5a3f9c' : '#756a8f',
+      speakBg: this.state.speak ? '#ece3f9' : '#ffffff',
+      speakColor: this.state.speak ? '#5a3f9c' : '#756a8f',
+
+      chartsVisible: isDesktop || chartsAsSheet,
+      chartsDismissable: chartsAsSheet,
+      chartsPos: chartsAsSheet ? 'fixed' : 'relative',
+      chartsInline: chartsAsSheet ? '0' : 'auto',
+      chartsWidth: chartsAsSheet ? 'auto' : '420px',
+      chartsMaxH: chartsAsSheet ? '90dvh' : 'none',
+      chartsRadius: chartsAsSheet ? '18px' : '0px',
+      chartsShadow: chartsAsSheet ? '0 -24px 60px rgba(80,50,120,.22)' : 'none',
+      chartsZ: chartsAsSheet ? 70 : 50,
+      chartsOverflow: chartsAsSheet ? 'auto' : 'visible',
+      showMacros: isDesktop || overlay === 'chartsMacros',
+      showWeight: isDesktop || overlay === 'chartsWeight',
+      chartsSheetTitle: overlay === 'chartsWeight' ? 'Weight trend' : 'Calories & macros',
+      ranges: [7, 30].map(v => ({
+        label: v + 'd', pick: () => this.setState({ range: v }),
+        bg: this.state.range === v ? '#ece3f9' : 'transparent',
+        color: this.state.range === v ? '#4a3d68' : '#756a8f'
+      })),
+      bars, barGap: wide ? '7px' : '2px',
+      badgeSize: wide ? '10.5px' : '0px',
+      segSize: wide ? '10.5px' : '0px',
+      trendPoints, wDots, wGrid, wRows,
+      goalX1: X(0).toFixed(1), goalY1: Y(goalStart).toFixed(1), goalX2: X(29).toFixed(1), goalY2: Y(goalEnd).toFixed(1),
+
+      chatPage: this.state.screen !== 'shop',
+      shopPage: this.state.screen === 'shop',
+      closeShopPage: () => this.setState({ screen: 'chat' }),
+      sheetOpen: !!overlay && !(isDesktop && overlay === 'charts'),
+      queueOpen: overlay === 'queue',
+      closeOverlay: () => this.setState({ overlay: null }),
+      sheetAlign: isDesktop ? 'center' : 'flex-end',
+      sheetPad: isDesktop ? '32px' : '0px',
+      sheetMax: isDesktop ? '520px' : '640px',
+      sheetRadius: isDesktop ? '16px' : '18px 18px 0 0',
+      sheetTop: '0',
+      shopItems,
+      shopProgress: doneList.length + ' of ' + shopRaw.length + ' done',
+      queued: this.state.queue.map(q => Object.assign({}, q, { remove: () => this.setState(s => ({ queue: s.queue.filter(x => x.id !== q.id) })) })),
+      queueEmpty: this.state.queue.length === 0,
+      retry: () => this.setState({ conn: 'retrying' })
+    };
+  }
+}
+
+</script>
+</body>
+</html>

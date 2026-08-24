@@ -16,26 +16,28 @@ export default function MessageInput() {
 
   return (
     <form className="message-input" onSubmit={submit}>
-      {/* Always displayed rather than appearing with the first keystroke: a control that comes
-          and goes shifts the input sideways and is hard to find when you want it. Disabled
-          while empty so it reads as inert instead of merely doing nothing when pressed. */}
-      <button
-        type="button"
-        className="clear-input-button"
-        onClick={() => dispatch(setDraftText(''))}
-        disabled={!text}
-        title="Clear text"
-        aria-label="Clear text"
-      >
-        ✕
-      </button>
-      <input
-        value={text}
-        onChange={(event) => dispatch(setDraftText(event.target.value))}
-        placeholder="Say something..."
-        disabled={status === 'loading'}
-      />
-      <button type="submit" disabled={status === 'loading'}>
+      <div className="input-pill">
+        <input
+          value={text}
+          onChange={(event) => dispatch(setDraftText(event.target.value))}
+          placeholder="Say something..."
+          disabled={status === 'loading'}
+        />
+        {/* Always displayed rather than appearing with the first keystroke: a control that comes
+            and goes shifts the input sideways and is hard to find when you want it. Disabled
+            while empty so it reads as inert instead of merely doing nothing when pressed. */}
+        <button
+          type="button"
+          className="clear-input-button"
+          onClick={() => dispatch(setDraftText(''))}
+          disabled={!text}
+          title="Clear text"
+          aria-label="Clear text"
+        >
+          ✕
+        </button>
+      </div>
+      <button type="submit" className="send-button" disabled={status === 'loading'}>
         Send
       </button>
     </form>

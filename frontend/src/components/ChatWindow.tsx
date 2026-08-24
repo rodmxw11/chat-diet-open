@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useAppSelector } from '../store/hooks'
 import ChartRenderer from './ChartRenderer'
 import SqlResultTable from './SqlResultTable'
+import FoodItemPicker from './shopping/FoodItemPicker'
 
 export default function ChatWindow() {
   const messages = useAppSelector((state) => state.chat.messages)
@@ -20,16 +21,15 @@ export default function ChatWindow() {
 
   return (
     <div className="chat-window">
-      {messages.map((message, index) => (
-        <div key={index} className={`message ${message.role}`}>
-          {message.imageUrl && (
-            <img className="message-photo" src={message.imageUrl} alt="Attached food photo" />
-          )}
+      {messages.map((message) => (
+        <div key={message.id} className={`message ${message.role} ${message.queued ? 'queued' : ''}`}>
           {message.text}
-          {message.chartSeries && message.chartSeries.length > 0 && (
-            <ChartRenderer series={message.chartSeries} />
-          )}
+          {message.chartSeries && message.chartSeries.length > 0 && <ChartRenderer series={message.chartSeries} />}
           {message.sqlAnswer && <SqlResultTable answer={message.sqlAnswer} />}
+          {message.foodItemOptions && message.foodItemOptions.length > 0 && (
+            <FoodItemPicker options={message.foodItemOptions} />
+          )}
+          {message.queued && <div className="queued-caption">queued · waiting for network</div>}
         </div>
       ))}
     </div>

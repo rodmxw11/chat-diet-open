@@ -8,10 +8,9 @@ import java.util.List;
  * A metabolic day's conversation, returned by {@code GET /api/chat/history} so any device can
  * restore the transcript of the day in progress.
  *
- * <p>Text only: chart series, SQL result tables, and photo attachments are not persisted, so a
- * restored transcript won't show them. That's deliberate - charts and tables are derived views
- * the user can regenerate by asking again, the assistant's prose reply already echoes any
- * numbers it logged, and photo blobs are purged on a schedule so their URLs would dangle.
+ * <p>Text only: chart series and SQL result tables are not persisted, so a restored transcript
+ * won't show them. That's deliberate - they're derived views the user can regenerate by asking
+ * again, and the assistant's prose reply already echoes any numbers it logged.
  */
 public record ChatHistoryResponse(LocalDate metabolicDate, List<ChatHistoryMessage> messages) {
 

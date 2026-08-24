@@ -3,6 +3,7 @@ package com.chatdiet.fooditem;
 import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.ListCrudRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 /** Spring Data JDBC repository for {@link FoodItem}. */
@@ -12,8 +13,12 @@ public interface FoodItemRepository extends ListCrudRepository<FoodItem, Long> {
     @Query("SELECT * FROM food_item WHERE upc = :upc")
     Optional<FoodItem> findByUpc(String upc);
 
+    /** All cached food items, most-used first, for the shopping-list picker. */
+    @Query("SELECT * FROM food_item ORDER BY use_count DESC, name")
+    List<FoodItem> findAllOrderByUseCountDescNameAsc();
+
     /**
-     * Not true fuzzy matching (that's recipe intake territory) - just a bidirectional substring
+     * Not true fuzzy matching - just a bidirectional substring
      * match, since the model's phrasing rarely matches the cached product name verbatim
      * ("Coca-Cola can" vs. a cached "coca-cola").
      */

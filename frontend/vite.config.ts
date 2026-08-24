@@ -34,25 +34,10 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
-        // Chat POSTs get queued (not cached) when offline and replayed in order once back
-        // online - this is the actual offline write queue, not a GET response cache.
-        runtimeCaching: [
-          {
-            urlPattern: /\/api\/chat$/,
-            method: 'POST',
-            handler: 'NetworkOnly',
-            options: {
-              backgroundSync: {
-                name: 'chat-mutation-queue',
-                options: {
-                  maxRetentionTime: 24 * 60,
-                },
-              },
-            },
-          },
-        ],
-      },
+      // Offline queueing is now handled at the app level (src/lib/offlineQueue.ts, an IndexedDB
+      // queue the offline-queue panel can list and delete from) instead of Workbox's opaque,
+      // undeletable backgroundSync queue - VitePWA is kept only for manifest/installability and
+      // its default precache of the build output (including the self-hosted font files).
     }),
   ],
   server: {

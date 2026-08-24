@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 
-/** REST endpoint for on-demand download of a full database + photo export archive. */
+/** REST endpoint for on-demand download of a full database export archive. */
 @RestController
 public class ExportController {
 

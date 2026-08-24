@@ -8,9 +8,9 @@ import org.springframework.stereotype.Component;
 import java.util.function.Function;
 
 /**
- * IntentTool that adds an item to the shopping list, suggesting a store by looking up purchase
- * history for a matching cached food item first, then falling back to purchase history matched
- * by the item's raw description.
+ * IntentTool that adds an item to the shopping list, suggesting a store by looking up prior
+ * shopping-list history for a matching cached food item first, then falling back to history
+ * matched by the item's raw description.
  */
 @Component
 @IntentTool(
@@ -22,18 +22,15 @@ public class AddShoppingItemTool implements Function<AddShoppingItemRequest, Too
 
     private final ShoppingItemRepository shoppingItemRepository;
     private final FoodItemRepository foodItemRepository;
-    private final PurchaseHistoryRepository purchaseHistoryRepository;
 
-    public AddShoppingItemTool(ShoppingItemRepository shoppingItemRepository, FoodItemRepository foodItemRepository,
-                                PurchaseHistoryRepository purchaseHistoryRepository) {
+    public AddShoppingItemTool(ShoppingItemRepository shoppingItemRepository, FoodItemRepository foodItemRepository) {
         this.shoppingItemRepository = shoppingItemRepository;
         this.foodItemRepository = foodItemRepository;
-        this.purchaseHistoryRepository = purchaseHistoryRepository;
     }
 
     /**
-     * Saves a new pending shopping list item, resolving a suggested store from purchase history
-     * for a matching food item, or failing that, from purchase history matching the description.
+     * Saves a new pending shopping list item, resolving a suggested store from prior shopping
+     * history for a matching food item, or failing that, from history matching the description.
      *
      * @return a {@link ToolResult.Success} wrapping the saved {@link ShoppingItem}
      */
@@ -42,18 +39,17 @@ public class AddShoppingItemTool implements Function<AddShoppingItemRequest, Too
         var matchedFoodItem = foodItemRepository.findBestMatchByName(request.description()).orElse(null);
 
         var suggestedStore = matchedFoodItem != null
-                ? purchaseHistoryRepository.findMostCommonStoreByFoodItemId(matchedFoodItem.id()).orElse(null)
+                ? shoppingItemRepository.findMostCommonStoreByFoodItemId(matchedFoodItem.id()).orElse(null)
                 : null;
         if (suggestedStore == null) {
-            suggestedStore = purchaseHistoryRepository.findMostCommonStoreByDescription(request.description())
+            suggestedStore = shoppingItemRepository.findMostCommonStoreByDescription(request.description())
                     .orElse(null);
         }
 
         var item = shoppingItemRepository.save(new ShoppingItem(
                 request.description(),
                 matchedFoodItem != null ? matchedFoodItem.id() : null,
-                suggestedStore,
-                request.estimatedCostUsd()));
+                suggestedStore));
 
         return new ToolResult.Success(
                 "Added \"%s\" to the shopping list%s.".formatted(item.description(),

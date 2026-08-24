@@ -3,9 +3,10 @@ info:
   title: chat-diet API
   description: >
     HTTP surface for chat-diet's Spring Boot backend. Most functionality (logging food,
-    weight, exercise, recipes, etc.) is driven through the single /api/chat endpoint via
+    weight, exercise, shopping, etc.) is driven through the single /api/chat endpoint via
     the model's tool-calling framework rather than dedicated REST routes; the remaining
-    endpoints below handle photo/barcode input and file downloads that don't fit that model.
+    endpoints below handle barcode input, file downloads, the header/dashboard/shopping
+    screens, and connectivity that don't fit that model.
   version: "0.0.1"
 servers:
   - url: http://localhost:8080
@@ -16,9 +17,17 @@ tags:
   - name: barcode
     description: Barcode decoding from a product photo
   - name: export
-    description: Full database + photo export
+    description: Full database export
   - name: sql
     description: SQL agent result downloads
+  - name: summary
+    description: Today-at-a-glance header summary
+  - name: shopping
+    description: Dedicated in-store shopping checklist screen
+  - name: dashboard
+    description: Macro and weight-trend chart data
+  - name: system
+    description: Connectivity heartbeat
 
 paths:
   /api/chat:
@@ -26,22 +35,18 @@ paths:
       tags: [chat]
       summary: Send a chat turn
       description: >
-        Accepts either a plain-text turn (application/json) or a turn with an attached food
-        photo (multipart/form-data). Routes the message through the model and returns its
-        reply, plus any chart series or SQL answer produced as a side effect of tool calls
-        made during this turn.
+        Accepts a plain-text turn. Routes the message through the model and returns its
+        reply, plus any chart series, SQL answer, or food-item picker options produced as a
+        side effect of tool calls made during this turn.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/ChatRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ChatWithPhotoRequest'
       responses:
         '200':
-          description: Model reply, with optional chart/SQL results
+          description: Model reply, with optional chart/SQL/food-item-picker results
           content:
             application/json:
               schema:
@@ -110,6 +115,100 @@ paths:
                 type: string
                 format: binary
 
+  /api/summary/today:
+    get:
+      tags: [summary]
+      summary: Today-at-a-glance calorie summary
+      description: Polled by the header. target/remaining are null if no goal has ever been set.
+      responses:
+        '200':
+          description: Today's summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodaySummary'
+
+  /api/shopping-items:
+    get:
+      tags: [shopping]
+      summary: List all shopping items
+      description: Pending items first, then purchased; each group chronological.
+      responses:
+        '200':
+          description: Shopping items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShoppingItem'
+
+  /api/shopping-items/{id}/toggle:
+    post:
+      tags: [shopping]
+      summary: Toggle a shopping item between pending and purchased
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: The updated item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingItem'
+
+  /api/dashboard/macros:
+    get:
+      tags: [dashboard]
+      summary: Per-day macro breakdown
+      parameters:
+        - name: days
+          in: query
+          required: false
+          schema:
+            type: integer
+            enum: [7, 30]
+            default: 7
+      responses:
+        '200':
+          description: One entry per metabolic day, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DailyMacros'
+
+  /api/dashboard/weight-trend:
+    get:
+      tags: [dashboard]
+      summary: 30-day weight trend (actual, smoothed, goal line)
+      responses:
+        '200':
+          description: Weight trend data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeightTrendResponse'
+
+  /api/ping:
+    get:
+      tags: [system]
+      summary: Connectivity heartbeat
+      description: Trivial no-DB-touch endpoint the frontend polls to detect online/offline.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+
   /api/sql-results/{id}/csv:
     get:
       tags: [sql]
@@ -160,23 +259,6 @@ components:
             clamped to now. Defaults to the server's clock when omitted.
       required: [text]
 
-    ChatWithPhotoRequest:
-      type: object
-      description: Multipart form fields for a chat turn with an attached food photo.
-      properties:
-        text:
-          type: string
-        clientSentAt:
-          type: string
-          format: date-time
-          nullable: true
-          description: As on ChatRequest.
-        photo:
-          type: string
-          format: binary
-          description: Food photo to analyze (server appends an analyze_food_photo instruction)
-      required: [text, photo]
-
     ChatHistoryResponse:
       type: object
       properties:
@@ -217,6 +299,140 @@ components:
             - $ref: '#/components/schemas/SqlAnswer'
           nullable: true
           description: Present only when the model invoked a SQL query tool during this turn
+        foodItemOptions:
+          type: array
+          nullable: true
+          description: Present only when the model invoked list_food_items_for_shopping during this turn
+          items:
+            $ref: '#/components/schemas/FoodItemOption'
+
+    FoodItemOption:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        typicalServingG:
+          type: number
+          format: double
+          nullable: true
+
+    TodaySummary:
+      type: object
+      properties:
+        metabolicDate:
+          type: string
+          format: date
+        targetCalories:
+          type: integer
+          nullable: true
+          description: Null if no goal has ever been set
+        consumedCalories:
+          type: integer
+        remainingCalories:
+          type: integer
+          nullable: true
+          description: Null if no goal has ever been set
+        entryCount:
+          type: integer
+          description: Number of food_entry rows logged today
+
+    ShoppingItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        description:
+          type: string
+        foodItemId:
+          type: integer
+          format: int64
+          nullable: true
+        suggestedStore:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [PENDING, PURCHASED]
+        addedAt:
+          type: string
+          format: date-time
+        purchasedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    DailyMacros:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        proteinG:
+          type: number
+          format: double
+        carbsG:
+          type: number
+          format: double
+        fatG:
+          type: number
+          format: double
+        calories:
+          type: integer
+
+    WeighIn:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        weightLbs:
+          type: number
+          format: double
+
+    TrendPoint:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        value:
+          type: number
+          format: double
+
+    GoalLine:
+      type: object
+      description: Straight-line goal trajectory; the frontend draws the line from these parameters.
+      properties:
+        startDate:
+          type: string
+          format: date
+        startWeightLbs:
+          type: number
+          format: double
+        dailyRateLbs:
+          type: number
+          format: double
+
+    WeightTrendResponse:
+      type: object
+      properties:
+        actual:
+          type: array
+          items:
+            $ref: '#/components/schemas/WeighIn'
+        smoothed:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrendPoint'
+        goal:
+          allOf:
+            - $ref: '#/components/schemas/GoalLine'
+          nullable: true
+          description: Null if no weigh-in has ever been logged
 
     ChartSeries:
       type: object

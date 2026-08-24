@@ -14,10 +14,6 @@ public interface WeightEntryRepository extends ListCrudRepository<WeightEntry, L
     @Query("SELECT * FROM weight_entry ORDER BY logged_at DESC LIMIT 1")
     Optional<WeightEntry> findMostRecent();
 
-    /** The two latest weigh-ins (most recent first), used by {@link com.chatdiet.nutrition.AdaptiveTargetService} to measure observed weight change. */
-    @Query("SELECT * FROM weight_entry ORDER BY logged_at DESC LIMIT 2")
-    List<WeightEntry> findTwoMostRecent();
-
     /** Entries logged in [start, end), ordered chronologically. */
     @Query("SELECT * FROM weight_entry WHERE logged_at >= :start AND logged_at < :end ORDER BY logged_at")
     List<WeightEntry> findByLoggedAtBetween(LocalDateTime start, LocalDateTime end);

@@ -1,11 +1,12 @@
 - name: save_note
-  description: Freeform timestamped notes-to-self
+  description: Freeform timestamped notes-to-self, including app feedback/requests
   toolNames:
     - save_note
   promptFragment: >
-    Save freeform notes-to-self with the save_note tool whenever the user
-    wants something written down that isn't food, weight, vitals, or
-    exercise. Save immediately, no confirmation needed.
+    Save freeform timestamped notes-to-self with the save_note tool whenever the
+    user wants something written down that isn't food, weight, vitals, or
+    exercise. This includes feature requests or complaints about the app
+    itself, not just personal notes. Save immediately, no confirmation needed.
   enabled: true
 
 - name: log_food
@@ -14,28 +15,16 @@
     - log_food
     - log_food_by_upc
     - log_cached_food
-    - analyze_food_photo
-    - log_food_from_photo
-    - find_recipe
-    - log_recipe
   promptFragment: >
     Log named foods with log_food, estimating calories and macros yourself.
     For a UPC barcode, use log_food_by_upc. For any named branded/packaged
     food, always call log_cached_food FIRST (it's a real database lookup, not
     your memory, and costs nothing to try) before falling back to log_food's
-    own estimate. If a photo is attached, call analyze_food_photo; on a
-    confident result, immediately call log_food_from_photo with those
-    numbers; on a clarifying question, ask it and wait, then scale the
-    numbers yourself arithmetically next turn (never re-analyze the photo)
-    and call log_food_from_photo. For a known dish name, call find_recipe
-    first; on a match, quiz only its variable ingredients and any extras,
-    compute final totals yourself, and call log_recipe - if it finds nothing,
-    treat it as a new dish (recipe_intake) instead. Only ask a clarifying
-    question first when a missing detail would make the estimate
-    meaningless - otherwise save immediately. Skip logging (just
-    acknowledge) anything under 10 calories, like black tea or water.
-    If the user mentions a past day (e.g. "yesterday", "Tuesday") and/or a
-    named meal, resolve a loggedAt timestamp and pass it to whichever
+    own estimate. Only ask a clarifying question first when a missing detail
+    would make the estimate meaningless - otherwise save immediately. Skip
+    logging (just acknowledge) anything under 10 calories, like black tea or
+    water. If the user mentions a past day (e.g. "yesterday", "Tuesday")
+    and/or a named meal, resolve a loggedAt timestamp and pass it to whichever
     logging tool you call, anchored to the current time you've been given
     for this message, not any other assumption of "now": breakfast = 8:00am,
     lunch = 12:30pm, dinner = 6:00pm, any other meal word (snack, etc.) =
@@ -83,14 +72,16 @@
     no confirmation needed.
   enabled: true
 
-- name: capture_requirement
-  description: Feature requests or complaints about the app itself
+- name: manage_goal
+  description: Set the manual daily calorie goal
   toolNames:
-    - save_requirement
+    - set_calorie_goal
   promptFragment: >
-    When the user requests a new app feature or complains about how the app
-    behaves, save it with the save_requirement tool, summarizing it
-    concisely. This is about the app, not about diet/weight/vitals data.
+    When the user states or changes their daily calorie goal (e.g. "set my
+    calorie target to 1800", "from tomorrow I want to aim for 2000"), call
+    set_calorie_goal. Pass effectiveFrom only when a specific start day was
+    given; otherwise leave it unset so it defaults to today. Save
+    immediately, no confirmation needed.
   enabled: true
 
 - name: query_data
@@ -108,40 +99,31 @@
     calories, never as a bare calorie number.
   enabled: true
 
-- name: recipe_intake
-  description: Onboard an unknown dish as a reusable recipe; edit or delete existing recipes
-  toolNames:
-    - find_recipe
-    - create_recipe
-    - refine_recipe
-    - delete_recipe
-    - list_stale_recipes
-  promptFragment: >
-    When the user names an unknown dish or says "new recipe", call
-    find_recipe first, then create_recipe from pot-level ingredients and
-    total weight when available, or from one weighed serving's totals with
-    provisional=true otherwise. Ask only a few high-impact clarifying
-    questions (e.g. ground beef leanness), not an exhaustive ingredient
-    list. Use refine_recipe to improve a provisional recipe later (forward-
-    only, never touches past entries), list_stale_recipes to surface
-    recipes logged once and never reused, and delete_recipe once the user
-    confirms.
-  enabled: true
-
 - name: manage_shopping
-  description: Add, list, and mark shopping list items as purchased
+  description: Add, list, and toggle shopping list items; bulk-add from previously logged foods
   toolNames:
     - add_shopping_item
     - list_shopping_items
     - mark_shopping_item_purchased
+    - revert_shopping_item_purchased
+    - list_food_items_for_shopping
+    - add_shopping_items_bulk
   promptFragment: >
     Add items to the shopping list with add_shopping_item whenever the user
     says they need to buy something (a suggested store is filled in
-    automatically from purchase history, so never ask which store). Use
-    list_shopping_items when they ask what's on the list. Use
+    automatically from prior shopping history, so never ask which store).
+    Use list_shopping_items when they ask what's on the list. Use
     mark_shopping_item_purchased when they say they bought/picked up
-    something, passing the store and cost if mentioned. Save immediately, no
-    confirmation needed.
+    something, passing the store if mentioned. Use
+    revert_shopping_item_purchased if they say something was marked
+    purchased by mistake or they need it again. When the user wants to pick
+    from foods they've logged before to restock the shopping list (e.g.
+    "add stuff from my food list", "shopping list from my usual items"),
+    call list_food_items_for_shopping - it renders an interactive picker
+    inline, so just acknowledge briefly, don't list the items yourself. Once
+    the user confirms a selection from that picker, call
+    add_shopping_items_bulk with the chosen food item ids. Save immediately,
+    no confirmation needed for direct add/purchase/revert requests.
   enabled: true
 
 - name: show_chart
@@ -149,15 +131,15 @@
   toolNames:
     - show_chart
   promptFragment: >
-    When the user asks to see/chart/plot/graph calories, macros, weight,
-    deficit, or cost, call show_chart. You must resolve the time frame
-    yourself into from/to/granularity using the current date - the chart
-    renders inline, so never describe the data in words, just a brief
-    acknowledgement like "Here you go.". Defaults by phrasing: "today" ->
-    today, HOUR granularity; "this week" -> Monday through today, DAY; "last
-    month" -> the prior calendar month, DAY; "last 3 months" -> 90 days back,
-    WEEK; "this year" -> Jan 1 through today, MONTH. Set includeGoal=true
-    whenever a target/goal comparison is implied or the metric is calories or
+    When the user asks to see/chart/plot/graph calories, macros, weight, or
+    deficit, call show_chart. You must resolve the time frame yourself into
+    from/to/granularity using the current date - the chart renders inline,
+    so never describe the data in words, just a brief acknowledgement like
+    "Here you go.". Defaults by phrasing: "today" -> today, HOUR
+    granularity; "this week" -> Monday through today, DAY; "last month" ->
+    the prior calendar month, DAY; "last 3 months" -> 90 days back, WEEK;
+    "this year" -> Jan 1 through today, MONTH. Set includeGoal=true whenever
+    a target/goal comparison is implied or the metric is calories or
     deficit, unless the user asks for raw numbers only. cumulative only
     matters for non-hourly granularities (hourly charts are always
     cumulative-against-target regardless of what you pass).

@@ -28,3 +28,6 @@ build/
 node_modules/
 
 .gradle/
+.env
+backup-data/
+certs/

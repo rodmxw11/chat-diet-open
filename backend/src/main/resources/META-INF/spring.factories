@@ -1,0 +1,1 @@
+org.springframework.data.jdbc.core.dialect.DialectResolver$JdbcDialectProvider=com.chatdiet.config.SqliteJdbcDialectProvider

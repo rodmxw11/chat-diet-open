@@ -18,8 +18,8 @@ spring:
     name: backend
 
   datasource:
-    url: jdbc:h2:file:./data/chat-diet
-    driver-class-name: org.h2.Driver
+    url: jdbc:sqlite:./data/chat-diet.db
+    driver-class-name: org.sqlite.JDBC
 
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
@@ -46,15 +46,9 @@ chat-diet:
   # Where the daily backup job (and the on-demand /api/export endpoint) write/read archives.
   backup-dir: ./data/backups
 
-  # Personal biometrics for Mifflin-St Jeor BMR. No user-profile table in v1
-  # (single user, no auth) - these are config instead. See application.yml
-  # (gitignored - copy this file to application.yml and fill in real values).
-  profile:
-    sex: MALE # or FEMALE
-    birth-date: 1970-01-01
-    height-in: 69
-
-  # Daily calorie target = effective TDEE + (weekly-rate-lbs * 3500 / 7).
-  # Negative to lose weight, positive to gain, 0 for maintenance.
+  # Used only to draw the weight-trend goal line and by the (separate, TDEE-independent)
+  # weight-projection tool. Negative to lose weight, positive to gain, 0 for maintenance.
+  # The actual calorie target is set manually via the set_calorie_goal chat tool, not derived
+  # from this.
   goal:
     weekly-rate-lbs: -1.0

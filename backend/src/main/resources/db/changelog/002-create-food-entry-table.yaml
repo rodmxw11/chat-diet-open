@@ -8,7 +8,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: BIGINT
+                  type: INTEGER
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -36,9 +36,6 @@ databaseChangeLog:
                   type: DOUBLE
               - column:
                   name: total_fat_g
-                  type: DOUBLE
-              - column:
-                  name: cost_usd
                   type: DOUBLE
               - column:
                   name: prep_minutes

@@ -9,7 +9,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 import java.io.ByteArrayInputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.zip.ZipInputStream;
@@ -24,20 +23,15 @@ class ExportServiceTest {
     static Path tempDir;
 
     @DynamicPropertySource
-    static void overrideDatasourceAndPhotoDir(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> "jdbc:h2:file:" + tempDir.resolve("export-test"));
-        registry.add("chat-diet.photo-archive-dir", () -> tempDir.resolve("photos").toString());
+    static void overrideDatasource(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", () -> "jdbc:sqlite:" + tempDir.resolve("export-test.db"));
     }
 
     @Autowired
     private ExportService exportService;
 
     @Test
-    void archiveContainsDatabaseBackupAndPhotos() throws Exception {
-        var photoDir = tempDir.resolve("photos");
-        Files.createDirectories(photoDir);
-        Files.write(photoDir.resolve("sample.jpg"), new byte[]{1, 2, 3});
-
+    void archiveContainsDatabaseBackup() throws Exception {
         var archive = exportService.buildArchive();
 
         var entryNames = new ArrayList<String>();
@@ -49,7 +43,6 @@ class ExportServiceTest {
             }
         }
 
-        assertThat(entryNames).anyMatch(name -> name.endsWith(".mv.db"));
-        assertThat(entryNames).contains("photos/sample.jpg");
+        assertThat(entryNames).contains("chat-diet.db");
     }
 }

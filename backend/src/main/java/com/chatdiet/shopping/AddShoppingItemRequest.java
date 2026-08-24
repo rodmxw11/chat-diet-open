@@ -1,9 +1,5 @@
 package com.chatdiet.shopping;
 
-/**
- * Request for the {@code add_shopping_item} tool.
- *
- * @param estimatedCostUsd optional expected cost of the item; may be {@code null}
- */
-public record AddShoppingItemRequest(String description, Double estimatedCostUsd) {
+/** Request for the {@code add_shopping_item} tool. */
+public record AddShoppingItemRequest(String description) {
 }

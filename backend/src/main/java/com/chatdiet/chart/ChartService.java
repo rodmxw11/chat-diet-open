@@ -3,8 +3,7 @@ package com.chatdiet.chart;
 import com.chatdiet.day.DayBoundaryService;
 import com.chatdiet.exercise.ExerciseEntryRepository;
 import com.chatdiet.food.FoodEntryRepository;
-import com.chatdiet.nutrition.AdaptiveTargetService;
-import com.chatdiet.shopping.PurchaseHistoryRepository;
+import com.chatdiet.nutrition.GoalService;
 import com.chatdiet.weight.WeightEntryRepository;
 import org.springframework.stereotype.Service;
 
@@ -15,10 +14,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Computes chart series from the underlying food/exercise/weight/purchase data for
- * {@link ShowChartTool}. Buckets the requested date range per the chosen {@link Granularity}
- * (respecting the app's metabolic-day boundary rather than calendar midnight), aggregates the
- * requested {@link ChartMetric} per bucket, and optionally converts to a running cumulative total.
+ * Computes chart series from the underlying food/exercise/weight data for {@link ShowChartTool}.
+ * Buckets the requested date range per the chosen {@link Granularity} (respecting the app's
+ * metabolic-day boundary rather than calendar midnight), aggregates the requested
+ * {@link ChartMetric} per bucket, and optionally converts to a running cumulative total.
  */
 @Service
 public class ChartService {
@@ -26,18 +25,16 @@ public class ChartService {
     private final FoodEntryRepository foodEntryRepository;
     private final ExerciseEntryRepository exerciseEntryRepository;
     private final WeightEntryRepository weightEntryRepository;
-    private final PurchaseHistoryRepository purchaseHistoryRepository;
-    private final AdaptiveTargetService adaptiveTargetService;
+    private final GoalService goalService;
     private final DayBoundaryService dayBoundaryService;
 
     public ChartService(FoodEntryRepository foodEntryRepository, ExerciseEntryRepository exerciseEntryRepository,
-                         WeightEntryRepository weightEntryRepository, PurchaseHistoryRepository purchaseHistoryRepository,
-                         AdaptiveTargetService adaptiveTargetService, DayBoundaryService dayBoundaryService) {
+                         WeightEntryRepository weightEntryRepository, GoalService goalService,
+                         DayBoundaryService dayBoundaryService) {
         this.foodEntryRepository = foodEntryRepository;
         this.exerciseEntryRepository = exerciseEntryRepository;
         this.weightEntryRepository = weightEntryRepository;
-        this.purchaseHistoryRepository = purchaseHistoryRepository;
-        this.adaptiveTargetService = adaptiveTargetService;
+        this.goalService = goalService;
         this.dayBoundaryService = dayBoundaryService;
     }
 
@@ -63,7 +60,6 @@ public class ChartService {
             case DEFICIT -> List.of(seriesFor("Deficit (kcal)", buckets, cumulative,
                     b -> sumTarget(b) - (sumCalories(b.start(), b.end()) - sumExerciseBurn(b.start(), b.end())),
                     request.includeGoal() ? b -> 0.0 : null));
-            case COST -> List.of(seriesFor("Cost ($)", buckets, cumulative, this::sumCost, null));
         };
     }
 
@@ -120,12 +116,6 @@ public class ChartService {
                 .sum();
     }
 
-    private double sumCost(Bucket bucket) {
-        return purchaseHistoryRepository.findByPurchasedAtBetween(bucket.start(), bucket.end()).stream()
-                .mapToDouble(p -> p.costUsd() != null ? p.costUsd() : 0)
-                .sum();
-    }
-
     private double averageWeight(LocalDateTime start, LocalDateTime end) {
         return weightEntryRepository.findByLoggedAtBetween(start, end).stream()
                 .mapToDouble(e -> e.weightLbs() != null ? e.weightLbs() : 0)
@@ -136,7 +126,7 @@ public class ChartService {
     /** Sum of each covered metabolic date's calorie target - matches how the actual value is summed per bucket. */
     private double sumTarget(Bucket bucket) {
         return bucket.metabolicDates().stream()
-                .mapToDouble(date -> adaptiveTargetService.getOrComputeTarget(date)
+                .mapToDouble(date -> goalService.targetFor(date)
                         .map(t -> t.targetCalories().doubleValue())
                         .orElse(0.0))
                 .sum();

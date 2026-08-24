@@ -8,13 +8,16 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 /**
- * Read-only enforced at the connection (ACCESS_MODE_DATA=r) - this is the primary safety layer,
- * with SqlValidator as a cheap second one. A fresh connection is opened per query rather than
- * pooled; this is a single-user personal app, not a service under load.
+ * Read-only enforced at the connection (SQLite's {@code open_mode=1}, i.e. {@code
+ * SQLITE_OPEN_READONLY}) - this is the primary safety layer, with SqlValidator as a cheap second
+ * one. A fresh connection is opened per query rather than pooled; this is a single-user personal
+ * app, not a service under load.
  */
 @Component
 public class ReadOnlySqlExecutor {
@@ -30,7 +33,7 @@ public class ReadOnlySqlExecutor {
     private final String readOnlyJdbcUrl;
 
     public ReadOnlySqlExecutor(@Value("${spring.datasource.url}") String primaryJdbcUrl) {
-        this.readOnlyJdbcUrl = primaryJdbcUrl + ";ACCESS_MODE_DATA=r";
+        this.readOnlyJdbcUrl = primaryJdbcUrl;
     }
 
     /**
@@ -41,7 +44,11 @@ public class ReadOnlySqlExecutor {
      * @throws SqlExecutionException if the query fails or the timeout is exceeded
      */
     public QueryResult execute(String sql, List<ParamDef> paramDefs, List<Object> params) {
-        try (var connection = DriverManager.getConnection(readOnlyJdbcUrl);
+        var props = new Properties();
+        // org.sqlite.SQLiteConfig.OPEN_READONLY - SQLITE_OPEN_READONLY. Enforced at the SQLite C
+        // layer, so a query can't write even if SqlValidator's text check somehow missed it.
+        props.setProperty("open_mode", String.valueOf(0x00000001));
+        try (var connection = DriverManager.getConnection(readOnlyJdbcUrl, props);
              var statement = connection.prepareStatement(sql)) {
             statement.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
             bindParams(statement, paramDefs, params);
@@ -62,17 +69,27 @@ public class ReadOnlySqlExecutor {
         }
     }
 
+    /**
+     * DATETIME columns hold ISO-8601 text (Spring Data JDBC persists {@link
+     * java.time.LocalDateTime} that way here), so a DATETIME param is bound as matching text. DATE
+     * columns are different: {@link LocalDate} has no explicit writing converter registered (see
+     * {@link com.chatdiet.config.JdbcDialectConfig}'s class-level note - one was tried and reverted
+     * because it desynced {@code save()} from {@code @Query} parameter binding), so the driver's
+     * default takes over and stores it as epoch-millis at start-of-day in the system default zone.
+     * A DATE param is bound the same way so it compares correctly against what's actually stored,
+     * mirroring {@code JdbcDialectConfig.LongToLocalDateConverter}'s inverse on the read side.
+     */
     private Object coerce(Object value, String type) {
         if (value == null || type == null) {
             return value;
         }
         try {
             return switch (type.toUpperCase()) {
-                case "DATE" -> java.sql.Date.valueOf(LocalDate.parse(value.toString()));
+                case "DATE" -> LocalDate.parse(value.toString())
+                        .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
                 case "DATETIME", "TIMESTAMP" -> {
                     var raw = value.toString();
-                    var normalized = raw.length() == 10 ? raw + " 00:00:00" : raw.replace('T', ' ');
-                    yield java.sql.Timestamp.valueOf(normalized);
+                    yield raw.length() == 10 ? raw + "T00:00" : raw;
                 }
                 default -> value;
             };

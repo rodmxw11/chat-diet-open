@@ -28,7 +28,7 @@ class ChartServiceTest {
 
     @DynamicPropertySource
     static void overrideDatasource(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> "jdbc:h2:file:" + tempDir.resolve("chart-test"));
+        registry.add("spring.datasource.url", () -> "jdbc:sqlite:" + tempDir.resolve("chart-test.db"));
     }
 
     @Autowired

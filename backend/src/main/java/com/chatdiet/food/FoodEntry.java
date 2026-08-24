@@ -8,11 +8,9 @@ import java.time.LocalDateTime;
 /**
  * Spring Data JDBC entity for a single logged food entry.
  *
- * @param rawUtterance    the food description as logged (user's words, photo estimate text, etc.)
- * @param costUsd         optional cost of the food, if known; typically {@code null}
+ * @param rawUtterance    the food description as logged (user's words, UPC lookup text, etc.)
  * @param prepMinutes     optional prep time in minutes, if known; typically {@code null}
- * @param source          origin of this entry, e.g. {@code "MANUAL"}, {@code "PHOTO_ESTIMATE"},
- *                        or a UPC/cached-food source tag
+ * @param source          origin of this entry, e.g. {@code "MANUAL"} or a UPC/cached-food source tag
  * @param correctedAt     timestamp of the most recent correction via {@link #corrected}, or
  *                        {@code null} if never corrected
  * @param priorValuesJson JSON snapshot of this entry's values immediately before the most
@@ -26,7 +24,6 @@ public record FoodEntry(
         Double totalProteinG,
         Double totalCarbsG,
         Double totalFatG,
-        Double costUsd,
         Integer prepMinutes,
         String source,
         LocalDateTime correctedAt,
@@ -40,7 +37,7 @@ public record FoodEntry(
     public FoodEntry(LocalDateTime loggedAt, String rawUtterance, Integer totalCalories,
                       Double totalProteinG, Double totalCarbsG, Double totalFatG, String source) {
         this(null, loggedAt, rawUtterance, totalCalories, totalProteinG, totalCarbsG, totalFatG,
-                null, null, source, null, null);
+                null, source, null, null);
     }
 
     /**
@@ -58,6 +55,6 @@ public record FoodEntry(
                 newTotalProteinG != null ? newTotalProteinG : totalProteinG,
                 newTotalCarbsG != null ? newTotalCarbsG : totalCarbsG,
                 newTotalFatG != null ? newTotalFatG : totalFatG,
-                costUsd, prepMinutes, source, LocalDateTime.now(), priorValuesJson);
+                prepMinutes, source, LocalDateTime.now(), priorValuesJson);
     }
 }

@@ -12,26 +12,12 @@ databaseChangeLog:
   - include:
       file: db/changelog/006-create-digestive-event-table.yaml
   - include:
-      file: db/changelog/007-create-requirement-entry-table.yaml
+      file: db/changelog/007-create-daily-target-table.yaml
   - include:
-      file: db/changelog/008-create-daily-target-table.yaml
+      file: db/changelog/008-create-food-item-table.yaml
   - include:
-      file: db/changelog/009-create-food-item-table.yaml
+      file: db/changelog/009-create-shopping-item-table.yaml
   - include:
-      file: db/changelog/010-create-photo-table.yaml
+      file: db/changelog/010-create-saved-query-table.yaml
   - include:
-      file: db/changelog/011-create-recipe-table.yaml
-  - include:
-      file: db/changelog/012-create-recipe-ingredient-table.yaml
-  - include:
-      file: db/changelog/013-create-shopping-item-table.yaml
-  - include:
-      file: db/changelog/014-create-purchase-history-table.yaml
-  - include:
-      file: db/changelog/015-create-saved-query-table.yaml
-  - include:
-      file: db/changelog/016-create-chat-session-table.yaml
-  - include:
-      file: db/changelog/017-create-chat-message-table.yaml
-  - include:
-      file: db/changelog/018-chat-daily-sessions.yaml
+      file: db/changelog/011-create-chat-message-table.yaml

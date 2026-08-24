@@ -31,7 +31,7 @@ class ConversationHistoryStoreTest {
 
     @DynamicPropertySource
     static void datasource(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> "jdbc:h2:file:" + tempDir.resolve("history-store-test"));
+        registry.add("spring.datasource.url", () -> "jdbc:sqlite:" + tempDir.resolve("history-store-test.db"));
         registry.add("chat-diet.chat.context-messages", () -> String.valueOf(CONTEXT_MESSAGES));
     }
 

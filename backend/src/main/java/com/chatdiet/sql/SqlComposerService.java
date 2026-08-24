@@ -6,6 +6,8 @@ import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -60,7 +62,7 @@ public class SqlComposerService {
                         .collect(Collectors.joining("\n"));
 
         return """
-                You are a SQL analyst for a personal diet-tracking H2 database. Given the user's
+                You are a SQL analyst for a personal diet-tracking SQLite database. Given the user's
                 natural-language question, respond with ONLY a single JSON object - no markdown
                 fences, no prose before or after:
                 {"sql": string, "paramDefs": [{"name": string, "type": string}], "params": [...],
@@ -83,12 +85,16 @@ public class SqlComposerService {
                   library.
                 - Never write anything but a SELECT - no INSERT/UPDATE/DELETE/DDL, ever.
 
+                Current date/time: %s. Resolve "today"/"yesterday"/"this week"/etc. against this,
+                not any other assumption of "now" - this subchat has no other source for it.
+
                 Schema:
                 %s
 
                 Existing saved queries:
                 %s
-                """.formatted(schemaDdlProvider.ddl(), savedQueryBlock);
+                """.formatted(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                schemaDdlProvider.ddl(), savedQueryBlock);
     }
 
     private SqlComposition parse(String responseText) {

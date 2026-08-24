@@ -27,7 +27,7 @@ class ReadOnlySqlExecutorTest {
 
     @DynamicPropertySource
     static void overrideDatasource(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> "jdbc:h2:file:" + tempDir.resolve("sql-executor-test"));
+        registry.add("spring.datasource.url", () -> "jdbc:sqlite:" + tempDir.resolve("sql-executor-test.db"));
     }
 
     @Autowired
@@ -53,7 +53,7 @@ class ReadOnlySqlExecutorTest {
                 List.of(new ParamDef("from", "DATETIME")),
                 List.of("2026-06-15T00:00:00"));
 
-        assertThat(result.columns()).contains("RAW_UTTERANCE", "TOTAL_CALORIES");
+        assertThat(result.columns()).contains("raw_utterance", "total_calories");
         assertThat(result.rows()).hasSize(1);
         assertThat(result.rows().get(0)).contains("lunch", 500);
     }

@@ -8,13 +8,13 @@ import java.util.function.Function;
 
 /**
  * IntentTool that logs a named food item using model-estimated calories and macros supplied
- * directly in the request (as opposed to UPC, photo, or cached-food lookups).
+ * directly in the request (as opposed to UPC or cached-food lookups).
  */
 @Component
 @IntentTool(
         name = "log_food",
         intents = {"log_food"},
-        description = "Log a named food item with estimated calories and macros. Named foods only - not for UPC, photo, menu, or recipe-based entries. Do not call for items under 10 calories (e.g. black tea, water); just acknowledge those in the reply."
+        description = "Log a named food item with estimated calories and macros. Named foods only - not for UPC-based entries. Do not call for items under 10 calories (e.g. black tea, water); just acknowledge those in the reply."
 )
 public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
 
