@@ -1,5 +1,6 @@
 package com.chatdiet.food;
 
+import com.chatdiet.dashboard.DailyMacroCacheService;
 import com.chatdiet.intent.IntentTool;
 import com.chatdiet.intent.ToolResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,9 +23,11 @@ public class CorrectFoodEntryTool implements Function<CorrectFoodRequest, ToolRe
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().findAndRegisterModules();
 
     private final FoodEntryRepository foodEntryRepository;
+    private final DailyMacroCacheService dailyMacroCacheService;
 
-    public CorrectFoodEntryTool(FoodEntryRepository foodEntryRepository) {
+    public CorrectFoodEntryTool(FoodEntryRepository foodEntryRepository, DailyMacroCacheService dailyMacroCacheService) {
         this.foodEntryRepository = foodEntryRepository;
+        this.dailyMacroCacheService = dailyMacroCacheService;
     }
 
     /**
@@ -53,6 +56,7 @@ public class CorrectFoodEntryTool implements Function<CorrectFoodRequest, ToolRe
         var updated = prior.corrected(request.totalCalories(), request.totalProteinG(),
                 request.totalCarbsG(), request.totalFatG(), priorValuesJson);
         foodEntryRepository.save(updated);
+        dailyMacroCacheService.recomputeForTimestamp(updated.loggedAt());
 
         return new ToolResult.Success(
                 "Corrected \"%s\": %d kcal, %.1fg protein, %.1fg carbs, %.1fg fat."

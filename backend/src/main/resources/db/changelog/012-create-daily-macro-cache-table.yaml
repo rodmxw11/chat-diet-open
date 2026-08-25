@@ -1,0 +1,46 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-create-daily-macro-cache-table
+      author: chat-diet
+      changes:
+        - createTable:
+            tableName: daily_macro_cache
+            columns:
+              - column:
+                  name: id
+                  type: INTEGER
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: metabolic_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: total_calories
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: protein_g
+                  type: DOUBLE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: carbs_g
+                  type: DOUBLE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fat_g
+                  type: DOUBLE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false

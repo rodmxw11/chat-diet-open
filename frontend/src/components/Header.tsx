@@ -53,6 +53,7 @@ export default function Header() {
   const pendingShoppingCount = useAppSelector(
     (state) => state.shopping.items.filter((item) => item.status === 'PENDING').length,
   )
+  const notesCount = useAppSelector((state) => state.notes.items.length)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const [listening, setListening] = useState(false)
 
@@ -134,6 +135,7 @@ export default function Header() {
             </button>
             <button type="button" role="menuitem" onClick={() => dispatch(setScreen('notes'))}>
               <span>View notes</span>
+              <span className="menu-hint">{notesCount}</span>
             </button>
             <button type="button" role="menuitem" onClick={() => dispatch(openOverlay('queue'))}>
               <span>Waiting to send</span>

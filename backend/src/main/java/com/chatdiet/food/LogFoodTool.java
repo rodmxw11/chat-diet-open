@@ -1,5 +1,6 @@
 package com.chatdiet.food;
 
+import com.chatdiet.dashboard.DailyMacroCacheService;
 import com.chatdiet.intent.IntentTool;
 import com.chatdiet.intent.ToolResult;
 import org.springframework.stereotype.Component;
@@ -19,9 +20,11 @@ import java.util.function.Function;
 public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
 
     private final FoodEntryRepository foodEntryRepository;
+    private final DailyMacroCacheService dailyMacroCacheService;
 
-    public LogFoodTool(FoodEntryRepository foodEntryRepository) {
+    public LogFoodTool(FoodEntryRepository foodEntryRepository, DailyMacroCacheService dailyMacroCacheService) {
         this.foodEntryRepository = foodEntryRepository;
+        this.dailyMacroCacheService = dailyMacroCacheService;
     }
 
     /**
@@ -40,6 +43,7 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
         var entry = new FoodEntry(LoggedAtResolver.resolve(request.loggedAt()), request.description(), request.totalCalories(),
                 request.totalProteinG(), request.totalCarbsG(), request.totalFatG(), "MANUAL");
         foodEntryRepository.save(entry);
+        dailyMacroCacheService.recomputeForTimestamp(entry.loggedAt());
 
         return new ToolResult.Success(
                 "Logged \"%s\": %d kcal, %.1fg protein, %.1fg carbs, %.1fg fat."

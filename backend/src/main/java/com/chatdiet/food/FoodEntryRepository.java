@@ -14,6 +14,10 @@ public interface FoodEntryRepository extends ListCrudRepository<FoodEntry, Long>
     @Query("SELECT * FROM food_entry ORDER BY logged_at DESC LIMIT 1")
     Optional<FoodEntry> findMostRecent();
 
+    /** Returns the earliest logged food entry, if any, used to bound the daily-macro-cache backfill. */
+    @Query("SELECT * FROM food_entry ORDER BY logged_at ASC LIMIT 1")
+    Optional<FoodEntry> findOldest();
+
     /** Returns all entries logged within {@code [start, end)}, ordered chronologically. */
     @Query("SELECT * FROM food_entry WHERE logged_at >= :start AND logged_at < :end ORDER BY logged_at")
     List<FoodEntry> findByLoggedAtBetween(LocalDateTime start, LocalDateTime end);

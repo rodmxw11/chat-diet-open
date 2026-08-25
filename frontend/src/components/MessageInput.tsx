@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { sendMessage, setDraftText } from '../store/chatSlice'
+import { loadSummary } from '../store/summarySlice'
 
 export default function MessageInput() {
   const dispatch = useAppDispatch()
@@ -22,7 +23,10 @@ export default function MessageInput() {
     event.preventDefault()
     const trimmed = text.trim()
     if (!trimmed || status === 'loading') return
-    dispatch(sendMessage(trimmed))
+    // The header's calorie/entry counts are polled independently on a minute-long interval, which
+    // reads as "stuck" right after logging something - refresh it the moment this turn settles
+    // instead of waiting for the next poll tick.
+    dispatch(sendMessage(trimmed)).finally(() => dispatch(loadSummary()))
     dispatch(setDraftText(''))
   }
 

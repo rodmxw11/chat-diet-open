@@ -1,5 +1,6 @@
 package com.chatdiet.fooditem;
 
+import com.chatdiet.dashboard.DailyMacroCacheService;
 import com.chatdiet.food.FoodEntry;
 import com.chatdiet.food.FoodEntryRepository;
 import com.chatdiet.food.LoggedAtResolver;
@@ -14,10 +15,13 @@ public class FoodItemLogger {
 
     private final FoodEntryRepository foodEntryRepository;
     private final FoodItemRepository foodItemRepository;
+    private final DailyMacroCacheService dailyMacroCacheService;
 
-    public FoodItemLogger(FoodEntryRepository foodEntryRepository, FoodItemRepository foodItemRepository) {
+    public FoodItemLogger(FoodEntryRepository foodEntryRepository, FoodItemRepository foodItemRepository,
+                           DailyMacroCacheService dailyMacroCacheService) {
         this.foodEntryRepository = foodEntryRepository;
         this.foodItemRepository = foodItemRepository;
+        this.dailyMacroCacheService = dailyMacroCacheService;
     }
 
     /**
@@ -35,6 +39,7 @@ public class FoodItemLogger {
                 scaled.proteinG(), scaled.carbsG(), scaled.fatG(), item.lookupSource());
         foodEntryRepository.save(entry);
         foodItemRepository.save(item.withUsageBumped());
+        dailyMacroCacheService.recomputeForTimestamp(entry.loggedAt());
 
         return new ToolResult.Success(
                 "Logged \"%s\" (%.0fg): %d kcal, %.1fg protein, %.1fg carbs, %.1fg fat."

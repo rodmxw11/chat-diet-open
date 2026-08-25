@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit'
 import { enqueue, listQueued, removeQueued, type QueuedRequest } from '../lib/offlineQueue'
+import { loadSummary } from './summarySlice'
 
 export interface SeriesPoint {
   at: string
@@ -111,15 +112,20 @@ export const sendMessage = createAsyncThunk<ChatApiResponse, string, { rejectVal
 // order matters because ChatController.replyAt depends on clientSentAt ordering.
 export const drainQueue = createAsyncThunk('chat/drainQueue', async (_, { dispatch }) => {
   const items = await listQueued()
+  let sentAny = false
   for (const item of items) {
     try {
       const data = await postChat(item.text, item.clientSentAt)
       await removeQueued(item.id)
       dispatch(queueItemSent({ id: item.id, response: data }))
+      sentAny = true
     } catch {
       break
     }
   }
+  // Replayed turns can log food same as any other - refresh the header rather than leaving it
+  // stuck at whatever it showed before reconnecting.
+  if (sentAny) dispatch(loadSummary())
 })
 
 // Hydrates queued-but-unsent messages back into the chat window on app boot, since redux state

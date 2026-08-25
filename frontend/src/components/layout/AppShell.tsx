@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { loadHistory, loadQueue } from '../../store/chatSlice'
 import { loadShoppingItems } from '../../store/shoppingSlice'
+import { loadNotes } from '../../store/notesSlice'
 import { loadMacros, loadWeightTrend } from '../../store/dashboardSlice'
 import Header from '../Header'
 import ChatWindow from '../ChatWindow'
@@ -28,6 +29,7 @@ export default function AppShell() {
     dispatch(loadQueue())
     dispatch(loadShoppingItems())
     dispatch(loadWeightTrend())
+    dispatch(loadNotes())
   }, [dispatch])
 
   useEffect(() => {
