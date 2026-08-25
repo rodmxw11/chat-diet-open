@@ -21,10 +21,13 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
 
     private final FoodEntryRepository foodEntryRepository;
     private final DailyMacroCacheService dailyMacroCacheService;
+    private final FoodLogVerificationContext foodLogVerificationContext;
 
-    public LogFoodTool(FoodEntryRepository foodEntryRepository, DailyMacroCacheService dailyMacroCacheService) {
+    public LogFoodTool(FoodEntryRepository foodEntryRepository, DailyMacroCacheService dailyMacroCacheService,
+                        FoodLogVerificationContext foodLogVerificationContext) {
         this.foodEntryRepository = foodEntryRepository;
         this.dailyMacroCacheService = dailyMacroCacheService;
+        this.foodLogVerificationContext = foodLogVerificationContext;
     }
 
     /**
@@ -44,6 +47,7 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
                 request.totalProteinG(), request.totalCarbsG(), request.totalFatG(), "MANUAL");
         foodEntryRepository.save(entry);
         dailyMacroCacheService.recomputeForTimestamp(entry.loggedAt());
+        foodLogVerificationContext.markLogged();
 
         return new ToolResult.Success(
                 "Logged \"%s\": %d kcal, %.1fg protein, %.1fg carbs, %.1fg fat."

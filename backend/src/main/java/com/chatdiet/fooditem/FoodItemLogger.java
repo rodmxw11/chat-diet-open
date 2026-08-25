@@ -3,6 +3,7 @@ package com.chatdiet.fooditem;
 import com.chatdiet.dashboard.DailyMacroCacheService;
 import com.chatdiet.food.FoodEntry;
 import com.chatdiet.food.FoodEntryRepository;
+import com.chatdiet.food.FoodLogVerificationContext;
 import com.chatdiet.food.LoggedAtResolver;
 import com.chatdiet.intent.ToolResult;
 import org.springframework.stereotype.Component;
@@ -16,12 +17,15 @@ public class FoodItemLogger {
     private final FoodEntryRepository foodEntryRepository;
     private final FoodItemRepository foodItemRepository;
     private final DailyMacroCacheService dailyMacroCacheService;
+    private final FoodLogVerificationContext foodLogVerificationContext;
 
     public FoodItemLogger(FoodEntryRepository foodEntryRepository, FoodItemRepository foodItemRepository,
-                           DailyMacroCacheService dailyMacroCacheService) {
+                           DailyMacroCacheService dailyMacroCacheService,
+                           FoodLogVerificationContext foodLogVerificationContext) {
         this.foodEntryRepository = foodEntryRepository;
         this.foodItemRepository = foodItemRepository;
         this.dailyMacroCacheService = dailyMacroCacheService;
+        this.foodLogVerificationContext = foodLogVerificationContext;
     }
 
     /**
@@ -40,6 +44,7 @@ public class FoodItemLogger {
         foodEntryRepository.save(entry);
         foodItemRepository.save(item.withUsageBumped());
         dailyMacroCacheService.recomputeForTimestamp(entry.loggedAt());
+        foodLogVerificationContext.markLogged();
 
         return new ToolResult.Success(
                 "Logged \"%s\" (%.0fg): %d kcal, %.1fg protein, %.1fg carbs, %.1fg fat."
