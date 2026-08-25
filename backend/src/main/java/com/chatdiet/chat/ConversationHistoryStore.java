@@ -59,19 +59,32 @@ public class ConversationHistoryStore {
     }
 
     /**
+     * Records both halves of a turn with no token usage recorded. See
+     * {@link #append(LocalDate, LocalDateTime, String, String, TokenUsage, TokenUsage)}.
+     */
+    public void append(LocalDate metabolicDate, LocalDateTime occurredAt, String userText, String assistantText) {
+        append(metabolicDate, occurredAt, userText, assistantText, null, null);
+    }
+
+    /**
      * Records both halves of a turn: persists them to the durable log and adds them to the
      * day's in-memory context window.
      *
      * @param occurredAt when the turn was composed - for an offline-queued message this is
      *                   earlier than now, and it must match the day {@code metabolicDate} was
      *                   derived from
+     * @param chatUsage  the main chat model's token usage for this turn, or {@code null}
+     * @param opusUsage  the SQL-composer subchat's token usage for this turn (summed if
+     *                   {@code run_sql} ran more than once), or {@code null} if it didn't run
      */
     public synchronized void append(LocalDate metabolicDate, LocalDateTime occurredAt,
-                                     String userText, String assistantText) {
+                                     String userText, String assistantText,
+                                     TokenUsage chatUsage, TokenUsage opusUsage) {
         evictOlderThanYesterday(metabolicDate);
 
         chatMessageRepository.save(new ChatMessage(metabolicDate, "user", userText, occurredAt));
-        chatMessageRepository.save(new ChatMessage(metabolicDate, "assistant", assistantText, occurredAt));
+        chatMessageRepository.save(
+                new ChatMessage(metabolicDate, "assistant", assistantText, occurredAt, chatUsage, opusUsage));
 
         var deque = byDate.computeIfAbsent(metabolicDate, this::rehydrate);
         deque.addLast(new UserMessage(userText));

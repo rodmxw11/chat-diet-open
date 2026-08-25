@@ -1,6 +1,7 @@
 package com.chatdiet.sql;
 
 import com.anthropic.models.messages.Model;
+import com.chatdiet.chat.TokenUsage;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
@@ -28,9 +29,12 @@ public class SqlComposerService {
 
     private final ChatClient chatClient;
     private final SchemaDdlProvider schemaDdlProvider;
+    private final SqlUsageContext sqlUsageContext;
 
-    public SqlComposerService(ChatClient.Builder chatClientBuilder, SchemaDdlProvider schemaDdlProvider) {
+    public SqlComposerService(ChatClient.Builder chatClientBuilder, SchemaDdlProvider schemaDdlProvider,
+                               SqlUsageContext sqlUsageContext) {
         this.schemaDdlProvider = schemaDdlProvider;
+        this.sqlUsageContext = sqlUsageContext;
         this.chatClient = chatClientBuilder
                 .defaultOptions(AnthropicChatOptions.builder().model(Model.CLAUDE_OPUS_4_5))
                 .build();
@@ -44,13 +48,15 @@ public class SqlComposerService {
      *                                  composition
      */
     public SqlComposition compose(String question, List<SavedQuery> savedQueries) {
-        var responseText = chatClient.prompt()
+        var chatResponse = chatClient.prompt()
                 .system(buildSystemPrompt(savedQueries))
                 .user(question)
                 .call()
-                .content();
+                .chatResponse();
 
-        return parse(responseText);
+        sqlUsageContext.record(TokenUsage.from(chatResponse.getMetadata().getUsage()));
+
+        return parse(chatResponse.getResult().getOutput().getText());
     }
 
     private String buildSystemPrompt(List<SavedQuery> savedQueries) {

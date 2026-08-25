@@ -114,6 +114,37 @@ class ConversationHistoryStoreTest {
     }
 
     @Test
+    void persistsTokenUsageOnTheAssistantRowOnly() {
+        var chatUsage = new TokenUsage(120, 40, 160);
+        var opusUsage = new TokenUsage(500, 80, 580);
+        historyStore.append(TODAY, TODAY.atTime(9, 0), "what did I eat today", "You logged...",
+                chatUsage, opusUsage);
+
+        var messages = historyStore.messagesFor(TODAY);
+        var user = messages.get(0);
+        var assistant = messages.get(1);
+
+        assertThat(user.promptTokens()).as("usage is only ever recorded on the assistant half of a turn").isNull();
+        assertThat(assistant.promptTokens()).isEqualTo(120);
+        assertThat(assistant.completionTokens()).isEqualTo(40);
+        assertThat(assistant.totalTokens()).isEqualTo(160);
+        assertThat(assistant.opusPromptTokens()).isEqualTo(500);
+        assertThat(assistant.opusCompletionTokens()).isEqualTo(80);
+        assertThat(assistant.opusTotalTokens()).isEqualTo(580);
+    }
+
+    @Test
+    void leavesOpusUsageNullWhenRunSqlDidNotRun() {
+        historyStore.append(TODAY, TODAY.atTime(9, 0), "I ate a banana", "Logged.",
+                new TokenUsage(80, 20, 100), null);
+
+        var assistant = historyStore.messagesFor(TODAY).get(1);
+
+        assertThat(assistant.totalTokens()).isEqualTo(100);
+        assertThat(assistant.opusTotalTokens()).isNull();
+    }
+
+    @Test
     void staleDaysAreEvictedSoTheCacheDoesNotGrowForever() {
         historyStore.get(TODAY.minusDays(5));
         historyStore.get(YESTERDAY);

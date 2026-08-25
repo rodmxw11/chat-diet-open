@@ -23,3 +23,5 @@ databaseChangeLog:
       file: db/changelog/011-create-chat-message-table.yaml
   - include:
       file: db/changelog/012-create-daily-macro-cache-table.yaml
+  - include:
+      file: db/changelog/013-add-token-usage-to-chat-message.yaml

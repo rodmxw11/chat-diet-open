@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-add-token-usage-to-chat-message
+      author: chat-diet
+      changes:
+        - addColumn:
+            tableName: chat_message
+            columns:
+              - column:
+                  name: prompt_tokens
+                  type: INT
+              - column:
+                  name: completion_tokens
+                  type: INT
+              - column:
+                  name: total_tokens
+                  type: INT
+              - column:
+                  name: opus_prompt_tokens
+                  type: INT
+              - column:
+                  name: opus_completion_tokens
+                  type: INT
+              - column:
+                  name: opus_total_tokens
+                  type: INT

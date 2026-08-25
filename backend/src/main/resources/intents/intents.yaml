@@ -31,7 +31,12 @@
     whatever specific time is implied by the wording, or a reasonable
     default if none is. An explicit clock time in the message always wins
     over a meal-name default. Leave loggedAt unset when no past day or meal
-    is mentioned - it then logs under the current time as before.
+    is mentioned - it then logs under the current time as before. Never
+    compose a "Logged: ..." reply without actually calling one of these
+    tools first, even mid-conversation after several similar turns in a
+    row - each food mention needs its own real tool call, every time; a
+    reply describing calories/macros with no tool call behind it is data
+    loss, not a shortcut.
   enabled: true
 
 - name: log_weight
