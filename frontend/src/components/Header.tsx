@@ -86,6 +86,9 @@ export default function Header() {
               <span>Shopping mode</span>
               <span className="menu-hint">{pendingShoppingCount} pending</span>
             </button>
+            <button type="button" role="menuitem" onClick={() => dispatch(setScreen('notes'))}>
+              <span>View notes</span>
+            </button>
             <button type="button" role="menuitem" onClick={() => dispatch(openOverlay('queue'))}>
               <span>Waiting to send</span>
               <span className="menu-hint">{queueCount}</span>

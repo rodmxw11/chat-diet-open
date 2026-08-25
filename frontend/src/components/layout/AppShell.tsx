@@ -7,6 +7,7 @@ import Header from '../Header'
 import ChatWindow from '../ChatWindow'
 import MessageInput from '../MessageInput'
 import ShoppingModeView from '../shopping/ShoppingModeView'
+import NotesView from '../notes/NotesView'
 import Sidebar from './Sidebar'
 import ChartSheets from '../charts/ChartSheets'
 import OfflineQueuePanel from '../OfflineQueuePanel'
@@ -36,15 +37,15 @@ export default function AppShell() {
   return (
     <div className="app-shell">
       <div className="main-column">
-        {screen === 'chat' ? (
+        {screen === 'chat' && (
           <>
             <Header />
             <ChatWindow />
             <MessageInput />
           </>
-        ) : (
-          <ShoppingModeView />
         )}
+        {screen === 'shop' && <ShoppingModeView />}
+        {screen === 'notes' && <NotesView />}
       </div>
       <Sidebar />
       <ChartSheets />
