@@ -137,6 +137,9 @@ export default function Header() {
               <span>View notes</span>
               <span className="menu-hint">{notesCount}</span>
             </button>
+            <button type="button" role="menuitem" onClick={() => dispatch(setScreen('foods'))}>
+              <span>Daily foods</span>
+            </button>
             <button type="button" role="menuitem" onClick={() => dispatch(openOverlay('queue'))}>
               <span>Waiting to send</span>
               <span className="menu-hint">{queueCount}</span>

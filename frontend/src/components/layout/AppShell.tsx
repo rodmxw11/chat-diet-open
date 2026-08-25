@@ -9,6 +9,7 @@ import ChatWindow from '../ChatWindow'
 import MessageInput from '../MessageInput'
 import ShoppingModeView from '../shopping/ShoppingModeView'
 import NotesView from '../notes/NotesView'
+import DailyFoodsView from '../foods/DailyFoodsView'
 import Sidebar from './Sidebar'
 import ChartSheets from '../charts/ChartSheets'
 import OfflineQueuePanel from '../OfflineQueuePanel'
@@ -48,6 +49,7 @@ export default function AppShell() {
         )}
         {screen === 'shop' && <ShoppingModeView />}
         {screen === 'notes' && <NotesView />}
+        {screen === 'foods' && <DailyFoodsView />}
       </div>
       <Sidebar />
       <ChartSheets />

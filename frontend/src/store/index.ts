@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit'
 import chatReducer from './chatSlice'
 import connectivityReducer from './connectivitySlice'
 import dashboardReducer from './dashboardSlice'
+import foodEntriesReducer from './foodEntriesSlice'
 import notesReducer from './notesSlice'
 import shoppingReducer from './shoppingSlice'
 import summaryReducer from './summarySlice'
@@ -12,6 +13,7 @@ export const store = configureStore({
     chat: chatReducer,
     connectivity: connectivityReducer,
     dashboard: dashboardReducer,
+    foodEntries: foodEntriesReducer,
     notes: notesReducer,
     shopping: shoppingReducer,
     summary: summaryReducer,
