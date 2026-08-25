@@ -295,6 +295,17 @@ class IntentRoutingTest {
     }
 
     @Test
+    void routesPastDayFoodQuestionToListFoodEntriesTool() {
+        chatService.reply("I ate a chicken sandwich, 450 calories, 30g protein, 40g carbs, 15g fat");
+
+        var reply = chatService.reply("what did I eat today?");
+
+        assertThat(reply).as("list_food_entries should have produced a non-empty reply").isNotBlank();
+        assertThat(reply).as("reply should mention the logged food, not claim nothing was found")
+                .containsIgnoringCase("chicken");
+    }
+
+    @Test
     void routesAnalyticalQuestionToRunSqlTool() {
         chatService.reply("I ate a chicken sandwich, 450 calories, 30g protein, 40g carbs, 15g fat");
 

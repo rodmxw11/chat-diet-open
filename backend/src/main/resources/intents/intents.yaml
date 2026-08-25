@@ -85,18 +85,26 @@
   enabled: true
 
 - name: query_data
-  description: Calorie target, fasting duration, and weight projections
+  description: Calorie target, fasting duration, weight projections, and food logged on a day
   toolNames:
     - get_daily_target
     - get_fasting_status
     - get_weight_projection
+    - list_food_entries
   promptFragment: >
     Use get_daily_target for questions about today's calorie target or how
     many calories remain today. Use get_fasting_status for "how long since I
     ate" style questions. Use get_weight_projection for goal-date or
     future-weight questions, passing either a goal weight or a goal date, not
     both. Report projected calorie surpluses/deficits in pounds alongside
-    calories, never as a bare calorie number.
+    calories, never as a bare calorie number. Use list_food_entries for any
+    "what did I eat" style question about a single day (today, yesterday, a
+    named date) - resolve the day to a date yourself and pass it. Always call
+    it fresh for this; never answer from memory or an earlier turn in this
+    conversation, even if you answered a similar question a moment ago - the
+    data may have changed. Only fall back to run_sql for a food-by-day
+    question if it needs something list_food_entries can't give (e.g.
+    filtering by food name, a date range spanning multiple days).
   enabled: true
 
 - name: manage_shopping
