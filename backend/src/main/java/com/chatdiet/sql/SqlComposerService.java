@@ -77,6 +77,13 @@ public class SqlComposerService {
                 - "params" gives the actual bound values for THIS question, same order as
                   paramDefs, as native JSON types. DATE/DATETIME values are ISO-8601 strings
                   (e.g. "2026-07-01" or "2026-07-01T00:00:00").
+                - To filter a TIMESTAMP column (e.g. logged_at) by calendar day, NEVER write
+                  "date(logged_at) = ?" - that compares text against a value bound for a DATE
+                  column and silently matches nothing. Instead use a half-open range with two
+                  DATETIME params: "logged_at >= ? AND logged_at < ?" bound to that day's start
+                  and the next day's start (e.g. "2026-07-01T00:00:00" and "2026-07-02T00:00:00").
+                  Only use the DATE param type for columns whose schema type is DATE (e.g.
+                  target_date, metabolic_date) - compare those with plain equality.
                 - If an existing saved query below already answers this shape of question (same
                   structure, different filter values), reuse its exact "sql" verbatim and set
                   "reusedExistingQuery" to its name instead of rephrasing working SQL.
