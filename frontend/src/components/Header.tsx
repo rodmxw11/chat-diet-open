@@ -1,14 +1,50 @@
 import { useRef, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
-import { appendDraftText, toggleTts } from '../store/chatSlice'
+import { appendDraftText, hideChat, refreshHistory, showChat, toggleTts } from '../store/chatSlice'
 import { openOverlay, setScreen, toggleMenu, closeMenu } from '../store/uiSlice'
 import StatusLight from './StatusLight'
 
 const SpeechRecognitionCtor = window.SpeechRecognition ?? window.webkitSpeechRecognition
 
+// Plain emoji eyes (👁/🙈) render inconsistently across platforms - a hand-drawn eye vs. a monkey
+// covering its face, at whatever weight the system emoji font happens to use. These are simple
+// stroke-based eye / eye-with-slash icons instead, so both states read as the same glyph and the
+// weight (strokeWidth) is ours to control.
+function EyeIcon() {
+  return (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12Z"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3.2" stroke="currentColor" strokeWidth="2.4" />
+    </svg>
+  )
+}
+
+function EyeOffIcon() {
+  return (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12Z"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3.2" stroke="currentColor" strokeWidth="2.4" />
+      <line x1="2.5" y1="21.5" x2="21.5" y2="2.5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 export default function Header() {
   const dispatch = useAppDispatch()
   const ttsEnabled = useAppSelector((state) => state.chat.ttsEnabled)
+  const chatHidden = useAppSelector((state) => state.chat.hidden)
   const status = useAppSelector((state) => state.chat.status)
   const summary = useAppSelector((state) => state.summary.data)
   const menuOpen = useAppSelector((state) => state.ui.menu)
@@ -19,6 +55,16 @@ export default function Header() {
   )
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const [listening, setListening] = useState(false)
+
+  const toggleChatHidden = () => {
+    if (chatHidden) {
+      // Un-hiding pulls in anything logged from another device while this one wasn't watching.
+      dispatch(showChat())
+      dispatch(refreshHistory())
+    } else {
+      dispatch(hideChat())
+    }
+  }
 
   const toggleListening = () => {
     if (!SpeechRecognitionCtor) return
@@ -98,6 +144,16 @@ export default function Header() {
         {menuOpen && <div className="menu-backdrop" onClick={() => dispatch(closeMenu())} />}
       </div>
       <div className="app-header-actions">
+        <button
+          type="button"
+          className={`icon-toggle ${chatHidden ? 'active' : ''}`}
+          onClick={toggleChatHidden}
+          aria-pressed={chatHidden}
+          title={chatHidden ? 'Chat history hidden - tap to show it again' : 'Hide chat history'}
+          aria-label={chatHidden ? 'Show chat history' : 'Hide chat history'}
+        >
+          {chatHidden ? <EyeOffIcon /> : <EyeIcon />}
+        </button>
         {SpeechRecognitionCtor && (
           <button
             type="button"

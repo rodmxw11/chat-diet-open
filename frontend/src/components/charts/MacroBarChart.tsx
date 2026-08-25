@@ -1,10 +1,7 @@
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, LabelList, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { setRange, type MacroRange } from '../../store/dashboardSlice'
 
-// Recharts' own label-callback props type numeric fields as `string | number | undefined`, so
-// this accepts the same shape and normalizes to numbers internally rather than fighting the
-// library's type with a narrower interface.
 // Recharts' label-callback props type numeric fields loosely (string | number | boolean | ...),
 // so this accepts `unknown` for each and normalizes to numbers internally rather than fighting
 // the library's contravariant callback typing with a narrower interface.
@@ -14,7 +11,6 @@ interface RawLabelProps {
   width?: unknown
   height?: unknown
   value?: unknown
-  index?: unknown
 }
 
 function num(value: unknown): number | undefined {
@@ -29,9 +25,16 @@ function formatDayLabel(iso: string): string {
 }
 
 // Static, non-interactive stacked bar chart per the design handoff - no tooltip, legend, hover,
-// or click targets. The calorie badge (total, above the stack) and the in-bar gram+letter labels
-// are both rendered as custom label functions since Recharts doesn't have first-class primitives
-// for either.
+// or click targets. The calorie badge (above the stack) and the in-bar gram+letter labels are
+// both rendered as custom label content, attached via a LabelList with an explicit dataKey on
+// each Bar rather than that Bar's own `label` prop. Two independent Recharts quirks make that
+// necessary: (1) for a stacked series, the `value` a label callback receives is the cumulative
+// stack height up to and including that segment, not the segment's own amount - so without this,
+// "protein" would render as protein+fat+carbs, "fat" as protein+fat, and so on; (2) Recharts
+// silently skips rendering (and renumbers from zero) bars for days with no data, so an `index`
+// handed to a label callback doesn't line up with the day it looks like it should. LabelList's
+// dataKey sidesteps both: it resolves the value straight from each rendered point's own
+// underlying row via `getValueByDataKey`, correct regardless of stacking or skipped days.
 function CalorieBadge(props: RawLabelProps) {
   const x = num(props.x)
   const y = num(props.y)
@@ -107,35 +110,16 @@ export default function MacroBarChart() {
             interval={range === 30 ? 3 : 0}
           />
           <YAxis hide />
-          <Bar
-            dataKey="proteinG"
-            stackId="macros"
-            fill="var(--macro-protein)"
-            isAnimationActive={false}
-            label={showInBarLabels ? segmentLabel('P') : undefined}
-          />
-          <Bar
-            dataKey="fatG"
-            stackId="macros"
-            fill="var(--macro-fat)"
-            isAnimationActive={false}
-            label={showInBarLabels ? segmentLabel('F') : undefined}
-          />
-          <Bar
-            dataKey="carbsG"
-            stackId="macros"
-            fill="var(--macro-carbs)"
-            isAnimationActive={false}
-            label={(props: RawLabelProps) => {
-              const index = typeof props.index === 'number' ? props.index : -1
-              return (
-                <>
-                  <CalorieBadge {...props} value={macros[index]?.calories} />
-                  {showInBarLabels && segmentLabel('C')(props)}
-                </>
-              )
-            }}
-          />
+          <Bar dataKey="proteinG" stackId="macros" fill="var(--macro-protein)" isAnimationActive={false}>
+            {showInBarLabels && <LabelList dataKey="proteinG" content={segmentLabel('P')} />}
+          </Bar>
+          <Bar dataKey="fatG" stackId="macros" fill="var(--macro-fat)" isAnimationActive={false}>
+            {showInBarLabels && <LabelList dataKey="fatG" content={segmentLabel('F')} />}
+          </Bar>
+          <Bar dataKey="carbsG" stackId="macros" fill="var(--macro-carbs)" isAnimationActive={false}>
+            {showInBarLabels && <LabelList dataKey="carbsG" content={segmentLabel('C')} />}
+            <LabelList dataKey="calories" content={CalorieBadge} />
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
