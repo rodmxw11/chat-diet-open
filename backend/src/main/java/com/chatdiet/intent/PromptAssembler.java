@@ -1,18 +1,27 @@
 package com.chatdiet.intent;
 
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Builds the single system prompt and tool list used to configure the app's one {@code ChatClient}.
- * Combines a fixed base persona with the prompt fragments of every enabled {@link IntentDefinition}
- * (from {@link IntentRegistry}), stamps in the current date/time and metabolic-day rollover hour,
- * and resolves each enabled intent's tool names to actual {@link org.springframework.ai.tool.ToolCallback}s
- * via {@link ToolRegistry}. Called once at {@code ChatService} startup.
+ * Builds the system prompt and tool list for the app's one {@code ChatClient}. Combines a fixed
+ * base persona with the prompt fragments of every enabled {@link IntentDefinition} (from
+ * {@link IntentRegistry}), stamps in the current date/time and metabolic-day rollover hour, and
+ * resolves each enabled intent's tool names to actual {@link ToolCallback}s via {@link ToolRegistry}.
+ *
+ * <p>{@link #systemPrompt()} must be called fresh on every chat turn, not cached: it stamps in
+ * {@code LocalDateTime.now()}, and the model resolves "today"/"yesterday"/loggedAt timestamps
+ * against whatever that string says. A version baked in once at {@code ChatService} construction
+ * freezes the model's notion of "now" at server-boot time for as long as the process keeps
+ * running - which silently mis-dates (or, if the model dead-reckons a plausible-but-wrong
+ * loggedAt instead of leaving it unset, mis-times) anything logged after that. {@link #tools()} is
+ * fine to call once at startup - the intent-to-tool mapping doesn't change at runtime.
  */
 @Component
 public class PromptAssembler {
@@ -48,27 +57,30 @@ public class PromptAssembler {
     }
 
     /**
-     * Assembles the full system prompt (base persona + current date/time + each enabled intent's
-     * prompt fragment) and the deduplicated list of tool callbacks for all enabled intents' tool
-     * names.
+     * Builds the full system prompt (base persona + current date/time + each enabled intent's
+     * prompt fragment), freshly on every call so the stamped date/time is never stale.
      */
-    public AssembledPrompt assemble() {
-        var enabledIntents = intentRegistry.enabledIntents();
-
-        var fragments = enabledIntents.stream()
+    public String systemPrompt() {
+        var fragments = intentRegistry.enabledIntents().stream()
                 .map(IntentDefinition::promptFragment)
                 .collect(Collectors.joining("\n"));
 
-        var systemPrompt = BASE_PERSONA
+        return BASE_PERSONA
                 + "\nCurrent date/time: " + LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
                 + ". The metabolic day rolls over at " + dayRolloverHour + ":00, not calendar midnight.\n\n"
                 + fragments;
+    }
 
-        var toolNames = enabledIntents.stream()
+    /**
+     * Resolves the deduplicated list of tool callbacks for every enabled intent's tool names. Safe
+     * to call once at startup - unlike {@link #systemPrompt()}, nothing here depends on the current
+     * time.
+     */
+    public List<ToolCallback> tools() {
+        var toolNames = intentRegistry.enabledIntents().stream()
                 .flatMap(intent -> intent.toolNames().stream())
                 .distinct()
                 .toList();
-
-        return new AssembledPrompt(systemPrompt, toolRegistry.toolsFor(toolNames));
+        return toolRegistry.toolsFor(toolNames);
     }
 }

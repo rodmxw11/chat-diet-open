@@ -9,25 +9,26 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * The main chat loop: builds a single {@link ChatClient} at startup from the assembled system
- * prompt and tool set ({@link PromptAssembler}), then for each turn replays the current metabolic
- * day's recent history from {@link ConversationHistoryStore}, sends the new user message, and
- * hands the exchange back to that store to persist and cache.
+ * The main chat loop: builds a single {@link ChatClient} at startup with the tool set
+ * ({@link PromptAssembler#tools()}), then for each turn sends a freshly-built system prompt
+ * ({@link PromptAssembler#systemPrompt()}) - so the model's notion of "now" never goes stale on a
+ * long-running process - along with the current metabolic day's recent history from
+ * {@link ConversationHistoryStore}, and hands the exchange back to that store to persist and cache.
  */
 @Service
 public class ChatService {
 
     private final ChatClient chatClient;
+    private final PromptAssembler promptAssembler;
     private final ConversationHistoryStore historyStore;
     private final DayBoundaryService dayBoundaryService;
 
     public ChatService(ChatClient.Builder chatClientBuilder, PromptAssembler promptAssembler,
                         ConversationHistoryStore historyStore, DayBoundaryService dayBoundaryService) {
-        var assembled = promptAssembler.assemble();
         this.chatClient = chatClientBuilder
-                .defaultSystem(assembled.systemPrompt())
-                .defaultTools(assembled.tools().toArray())
+                .defaultTools(promptAssembler.tools().toArray())
                 .build();
+        this.promptAssembler = promptAssembler;
         this.historyStore = historyStore;
         this.dayBoundaryService = dayBoundaryService;
     }
@@ -48,6 +49,7 @@ public class ChatService {
     public String reply(LocalDate metabolicDate, LocalDateTime occurredAt, String userText) {
         var history = historyStore.get(metabolicDate);
         var content = chatClient.prompt()
+                .system(promptAssembler.systemPrompt())
                 .messages(history)
                 .user(userText)
                 .call()
