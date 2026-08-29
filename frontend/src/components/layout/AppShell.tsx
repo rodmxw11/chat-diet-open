@@ -1,17 +1,16 @@
 import { useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { loadHistory, loadQueue } from '../../store/chatSlice'
-import { loadShoppingItems } from '../../store/shoppingSlice'
 import { loadNotes } from '../../store/notesSlice'
 import { loadMacros, loadWeightTrend } from '../../store/dashboardSlice'
 import Header from '../Header'
 import ChatWindow from '../ChatWindow'
 import MessageInput from '../MessageInput'
-import ShoppingModeView from '../shopping/ShoppingModeView'
 import NotesView from '../notes/NotesView'
 import DailyFoodsView from '../foods/DailyFoodsView'
 import ChatHistoryView from '../chatHistory/ChatHistoryView'
 import MicronutrientsView from '../micronutrients/MicronutrientsView'
+import FoodItemsView from '../foodItems/FoodItemsView'
 import Sidebar from './Sidebar'
 import ChartSheets from '../charts/ChartSheets'
 import OfflineQueuePanel from '../OfflineQueuePanel'
@@ -37,7 +36,6 @@ export default function AppShell() {
   useEffect(() => {
     dispatch(loadHistory())
     dispatch(loadQueue())
-    dispatch(loadShoppingItems())
     dispatch(loadWeightTrend())
     dispatch(loadNotes())
   }, [dispatch])
@@ -56,11 +54,11 @@ export default function AppShell() {
             <MessageInput />
           </>
         )}
-        {screen === 'shop' && <ShoppingModeView />}
         {screen === 'notes' && <NotesView />}
         {screen === 'foods' && <DailyFoodsView />}
         {screen === 'chatHistory' && <ChatHistoryView />}
         {screen === 'micronutrients' && <MicronutrientsView />}
+        {screen === 'foodItems' && <FoodItemsView />}
       </div>
       <Sidebar />
       <ChartSheets />

@@ -16,9 +16,9 @@ public class OpenApiConfig {
                 .version("0.0.1")
                 .description("""
                         HTTP surface for chat-diet's Spring Boot backend. Most functionality (logging \
-                        food, weight, exercise, shopping, etc.) is driven through the single /api/chat \
-                        endpoint via the model's tool-calling framework rather than dedicated REST \
-                        routes; the remaining endpoints handle barcode input, file downloads, and the \
-                        header/dashboard/shopping screens that don't fit that model."""));
+                        food, weight, exercise, etc.) is driven through the single /api/chat endpoint \
+                        via the model's tool-calling framework rather than dedicated REST routes; the \
+                        remaining endpoints handle barcode input, file downloads, the food-item CRUD \
+                        page, and the header/dashboard screens that don't fit that model."""));
     }
 }

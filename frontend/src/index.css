@@ -1241,6 +1241,89 @@ input {
   width: 22%;
 }
 
+/* ---------- Food items (CRUD) ---------- */
+.food-items-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.food-items-search {
+  flex: 1;
+}
+
+.food-items-tabs {
+  display: flex;
+  border: 1px solid var(--border-input);
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.food-items-tab {
+  min-height: 44px;
+  padding: 0 12px;
+  border: none;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: calc(13px * var(--font-scale));
+  cursor: pointer;
+}
+
+.food-items-tab.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.food-items-badge {
+  font-family: var(--font-mono);
+  font-size: calc(10.5px * var(--font-scale));
+  color: var(--text-muted);
+  background: var(--surface-tint-2);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.food-items-name-button {
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--border-nested-2);
+}
+
+.food-item-form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px 14px;
+}
+
+.food-item-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: calc(12px * var(--font-scale));
+  color: var(--text-muted);
+}
+
+.food-item-field--wide {
+  grid-column: 1 / -1;
+}
+
+.food-item-field input,
+.food-item-field select {
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-input);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: calc(14px * var(--font-scale));
+}
+
 /* ---------- Micronutrients (view-only) ---------- */
 .nutrient-list {
   display: flex;

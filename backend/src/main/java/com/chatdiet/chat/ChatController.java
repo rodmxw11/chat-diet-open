@@ -2,7 +2,6 @@ package com.chatdiet.chat;
 
 import com.chatdiet.chart.ChartResultContext;
 import com.chatdiet.day.DayBoundaryService;
-import com.chatdiet.fooditem.FoodItemPickerContext;
 import com.chatdiet.sql.SqlResultContext;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,10 +16,10 @@ import java.time.LocalDateTime;
 
 /**
  * HTTP entry point for the chat feature. Accepts a plain-text turn, routes it through
- * {@link ChatService}, and enriches the reply with any chart series, SQL answer, or food-item
- * picker options produced as a side effect of the model's tool calls during this request (via the
- * request-scoped {@link ChartResultContext} / {@link SqlResultContext} / {@link FoodItemPickerContext}).
- * Also serves the current metabolic day's transcript so any device can restore it.
+ * {@link ChatService}, and enriches the reply with any chart series or SQL answer produced as a
+ * side effect of the model's tool calls during this request (via the request-scoped
+ * {@link ChartResultContext} / {@link SqlResultContext}). Also serves the current metabolic day's
+ * transcript so any device can restore it.
  */
 @RestController
 public class ChatController {
@@ -33,30 +32,27 @@ public class ChatController {
     private final DayBoundaryService dayBoundaryService;
     private final ChartResultContext chartResultContext;
     private final SqlResultContext sqlResultContext;
-    private final FoodItemPickerContext foodItemPickerContext;
 
     public ChatController(ChatService chatService, ConversationHistoryStore historyStore,
                            DayBoundaryService dayBoundaryService,
-                           ChartResultContext chartResultContext, SqlResultContext sqlResultContext,
-                           FoodItemPickerContext foodItemPickerContext) {
+                           ChartResultContext chartResultContext, SqlResultContext sqlResultContext) {
         this.chatService = chatService;
         this.historyStore = historyStore;
         this.dayBoundaryService = dayBoundaryService;
         this.chartResultContext = chartResultContext;
         this.sqlResultContext = sqlResultContext;
-        this.foodItemPickerContext = foodItemPickerContext;
     }
 
     /**
      * Handles a plain-text chat turn: files it under the metabolic day it was composed on, notes
      * any offline-queue timing skew for the model, and returns the reply along with whatever
-     * chart/SQL/food-item-picker results the turn produced.
+     * chart/SQL results the turn produced.
      */
     @PostMapping(value = "/api/chat", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ChatResponse chat(@RequestBody ChatRequest request) {
         var reply = replyAt(request.clientSentAt(), request.text());
         return new ChatResponse(reply, chartResultContext.series().orElse(null),
-                sqlResultContext.answer().orElse(null), foodItemPickerContext.options().orElse(null));
+                sqlResultContext.answer().orElse(null));
     }
 
     /**

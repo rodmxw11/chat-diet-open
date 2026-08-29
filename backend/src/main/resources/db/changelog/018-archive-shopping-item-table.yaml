@@ -1,0 +1,8 @@
+databaseChangeLog:
+  - changeSet:
+      id: 018-archive-shopping-item-table
+      author: chat-diet
+      changes:
+        - renameTable:
+            oldTableName: shopping_item
+            newTableName: shopping_item_archived

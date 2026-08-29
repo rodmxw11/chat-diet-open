@@ -4,8 +4,8 @@ import chatHistoryReducer from './chatHistorySlice'
 import connectivityReducer from './connectivitySlice'
 import dashboardReducer from './dashboardSlice'
 import foodEntriesReducer from './foodEntriesSlice'
+import foodItemsReducer from './foodItemsSlice'
 import notesReducer from './notesSlice'
-import shoppingReducer from './shoppingSlice'
 import summaryReducer from './summarySlice'
 import uiReducer from './uiSlice'
 
@@ -16,8 +16,8 @@ export const store = configureStore({
     connectivity: connectivityReducer,
     dashboard: dashboardReducer,
     foodEntries: foodEntriesReducer,
+    foodItems: foodItemsReducer,
     notes: notesReducer,
-    shopping: shoppingReducer,
     summary: summaryReducer,
     ui: uiReducer,
   },

@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react'
 import { useAppSelector } from '../store/hooks'
 import ChartRenderer from './ChartRenderer'
 import SqlResultTable from './SqlResultTable'
-import FoodItemPicker from './shopping/FoodItemPicker'
 
 export default function ChatWindow() {
   const messages = useAppSelector((state) => state.chat.messages)
@@ -45,9 +44,6 @@ export default function ChatWindow() {
           {message.text}
           {message.chartSeries && message.chartSeries.length > 0 && <ChartRenderer series={message.chartSeries} />}
           {message.sqlAnswer && <SqlResultTable answer={message.sqlAnswer} />}
-          {message.foodItemOptions && message.foodItemOptions.length > 0 && (
-            <FoodItemPicker options={message.foodItemOptions} />
-          )}
           {message.queued && <div className="queued-caption">queued · waiting for network</div>}
         </div>
       ))}

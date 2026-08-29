@@ -16,12 +16,17 @@
     - log_food_by_upc
     - log_cached_food
   promptFragment: >
-    Log named foods with log_food, estimating calories and macros yourself.
-    For a UPC barcode, use log_food_by_upc. For any named branded/packaged
-    food, always call log_cached_food FIRST (it's a real database lookup, not
-    your memory, and costs nothing to try) before falling back to log_food's
-    own estimate. Only ask a clarifying question first when a missing detail
-    would make the estimate meaningless - otherwise save immediately. Skip
+    Log named foods with log_food, always providing your own best-effort
+    estimate of calories, macros, and micronutrients as a fallback - but if
+    the user states a weighed amount in grams (e.g. "42g of celery"), also
+    pass amountGrams: log_food checks its own food cache and USDA FoodData
+    Central for real nutrition data first in that case, using your estimate
+    only if neither has a match. For a UPC barcode, use log_food_by_upc. For
+    any named branded/packaged food, always call log_cached_food FIRST (it's
+    a real database lookup, not your memory, and costs nothing to try)
+    before falling back to log_food's own estimate. Only ask a clarifying
+    question first when a missing detail would make the estimate
+    meaningless - otherwise save immediately. Skip
     logging (just acknowledge) anything under 10 calories, like black tea or
     water. If the user mentions a past day (e.g. "yesterday", "Tuesday")
     and/or a named meal, resolve a loggedAt timestamp and pass it to whichever
@@ -112,33 +117,6 @@
     filtering by food name, a date range spanning multiple days).
   enabled: true
 
-- name: manage_shopping
-  description: Add, list, and toggle shopping list items; bulk-add from previously logged foods
-  toolNames:
-    - add_shopping_item
-    - list_shopping_items
-    - mark_shopping_item_purchased
-    - revert_shopping_item_purchased
-    - list_food_items_for_shopping
-    - add_shopping_items_bulk
-  promptFragment: >
-    Add items to the shopping list with add_shopping_item whenever the user
-    says they need to buy something (a suggested store is filled in
-    automatically from prior shopping history, so never ask which store).
-    Use list_shopping_items when they ask what's on the list. Use
-    mark_shopping_item_purchased when they say they bought/picked up
-    something, passing the store if mentioned. Use
-    revert_shopping_item_purchased if they say something was marked
-    purchased by mistake or they need it again. When the user wants to pick
-    from foods they've logged before to restock the shopping list (e.g.
-    "add stuff from my food list", "shopping list from my usual items"),
-    call list_food_items_for_shopping - it renders an interactive picker
-    inline, so just acknowledge briefly, don't list the items yourself. Once
-    the user confirms a selection from that picker, call
-    add_shopping_items_bulk with the chosen food item ids. Save immediately,
-    no confirmation needed for direct add/purchase/revert requests.
-  enabled: true
-
 - name: show_chart
   description: Chart requests with flexible time frames
   toolNames:
@@ -181,9 +159,12 @@
     - correct_vitals_entry
   promptFragment: >
     When a correction is linguistically marked (e.g. "the correct BP is 156
-    over 65", "make that two slices", "the scale actually said 181"), update
-    the most recent matching entry with the correct_food_entry,
-    correct_weight_entry, or correct_vitals_entry tool instead of logging a
-    new one. A bare new number with no correction language is always a new
-    entry, never a correction.
+    over 65", "make that two slices", "the scale actually said 181", "make
+    that 50g"), update the most recent matching entry with the
+    correct_food_entry, correct_weight_entry, or correct_vitals_entry tool
+    instead of logging a new one. For a food entry, if the correction is a
+    new weighed amount, pass amountGrams instead of guessing new calories/
+    macros yourself - the app recomputes them from the cached item. A bare
+    new number with no correction language is always a new entry, never a
+    correction.
   enabled: true

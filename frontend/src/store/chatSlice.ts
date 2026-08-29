@@ -22,19 +22,12 @@ export interface SqlAnswer {
   csvId: string
 }
 
-export interface FoodItemOption {
-  id: number
-  name: string
-  typicalServingG: number | null
-}
-
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   text: string
   chartSeries?: ChartSeries[]
   sqlAnswer?: SqlAnswer
-  foodItemOptions?: FoodItemOption[]
   /** True while this message is sitting in the offline queue, not yet delivered to the server. */
   queued?: boolean
   queuedAt?: string
@@ -69,7 +62,6 @@ interface ChatApiResponse {
   reply: string
   chartSeries: ChartSeries[] | null
   sqlAnswer: SqlAnswer | null
-  foodItemOptions: FoodItemOption[] | null
 }
 
 async function postChat(text: string, clientSentAt: string): Promise<ChatApiResponse> {
@@ -211,7 +203,6 @@ const chatSlice = createSlice({
         text: action.payload.response.reply,
         chartSeries: action.payload.response.chartSeries ?? undefined,
         sqlAnswer: action.payload.response.sqlAnswer ?? undefined,
-        foodItemOptions: action.payload.response.foodItemOptions ?? undefined,
       })
     },
   },
@@ -282,7 +273,6 @@ const chatSlice = createSlice({
           text: action.payload.reply,
           chartSeries: action.payload.chartSeries ?? undefined,
           sqlAnswer: action.payload.sqlAnswer ?? undefined,
-          foodItemOptions: action.payload.foodItemOptions ?? undefined,
         })
       })
       .addCase(sendMessage.rejected, (state, action) => {

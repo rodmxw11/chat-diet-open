@@ -29,3 +29,9 @@ databaseChangeLog:
       file: db/changelog/014-add-micronutrients-to-food-entry.yaml
   - include:
       file: db/changelog/015-add-micronutrients-to-food-item.yaml
+  - include:
+      file: db/changelog/016-add-food-item-reference-to-food-entry.yaml
+  - include:
+      file: db/changelog/017-add-deleted-at-to-food-item.yaml
+  - include:
+      file: db/changelog/018-archive-shopping-item-table.yaml

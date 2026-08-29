@@ -51,9 +51,6 @@ export default function Header() {
   const menuOpen = useAppSelector((state) => state.ui.menu)
   const range = useAppSelector((state) => state.dashboard.range)
   const queueCount = useAppSelector((state) => state.chat.queue.length)
-  const pendingShoppingCount = useAppSelector(
-    (state) => state.shopping.items.filter((item) => item.status === 'PENDING').length,
-  )
   const notesCount = useAppSelector((state) => state.notes.items.length)
   const theme = useAppSelector((state) => state.ui.theme)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
@@ -131,9 +128,8 @@ export default function Header() {
               <span>Weight trend</span>
               <span className="menu-hint">30d</span>
             </button>
-            <button type="button" role="menuitem" onClick={() => dispatch(setScreen('shop'))}>
-              <span>Shopping mode</span>
-              <span className="menu-hint">{pendingShoppingCount} pending</span>
+            <button type="button" role="menuitem" onClick={() => dispatch(setScreen('foodItems'))}>
+              <span>Manage food items</span>
             </button>
             <button type="button" role="menuitem" onClick={() => dispatch(setScreen('notes'))}>
               <span>View notes</span>

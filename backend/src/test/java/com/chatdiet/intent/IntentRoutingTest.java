@@ -9,7 +9,6 @@ import com.chatdiet.food.FoodEntryRepository;
 import com.chatdiet.fooditem.FoodItemRepository;
 import com.chatdiet.note.NoteRepository;
 import com.chatdiet.nutrition.DailyTargetRepository;
-import com.chatdiet.shopping.ShoppingItemRepository;
 import com.chatdiet.sql.SavedQueryRepository;
 import com.chatdiet.vitals.VitalsEntryRepository;
 import com.chatdiet.weight.WeightEntryRepository;
@@ -78,9 +77,6 @@ class IntentRoutingTest {
     private ChatMessageRepository chatMessageRepository;
 
     @Autowired
-    private ShoppingItemRepository shoppingItemRepository;
-
-    @Autowired
     private SavedQueryRepository savedQueryRepository;
 
     @BeforeEach
@@ -102,7 +98,6 @@ class IntentRoutingTest {
         // turns would be replayed into this one.
         conversationHistoryStore.clearAll();
         chatMessageRepository.deleteAll();
-        shoppingItemRepository.deleteAll();
         savedQueryRepository.deleteAll();
     }
 
@@ -259,29 +254,6 @@ class IntentRoutingTest {
         assertThat(foodEntryRepository.findAll())
                 .as("log_cached_food should have reused the cached FoodItem for a second entry")
                 .hasSize(2);
-    }
-
-    @Test
-    void routesShoppingRequestToAddShoppingItemTool() {
-        chatService.reply("add almond milk to my shopping list");
-
-        assertThat(shoppingItemRepository.findAll())
-                .as("add_shopping_item should have been invoked and persisted a ShoppingItem")
-                .hasSize(1);
-    }
-
-    @Test
-    void routesPurchaseConfirmationToMarkShoppingItemPurchasedTool() {
-        chatService.reply("add almond milk to my shopping list");
-        assertThat(shoppingItemRepository.findAll()).hasSize(1);
-
-        chatService.reply("I bought the almond milk at Trader Joe's");
-
-        var items = shoppingItemRepository.findAll();
-        assertThat(items).hasSize(1);
-        assertThat(items.iterator().next().status())
-                .as("mark_shopping_item_purchased should have updated the item's status in place")
-                .isEqualTo("PURCHASED");
     }
 
     @Test

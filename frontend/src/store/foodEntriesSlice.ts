@@ -14,6 +14,8 @@ export interface FoodEntry {
   saturatedFatG: number | null
   cholesterolMg: number | null
   potassiumMg: number | null
+  foodItemId: number | null
+  amountGrams: number | null
 }
 
 interface FoodEntriesState {

@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 017-add-deleted-at-to-food-item
+      author: chat-diet
+      changes:
+        - addColumn:
+            tableName: food_item
+            columns:
+              - column:
+                  name: deleted_at
+                  type: DATETIME

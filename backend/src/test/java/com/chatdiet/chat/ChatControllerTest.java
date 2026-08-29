@@ -2,7 +2,6 @@ package com.chatdiet.chat;
 
 import com.chatdiet.chart.ChartResultContext;
 import com.chatdiet.day.DayBoundaryService;
-import com.chatdiet.fooditem.FoodItemPickerContext;
 import com.chatdiet.sql.SqlResultContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,14 +48,12 @@ class ChatControllerTest {
 
         var chartResultContext = mock(ChartResultContext.class);
         var sqlResultContext = mock(SqlResultContext.class);
-        var foodItemPickerContext = mock(FoodItemPickerContext.class);
         when(chartResultContext.series()).thenReturn(Optional.empty());
         when(sqlResultContext.answer()).thenReturn(Optional.empty());
-        when(foodItemPickerContext.options()).thenReturn(Optional.empty());
         when(chatService.reply(any(), any(), anyString())).thenReturn("ok");
 
         var controller = new ChatController(chatService, historyStore, dayBoundaryService,
-                chartResultContext, sqlResultContext, foodItemPickerContext);
+                chartResultContext, sqlResultContext);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 

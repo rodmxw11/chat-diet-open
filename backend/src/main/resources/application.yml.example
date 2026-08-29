@@ -52,3 +52,9 @@ chat-diet:
   # from this.
   goal:
     weekly-rate-lbs: -1.0
+
+  # Free api.data.gov key for USDA FoodData Central (raw/generic-food lookups, e.g. "42g of
+  # celery"). Get one at https://api.data.gov/signup/ - no cost, no expiry. If left blank, that
+  # lookup tier is silently skipped and food logging falls through to a model estimate instead.
+  fdc:
+    api-key: ""

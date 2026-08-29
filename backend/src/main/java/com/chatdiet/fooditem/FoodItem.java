@@ -15,6 +15,9 @@ import java.time.LocalDateTime;
  * @param lookupSource   where this item's nutrition data came from (e.g. an Open Food Facts lookup or a manual entry)
  * @param useCount       number of times this cached item has been used to log a food entry
  * @param lastUsedAt     timestamp of the most recent use, or {@code null} if never used
+ * @param deletedAt      soft-delete timestamp, or {@code null} while active. A deleted item stops
+ *                       surfacing for new UPC/name matches but is left in place for past entries
+ *                       and history to keep resolving against.
  */
 public record FoodItem(
         @Id Long id,
@@ -33,7 +36,8 @@ public record FoodItem(
         Double typicalServingG,
         String lookupSource,
         Integer useCount,
-        LocalDateTime lastUsedAt
+        LocalDateTime lastUsedAt,
+        LocalDateTime deletedAt
 ) {
 
     @PersistenceCreator
@@ -46,7 +50,7 @@ public record FoodItem(
                      Double per100gPotassiumMg, Double typicalServingG, String lookupSource) {
         this(null, name, upc, per100gCalories, per100gProtein, per100gCarbs, per100gFat,
                 per100gFiber, per100gSugar, per100gSodiumMg, per100gSaturatedFat, per100gCholesterolMg,
-                per100gPotassiumMg, typicalServingG, lookupSource, 0, null);
+                per100gPotassiumMg, typicalServingG, lookupSource, 0, null, null);
     }
 
     /** Returns a copy of this item with {@code useCount} incremented and {@code lastUsedAt} set to now. */
@@ -54,7 +58,21 @@ public record FoodItem(
         return new FoodItem(id, name, upc, per100gCalories, per100gProtein, per100gCarbs, per100gFat,
                 per100gFiber, per100gSugar, per100gSodiumMg, per100gSaturatedFat, per100gCholesterolMg,
                 per100gPotassiumMg, typicalServingG, lookupSource, (useCount != null ? useCount : 0) + 1,
-                LocalDateTime.now());
+                LocalDateTime.now(), deletedAt);
+    }
+
+    /** Returns a copy of this item soft-deleted (stamped with the current time). */
+    public FoodItem withDeleted() {
+        return new FoodItem(id, name, upc, per100gCalories, per100gProtein, per100gCarbs, per100gFat,
+                per100gFiber, per100gSugar, per100gSodiumMg, per100gSaturatedFat, per100gCholesterolMg,
+                per100gPotassiumMg, typicalServingG, lookupSource, useCount, lastUsedAt, LocalDateTime.now());
+    }
+
+    /** Returns a copy of this item restored (un-deleted). */
+    public FoodItem withRestored() {
+        return new FoodItem(id, name, upc, per100gCalories, per100gProtein, per100gCarbs, per100gFat,
+                per100gFiber, per100gSugar, per100gSodiumMg, per100gSaturatedFat, per100gCholesterolMg,
+                per100gPotassiumMg, typicalServingG, lookupSource, useCount, lastUsedAt, null);
     }
 
     /** Scales this item's per-100g nutrition profile to the given portion size in grams. */

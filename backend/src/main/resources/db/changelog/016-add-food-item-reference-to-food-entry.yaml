@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 016-add-food-item-reference-to-food-entry
+      author: chat-diet
+      changes:
+        - addColumn:
+            tableName: food_entry
+            columns:
+              - column:
+                  name: food_item_id
+                  type: BIGINT
+              - column:
+                  name: amount_grams
+                  type: DOUBLE
