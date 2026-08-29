@@ -103,7 +103,7 @@ export default function DailyFoodsView() {
           </span>
         </div>
       </header>
-      <div className="shop-list-wrapper">
+      <div className="date-nav-bar">
         <div className="foods-date-row">
           <button
             type="button"
@@ -136,7 +136,8 @@ export default function DailyFoodsView() {
             Today
           </button>
         </div>
-
+      </div>
+      <div className="shop-list-wrapper">
         {status === 'loading' && items.length === 0 && <p className="shop-empty">Loading…</p>}
         {status === 'error' && <p className="shop-empty">Couldn't load food entries.</p>}
         {status !== 'loading' && items.length === 0 && (

@@ -47,11 +47,11 @@ export default function MessageInput() {
         <button type="button" className="quick-entry-button" onClick={() => quickEntry('Note that ')}>
           Note
         </button>
-        <button type="button" className="quick-entry-button" onClick={() => quickEntry('Weight ')}>
-          Weight
-        </button>
         <button type="button" className="quick-entry-button" onClick={() => quickEntry('I ate ')}>
           Ate
+        </button>
+        <button type="button" className="quick-entry-button" onClick={() => quickEntry('Weight ')}>
+          Weight
         </button>
       </div>
       <div className="message-input-row">
