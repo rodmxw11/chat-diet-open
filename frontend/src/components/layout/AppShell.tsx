@@ -22,6 +22,13 @@ export default function AppShell() {
   const dispatch = useAppDispatch()
   const screen = useAppSelector((state) => state.ui.screen)
   const range = useAppSelector((state) => state.dashboard.range)
+  const theme = useAppSelector((state) => state.ui.theme)
+
+  // The CSS reads this attribute to pick which token set applies - see the toggleTheme reducer for
+  // why it stops tracking the OS preference once the user has chosen explicitly.
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+  }, [theme])
 
   // Fetched once here (not inside Sidebar/ChartSheets) so the same dashboard state feeds both the
   // desktop sidebar and the mobile chart sheets without re-fetching when the sheet opens or the

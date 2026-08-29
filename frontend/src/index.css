@@ -49,43 +49,48 @@
   background: var(--page-bg);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --page-bg: #17131f;
-    --header-bg: #1c1726;
-    --surface: #211b2c;
-    --surface-tint: #2a2236;
-    --surface-tint-2: #26202f;
-    --border: #362c47;
-    --border-input: #3a2f4d;
-    --border-nested: #372c48;
-    --border-nested-2: #322940;
+/* AppShell sets this attribute on mount (from a stored choice, or the OS preference the first
+   time), and the toggle in the header menu flips it from then on - see uiSlice's theme reducer. */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
 
-    --text-primary: #ece6f6;
-    --text-bubble: #d9d2ea;
-    --text-muted: #a89bc4;
-    --text-tertiary: #8b7ea6;
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --page-bg: #17131f;
+  --header-bg: #1c1726;
+  --surface: #211b2c;
+  --surface-tint: #2a2236;
+  --surface-tint-2: #26202f;
+  --border: #362c47;
+  --border-input: #3a2f4d;
+  --border-nested: #372c48;
+  --border-nested-2: #322940;
 
-    --accent: #a98cf0;
-    --accent-hover: #bda4f5;
-    --accent-tint: #362b4d;
-    --accent-tint-text: #e2d8f7;
+  --text-primary: #ece6f6;
+  --text-bubble: #d9d2ea;
+  --text-muted: #a89bc4;
+  --text-tertiary: #8b7ea6;
 
-    --macro-protein: #f28b73;
-    --macro-fat: #f0cc70;
-    --macro-carbs: #6fd0a1;
+  --accent: #a98cf0;
+  --accent-hover: #bda4f5;
+  --accent-tint: #362b4d;
+  --accent-tint-text: #e2d8f7;
 
-    --status-online: #6fd0a1;
-    --status-retrying: #e0b74f;
-    --status-offline: #e57a64;
+  --macro-protein: #f28b73;
+  --macro-fat: #f0cc70;
+  --macro-carbs: #6fd0a1;
 
-    --destructive-text: #f0917d;
-    --destructive-border: #6b3a35;
-    --destructive-hover-bg: #3a2422;
+  --status-online: #6fd0a1;
+  --status-retrying: #e0b74f;
+  --status-offline: #e57a64;
 
-    --dash-grid: #33293f;
-    --dash-text-tertiary: #8b7ea6;
-  }
+  --destructive-text: #f0917d;
+  --destructive-border: #6b3a35;
+  --destructive-hover-bg: #3a2422;
+
+  --dash-grid: #33293f;
+  --dash-text-tertiary: #8b7ea6;
 }
 
 * {

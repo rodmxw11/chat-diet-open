@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { appendDraftText, hideChat, refreshHistory, showChat, toggleTts } from '../store/chatSlice'
-import { openOverlay, setScreen, toggleMenu, closeMenu } from '../store/uiSlice'
+import { openOverlay, setScreen, toggleMenu, closeMenu, toggleTheme } from '../store/uiSlice'
 import StatusLight from './StatusLight'
 
 const SpeechRecognitionCtor = window.SpeechRecognition ?? window.webkitSpeechRecognition
@@ -54,6 +54,7 @@ export default function Header() {
     (state) => state.shopping.items.filter((item) => item.status === 'PENDING').length,
   )
   const notesCount = useAppSelector((state) => state.notes.items.length)
+  const theme = useAppSelector((state) => state.ui.theme)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const [listening, setListening] = useState(false)
 
@@ -146,6 +147,10 @@ export default function Header() {
             <button type="button" role="menuitem" onClick={() => dispatch(openOverlay('queue'))}>
               <span>Waiting to send</span>
               <span className="menu-hint">{queueCount}</span>
+            </button>
+            <button type="button" role="menuitem" onClick={() => dispatch(toggleTheme())}>
+              <span>Dark mode</span>
+              <span className="menu-hint">{theme === 'dark' ? 'On' : 'Off'}</span>
             </button>
           </div>
         )}
