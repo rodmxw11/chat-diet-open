@@ -1,4 +1,4 @@
-import { Bar, BarChart, LabelList, ResponsiveContainer, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, LabelList, ResponsiveContainer, usePlotArea, XAxis, YAxis } from 'recharts'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { setRange, type MacroRange } from '../../store/dashboardSlice'
 
@@ -76,11 +76,47 @@ function segmentLabel(letter: string) {
   }
 }
 
+// Days with nothing logged carry calories: 0 (the backend fills every day in range, not just ones
+// with entries) - counting those would drag the average toward zero on a sparsely-logged range, so
+// only days that actually have food logged contribute to it.
+function averageCalories(macros: { calories: number }[]): number | null {
+  const loggedDays = macros.filter((day) => day.calories > 0)
+  if (loggedDays.length === 0) return null
+  return loggedDays.reduce((sum, day) => sum + day.calories, 0) / loggedDays.length
+}
+
+// The visible bars are stacked macro grams, not calories - calories only ever appear as the badge
+// text above each bar, positioned off the bar's own height, so there's no calorie-scaled axis to
+// hang a Recharts <ReferenceLine> off. Rather than fight Recharts' multi-axis wiring for an axis no
+// Bar uses, this maps `average` onto the plot area directly (0 at the bottom, maxCalories at the
+// top) and draws a plain SVG line - geometrically independent of the bars' own gram scale. The
+// "avg N cal" text lives in the card header instead of riding on the line itself: with narrow bars
+// (30-day view especially) a tall day's bar/badge can sit right where the line crosses, so an
+// in-chart label risked getting covered or looking like a mismatched box floating over a bar.
+function AverageCalorieLine({ average, maxCalories }: { average: number; maxCalories: number }) {
+  const plotArea = usePlotArea()
+  if (!plotArea) return null
+  const y = plotArea.y + plotArea.height * (1 - average / maxCalories)
+  return (
+    <line
+      x1={plotArea.x}
+      x2={plotArea.x + plotArea.width}
+      y1={y}
+      y2={y}
+      stroke="var(--text-muted)"
+      strokeDasharray="4 4"
+      strokeWidth={1.5}
+    />
+  )
+}
+
 export default function MacroBarChart() {
   const dispatch = useAppDispatch()
   const range = useAppSelector((state) => state.dashboard.range)
   const macros = useAppSelector((state) => state.dashboard.macros)
   const showInBarLabels = range === 7
+  const average = averageCalories(macros)
+  const maxCalories = Math.max(1, ...macros.map((day) => day.calories))
 
   return (
     <div className="dash-card macro-chart-card">
@@ -99,6 +135,7 @@ export default function MacroBarChart() {
           ))}
         </div>
       </div>
+      {average !== null && <div className="macro-chart-avg-caption">avg {Math.round(average)} cal</div>}
       <ResponsiveContainer width="100%" height={250}>
         <BarChart data={macros} margin={{ top: 24, right: 4, left: -28, bottom: 0 }} barCategoryGap={range === 30 ? 2 : 8}>
           <XAxis
@@ -120,6 +157,7 @@ export default function MacroBarChart() {
             {showInBarLabels && <LabelList dataKey="carbsG" content={segmentLabel('C')} />}
             <LabelList dataKey="calories" content={CalorieBadge} />
           </Bar>
+          {average !== null && <AverageCalorieLine average={average} maxCalories={maxCalories} />}
         </BarChart>
       </ResponsiveContainer>
     </div>

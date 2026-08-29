@@ -85,25 +85,25 @@ export default function DailyFoodsView() {
 
   return (
     <div className="shop-screen">
-      <header className="app-header">
-        <button
-          type="button"
-          className="back-button"
-          onClick={() => dispatch(setScreen('chat'))}
-          aria-label="Back to chat"
-        >
-          ←
-        </button>
-        <div className="shop-header-text">
-          <span className="shop-title">Daily Foods</span>
-          <span className="shop-progress">
-            {items.length > 0
-              ? `Calories: ${Math.round(totalCalories)} Macros: ${formatMacros(totalCarbs, totalFat, totalProtein)}`
-              : `${items.length} logged`}
-          </span>
+      <header className="app-header app-header--stacked">
+        <div className="app-header-top-row">
+          <button
+            type="button"
+            className="back-button"
+            onClick={() => dispatch(setScreen('chat'))}
+            aria-label="Back to chat"
+          >
+            ←
+          </button>
+          <div className="shop-header-text">
+            <span className="shop-title">Daily Foods</span>
+            <span className="shop-progress">
+              {items.length > 0
+                ? `Calories: ${Math.round(totalCalories)} Macros: ${formatMacros(totalCarbs, totalFat, totalProtein)}`
+                : `${items.length} logged`}
+            </span>
+          </div>
         </div>
-      </header>
-      <div className="date-nav-bar">
         <div className="foods-date-row">
           <button
             type="button"
@@ -136,7 +136,7 @@ export default function DailyFoodsView() {
             Today
           </button>
         </div>
-      </div>
+      </header>
       <div className="shop-list-wrapper">
         {status === 'loading' && items.length === 0 && <p className="shop-empty">Loading…</p>}
         {status === 'error' && <p className="shop-empty">Couldn't load food entries.</p>}
