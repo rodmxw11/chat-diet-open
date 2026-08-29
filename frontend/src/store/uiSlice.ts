@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 
-export type Screen = 'chat' | 'shop' | 'notes' | 'foods' | 'chatHistory'
+export type Screen = 'chat' | 'shop' | 'notes' | 'foods' | 'chatHistory' | 'micronutrients'
 export type Overlay = null | 'chartsMacros' | 'chartsWeight' | 'queue'
 export type Theme = 'light' | 'dark'
 

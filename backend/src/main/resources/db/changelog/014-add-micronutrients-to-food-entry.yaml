@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: 014-add-micronutrients-to-food-entry
+      author: chat-diet
+      changes:
+        - addColumn:
+            tableName: food_entry
+            columns:
+              - column:
+                  name: fiber_g
+                  type: DOUBLE
+              - column:
+                  name: sugar_g
+                  type: DOUBLE
+              - column:
+                  name: sodium_mg
+                  type: DOUBLE
+              - column:
+                  name: saturated_fat_g
+                  type: DOUBLE
+              - column:
+                  name: cholesterol_mg
+                  type: DOUBLE
+              - column:
+                  name: potassium_mg
+                  type: DOUBLE

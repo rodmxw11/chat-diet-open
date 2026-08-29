@@ -40,7 +40,9 @@ public class FoodItemLogger {
     public ToolResult.Success logScaled(FoodItem item, double grams, LocalDateTime loggedAt) {
         var scaled = item.scaledTo(grams);
         var entry = new FoodEntry(LoggedAtResolver.resolve(loggedAt), item.name(), scaled.calories(),
-                scaled.proteinG(), scaled.carbsG(), scaled.fatG(), item.lookupSource());
+                scaled.proteinG(), scaled.carbsG(), scaled.fatG(), scaled.fiberG(), scaled.sugarG(),
+                scaled.sodiumMg(), scaled.saturatedFatG(), scaled.cholesterolMg(), scaled.potassiumMg(),
+                item.lookupSource());
         foodEntryRepository.save(entry);
         foodItemRepository.save(item.withUsageBumped());
         dailyMacroCacheService.recomputeForTimestamp(entry.loggedAt());

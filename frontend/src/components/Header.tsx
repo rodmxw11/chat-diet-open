@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { appendDraftText, hideChat, refreshHistory, showChat, toggleTts } from '../store/chatSlice'
 import { openOverlay, setScreen, toggleMenu, closeMenu, toggleTheme } from '../store/uiSlice'
 import StatusLight from './StatusLight'
+import BarcodeScanButton from './BarcodeScanButton'
 
 const SpeechRecognitionCtor = window.SpeechRecognition ?? window.webkitSpeechRecognition
 
@@ -144,6 +145,9 @@ export default function Header() {
             <button type="button" role="menuitem" onClick={() => dispatch(setScreen('chatHistory'))}>
               <span>Chat history</span>
             </button>
+            <button type="button" role="menuitem" onClick={() => dispatch(setScreen('micronutrients'))}>
+              <span>Micronutrients</span>
+            </button>
             <button type="button" role="menuitem" onClick={() => dispatch(openOverlay('queue'))}>
               <span>Waiting to send</span>
               <span className="menu-hint">{queueCount}</span>
@@ -180,6 +184,7 @@ export default function Header() {
             {listening ? '🔴' : '🎤'}
           </button>
         )}
+        <BarcodeScanButton />
         <button
           type="button"
           className={`icon-toggle ${ttsEnabled ? 'active' : ''}`}

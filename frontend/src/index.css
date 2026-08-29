@@ -1240,3 +1240,42 @@ input {
 .foods-table td:nth-child(4) {
   width: 22%;
 }
+
+/* ---------- Micronutrients (view-only) ---------- */
+.nutrient-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.nutrient-row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.nutrient-label {
+  font-size: calc(14px * var(--font-scale));
+  color: var(--text-primary);
+}
+
+.nutrient-amount {
+  font-family: var(--font-mono);
+  font-size: calc(12px * var(--font-scale));
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.nutrient-dv-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-tint);
+  overflow: hidden;
+}
+
+.nutrient-dv-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+}

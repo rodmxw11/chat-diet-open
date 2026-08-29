@@ -43,9 +43,19 @@ public class OpenFoodFactsClient {
                     nutriments.proteinPer100g(),
                     nutriments.carbsPer100g(),
                     nutriments.fatPer100g(),
+                    nutriments.fiberPer100g(),
+                    nutriments.sugarPer100g(),
+                    gramsToMg(nutriments.sodiumGPer100g()),
+                    nutriments.saturatedFatPer100g(),
+                    gramsToMg(nutriments.cholesterolGPer100g()),
+                    gramsToMg(nutriments.potassiumGPer100g()),
                     product.servingQuantity()));
         } catch (Exception e) {
             return Optional.empty();
         }
+    }
+
+    private static Double gramsToMg(Double grams) {
+        return grams != null ? grams * 1000 : null;
     }
 }

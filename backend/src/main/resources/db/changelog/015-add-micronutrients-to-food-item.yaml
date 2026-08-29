@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: 015-add-micronutrients-to-food-item
+      author: chat-diet
+      changes:
+        - addColumn:
+            tableName: food_item
+            columns:
+              - column:
+                  name: per100g_fiber
+                  type: DOUBLE
+              - column:
+                  name: per100g_sugar
+                  type: DOUBLE
+              - column:
+                  name: per100g_sodium_mg
+                  type: DOUBLE
+              - column:
+                  name: per100g_saturated_fat
+                  type: DOUBLE
+              - column:
+                  name: per100g_cholesterol_mg
+                  type: DOUBLE
+              - column:
+                  name: per100g_potassium_mg
+                  type: DOUBLE

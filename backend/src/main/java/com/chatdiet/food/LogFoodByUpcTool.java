@@ -53,7 +53,9 @@ public class LogFoodByUpcTool implements Function<LogFoodByUpcRequest, ToolResul
             }
             var off = looked.get();
             item = foodItemRepository.save(new FoodItem(off.name(), request.upc(), off.caloriesPer100g(),
-                    off.proteinPer100g(), off.carbsPer100g(), off.fatPer100g(), off.typicalServingG(), "UPC"));
+                    off.proteinPer100g(), off.carbsPer100g(), off.fatPer100g(), off.fiberPer100g(),
+                    off.sugarPer100g(), off.sodiumMgPer100g(), off.saturatedFatPer100g(),
+                    off.cholesterolMgPer100g(), off.potassiumMgPer100g(), off.typicalServingG(), "UPC"));
         }
 
         var grams = FoodQuantity.resolveGrams(request.quantityG(), request.quantityServings(), item.typicalServingG());

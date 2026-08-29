@@ -15,7 +15,10 @@ import java.util.function.Function;
 @IntentTool(
         name = "log_food",
         intents = {"log_food"},
-        description = "Log a named food item with estimated calories and macros. Named foods only - not for UPC-based entries. Do not call for items under 10 calories (e.g. black tea, water); just acknowledge those in the reply."
+        description = "Log a named food item with estimated calories, macros, and micronutrients " +
+                "(fiber, sugar, sodium, saturated fat, cholesterol, potassium). Named foods only - not " +
+                "for UPC-based entries. Do not call for items under 10 calories (e.g. black tea, water); " +
+                "just acknowledge those in the reply."
 )
 public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
 
@@ -44,7 +47,9 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
         }
 
         var entry = new FoodEntry(LoggedAtResolver.resolve(request.loggedAt()), request.description(), request.totalCalories(),
-                request.totalProteinG(), request.totalCarbsG(), request.totalFatG(), "MANUAL");
+                request.totalProteinG(), request.totalCarbsG(), request.totalFatG(),
+                request.fiberG(), request.sugarG(), request.sodiumMg(), request.saturatedFatG(),
+                request.cholesterolMg(), request.potassiumMg(), "MANUAL");
         foodEntryRepository.save(entry);
         dailyMacroCacheService.recomputeForTimestamp(entry.loggedAt());
         foodLogVerificationContext.markLogged();

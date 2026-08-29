@@ -54,7 +54,9 @@ public class CorrectFoodEntryTool implements Function<CorrectFoodRequest, ToolRe
         }
 
         var updated = prior.corrected(request.totalCalories(), request.totalProteinG(),
-                request.totalCarbsG(), request.totalFatG(), priorValuesJson);
+                request.totalCarbsG(), request.totalFatG(), request.fiberG(), request.sugarG(),
+                request.sodiumMg(), request.saturatedFatG(), request.cholesterolMg(), request.potassiumMg(),
+                priorValuesJson);
         foodEntryRepository.save(updated);
         dailyMacroCacheService.recomputeForTimestamp(updated.loggedAt());
 

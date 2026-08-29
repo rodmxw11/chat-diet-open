@@ -24,6 +24,12 @@ public record FoodItem(
         Double per100gProtein,
         Double per100gCarbs,
         Double per100gFat,
+        Double per100gFiber,
+        Double per100gSugar,
+        Double per100gSodiumMg,
+        Double per100gSaturatedFat,
+        Double per100gCholesterolMg,
+        Double per100gPotassiumMg,
         Double typicalServingG,
         String lookupSource,
         Integer useCount,
@@ -35,15 +41,20 @@ public record FoodItem(
     }
 
     public FoodItem(String name, String upc, Double per100gCalories, Double per100gProtein,
-                     Double per100gCarbs, Double per100gFat, Double typicalServingG, String lookupSource) {
+                     Double per100gCarbs, Double per100gFat, Double per100gFiber, Double per100gSugar,
+                     Double per100gSodiumMg, Double per100gSaturatedFat, Double per100gCholesterolMg,
+                     Double per100gPotassiumMg, Double typicalServingG, String lookupSource) {
         this(null, name, upc, per100gCalories, per100gProtein, per100gCarbs, per100gFat,
-                typicalServingG, lookupSource, 0, null);
+                per100gFiber, per100gSugar, per100gSodiumMg, per100gSaturatedFat, per100gCholesterolMg,
+                per100gPotassiumMg, typicalServingG, lookupSource, 0, null);
     }
 
     /** Returns a copy of this item with {@code useCount} incremented and {@code lastUsedAt} set to now. */
     public FoodItem withUsageBumped() {
         return new FoodItem(id, name, upc, per100gCalories, per100gProtein, per100gCarbs, per100gFat,
-                typicalServingG, lookupSource, (useCount != null ? useCount : 0) + 1, LocalDateTime.now());
+                per100gFiber, per100gSugar, per100gSodiumMg, per100gSaturatedFat, per100gCholesterolMg,
+                per100gPotassiumMg, typicalServingG, lookupSource, (useCount != null ? useCount : 0) + 1,
+                LocalDateTime.now());
     }
 
     /** Scales this item's per-100g nutrition profile to the given portion size in grams. */
@@ -53,11 +64,22 @@ public record FoodItem(
                 (int) Math.round((per100gCalories != null ? per100gCalories : 0) * factor),
                 (per100gProtein != null ? per100gProtein : 0) * factor,
                 (per100gCarbs != null ? per100gCarbs : 0) * factor,
-                (per100gFat != null ? per100gFat : 0) * factor
+                (per100gFat != null ? per100gFat : 0) * factor,
+                per100gFiber != null ? per100gFiber * factor : null,
+                per100gSugar != null ? per100gSugar * factor : null,
+                per100gSodiumMg != null ? per100gSodiumMg * factor : null,
+                per100gSaturatedFat != null ? per100gSaturatedFat * factor : null,
+                per100gCholesterolMg != null ? per100gCholesterolMg * factor : null,
+                per100gPotassiumMg != null ? per100gPotassiumMg * factor : null
         );
     }
 
-    /** Nutrition values for a specific portion size, derived from {@link #scaledTo(double)}. */
-    public record ScaledNutrition(int calories, double proteinG, double carbsG, double fatG) {
+    /**
+     * Nutrition values for a specific portion size, derived from {@link #scaledTo(double)}.
+     * Micronutrient fields are nullable since Open Food Facts' per-product completeness varies.
+     */
+    public record ScaledNutrition(int calories, double proteinG, double carbsG, double fatG,
+                                   Double fiberG, Double sugarG, Double sodiumMg, Double saturatedFatG,
+                                   Double cholesterolMg, Double potassiumMg) {
     }
 }

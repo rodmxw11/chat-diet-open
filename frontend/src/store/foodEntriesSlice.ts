@@ -8,6 +8,12 @@ export interface FoodEntry {
   totalProteinG: number | null
   totalCarbsG: number | null
   totalFatG: number | null
+  fiberG: number | null
+  sugarG: number | null
+  sodiumMg: number | null
+  saturatedFatG: number | null
+  cholesterolMg: number | null
+  potassiumMg: number | null
 }
 
 interface FoodEntriesState {

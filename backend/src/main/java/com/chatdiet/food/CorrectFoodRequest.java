@@ -8,6 +8,12 @@ public record CorrectFoodRequest(
         Integer totalCalories,
         Double totalProteinG,
         Double totalCarbsG,
-        Double totalFatG
+        Double totalFatG,
+        Double fiberG,
+        Double sugarG,
+        Double sodiumMg,
+        Double saturatedFatG,
+        Double cholesterolMg,
+        Double potassiumMg
 ) {
 }
