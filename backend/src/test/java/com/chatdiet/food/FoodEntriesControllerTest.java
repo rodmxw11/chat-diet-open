@@ -1,5 +1,6 @@
 package com.chatdiet.food;
 
+import com.chatdiet.dashboard.DailyMacroCacheRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -8,11 +9,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.file.Path;
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
@@ -31,6 +34,9 @@ class FoodEntriesControllerTest {
 
     @Autowired
     private FoodEntryRepository foodEntryRepository;
+
+    @Autowired
+    private DailyMacroCacheRepository dailyMacroCacheRepository;
 
     @BeforeEach
     void clearAll() {
@@ -68,5 +74,27 @@ class FoodEntriesControllerTest {
         var result = foodEntriesController.byDate(LocalDate.now());
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void deletingAnEntryRemovesItAndRecomputesThatDaysMacroCache() {
+        var today = LocalDate.now();
+        var breakfast = foodEntryRepository.save(
+                new FoodEntry(today.atTime(8, 0), "breakfast", 400, 20.0, 40.0, 10.0, "MANUAL"));
+        foodEntryRepository.save(new FoodEntry(today.atTime(14, 0), "lunch", 600, 30.0, 60.0, 20.0, "MANUAL"));
+
+        foodEntriesController.delete(breakfast.id());
+
+        assertThat(foodEntriesController.byDate(today)).extracting(FoodEntry::rawUtterance).containsExactly("lunch");
+        assertThat(dailyMacroCacheRepository.findByMetabolicDate(today))
+                .get()
+                .satisfies(cache -> assertThat(cache.totalCalories()).isEqualTo(600));
+    }
+
+    @Test
+    void deletingAnUnknownIdReturns404() {
+        assertThatThrownBy(() -> foodEntriesController.delete(999_999L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("404");
     }
 }

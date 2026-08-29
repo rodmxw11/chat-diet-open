@@ -41,8 +41,9 @@
 
   --font-sans: 'IBM Plex Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --font-scale: 1;
 
-  font: 15px/1.5 var(--font-sans);
+  font: calc(15px * var(--font-scale))/1.5 var(--font-sans);
   color-scheme: light dark;
   color: var(--text-bubble);
   background: var(--page-bg);
@@ -89,6 +90,14 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* Phones stay at the base size; tablets (iPad et al) and desktop get a touch more, since the
+   extra screen real estate means cramped text isn't buying back any layout space. */
+@media (min-width: 620px) {
+  :root {
+    --font-scale: 1.1;
+  }
 }
 
 body {
@@ -161,7 +170,7 @@ input {
 
 .app-title {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   letter-spacing: 0.06em;
   text-transform: lowercase;
   color: var(--text-muted);
@@ -177,7 +186,7 @@ input {
 }
 
 .goal-headline {
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale));
   font-weight: 500;
   color: var(--text-primary);
   white-space: nowrap;
@@ -187,7 +196,7 @@ input {
 
 .goal-sub {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -238,7 +247,7 @@ input {
 
 .status-label {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -257,7 +266,7 @@ input {
   border: 1px solid var(--border-input);
   background: var(--surface);
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: calc(16px * var(--font-scale));
   cursor: pointer;
 }
 
@@ -293,7 +302,7 @@ input {
   background: transparent;
   border-radius: 8px;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale));
   text-align: left;
   cursor: pointer;
 }
@@ -304,7 +313,7 @@ input {
 
 .menu-hint {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   color: var(--text-tertiary);
 }
 
@@ -327,7 +336,7 @@ input {
   background: var(--surface);
   color: var(--text-primary);
   cursor: pointer;
-  font-size: 16px;
+  font-size: calc(16px * var(--font-scale));
   line-height: 1;
 }
 
@@ -363,7 +372,7 @@ input {
   color: var(--text-bubble);
   background: var(--surface);
   border: 1px solid var(--border);
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale));
   line-height: 1.5;
 }
 
@@ -382,14 +391,14 @@ input {
 
 .message.queued {
   background: var(--surface-tint);
-  border: 1px dashed #cabbe4;
-  color: #6b6084;
+  border: 1px dashed var(--border-input);
+  color: var(--text-muted);
 }
 
 .queued-caption {
   margin-top: 6px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   color: var(--status-retrying);
 }
 
@@ -397,7 +406,7 @@ input {
   margin: auto 0;
   text-align: center;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   color: var(--text-tertiary);
 }
 
@@ -418,7 +427,7 @@ input {
   background: var(--surface-tint);
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--font-scale));
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -433,8 +442,8 @@ input {
   border-collapse: collapse;
   width: 100%;
   font-family: var(--font-mono);
-  font-size: 12.5px;
-  color: #3a2f56;
+  font-size: calc(12.5px * var(--font-scale));
+  color: var(--text-primary);
 }
 
 .sql-table th,
@@ -448,7 +457,7 @@ input {
 .sql-table th {
   color: var(--text-muted);
   font-weight: 500;
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--font-scale));
   background: var(--surface-tint-2);
 }
 
@@ -459,7 +468,7 @@ input {
   gap: 8px;
   margin-top: 6px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
 }
 
 .sql-result-footer a {
@@ -503,7 +512,7 @@ input {
   border-radius: 8px;
   cursor: pointer;
   text-align: left;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale));
   color: var(--text-primary);
 }
 
@@ -521,7 +530,7 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   color: #fff;
 }
 
@@ -536,7 +545,7 @@ input {
 
 .food-item-picker-qty {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   color: var(--text-tertiary);
 }
 
@@ -547,7 +556,7 @@ input {
   border-radius: 9px;
   background: var(--accent);
   color: #fff;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale));
   font-weight: 500;
   cursor: pointer;
 }
@@ -587,7 +596,7 @@ input {
   border: none;
   background: transparent;
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: calc(16px * var(--font-scale));
   padding: 12px 0;
   outline: none;
 }
@@ -599,7 +608,7 @@ input {
   border: none;
   background: var(--accent);
   color: white;
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale));
   cursor: pointer;
 }
 
@@ -619,7 +628,7 @@ input {
   border: none;
   background: transparent;
   color: var(--text-muted);
-  font-size: 16px;
+  font-size: calc(16px * var(--font-scale));
   line-height: 1;
   cursor: pointer;
 }
@@ -673,7 +682,7 @@ input {
 }
 
 .app-modal-title {
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale));
   font-weight: 600;
   margin: 0;
   color: var(--text-primary);
@@ -721,7 +730,7 @@ input {
 /* ---------- Offline queue panel ---------- */
 .queue-empty {
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale));
   margin: 8px 0;
 }
 
@@ -745,13 +754,13 @@ input {
 
 .queue-row-text p {
   margin: 0 0 4px;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale));
   color: var(--text-primary);
 }
 
 .queue-row-caption {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   color: var(--text-muted);
 }
 
@@ -763,7 +772,7 @@ input {
   background: transparent;
   color: var(--destructive-text);
   cursor: pointer;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
   flex-shrink: 0;
 }
 
@@ -779,7 +788,7 @@ input {
   background: var(--surface);
   color: var(--text-primary);
   cursor: pointer;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale));
 }
 
 .queue-retry-button--prominent {
@@ -790,7 +799,7 @@ input {
 
 /* ---------- Dashboard cards / charts ---------- */
 .dash-card {
-  background: #fbf9fd;
+  background: var(--surface-tint-2);
   border: 1px solid var(--border-nested);
   border-radius: 14px;
   padding: 14px;
@@ -804,14 +813,14 @@ input {
 }
 
 .dash-card-title {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
   font-weight: 600;
-  color: #4a3d68;
+  color: var(--accent-tint-text);
 }
 
 .dash-card-subtitle {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   color: var(--text-muted);
 }
 
@@ -828,7 +837,7 @@ input {
   background: transparent;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   padding: 4px 10px;
   border-radius: 999px;
   cursor: pointer;
@@ -836,14 +845,14 @@ input {
 
 .range-toggle-segment.active {
   background: var(--accent-tint);
-  color: #4a3d68;
+  color: var(--accent-tint-text);
 }
 
 .macro-chart-badge {
   background: var(--accent);
   color: #fff;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   font-weight: 700;
   border-radius: 999px;
   padding: 2px 6px;
@@ -854,7 +863,7 @@ input {
 .macro-chart-segment-label {
   fill: #fff;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
   font-weight: 700;
 }
 
@@ -863,7 +872,7 @@ input {
   gap: 14px;
   margin-top: 6px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale));
   color: var(--text-muted);
 }
 
@@ -913,7 +922,7 @@ input {
   background: var(--surface);
   border-radius: 9px;
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: calc(16px * var(--font-scale));
   cursor: pointer;
 }
 
@@ -924,14 +933,14 @@ input {
 }
 
 .shop-title {
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale));
   font-weight: 500;
   color: var(--text-primary);
 }
 
 .shop-progress {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   color: var(--text-muted);
 }
 
@@ -946,7 +955,7 @@ input {
 
 .shop-empty {
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale));
 }
 
 .shopping-list {
@@ -971,7 +980,7 @@ input {
   cursor: pointer;
   text-align: left;
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale));
   transition: opacity 0.2s ease, color 0.2s ease;
 }
 
@@ -994,19 +1003,19 @@ input {
 
 .shopping-item-store {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   color: var(--text-tertiary);
 }
 
 .shopping-item.purchased .shopping-item-button {
-  color: #a79bc0;
+  color: var(--text-tertiary);
   text-decoration: line-through;
   opacity: 0.5;
 }
 
 .shopping-item.purchased .shopping-checkbox {
-  background: #c9bcdf;
-  border-color: #c9bcdf;
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 /* ---------- Notes (view-only) ---------- */
@@ -1030,7 +1039,7 @@ input {
 .note-text {
   margin: 0 0 6px;
   color: var(--text-bubble);
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale));
   line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -1039,7 +1048,7 @@ input {
 .note-timestamp {
   display: block;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   color: var(--text-muted);
 }
 
@@ -1060,7 +1069,7 @@ input {
   background: var(--surface);
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale));
 }
 
 .date-nav-button {
@@ -1070,8 +1079,25 @@ input {
   background: var(--surface);
   border-radius: 9px;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: calc(18px * var(--font-scale));
   cursor: pointer;
+}
+
+.today-button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border-input);
+  background: var(--surface);
+  border-radius: 9px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: calc(13px * var(--font-scale));
+  cursor: pointer;
+}
+
+.today-button:disabled {
+  color: var(--text-tertiary);
+  cursor: default;
 }
 
 /* table-layout: fixed (not the sql-table's nowrap-everything approach) so a long food
@@ -1088,8 +1114,8 @@ input {
   border-collapse: collapse;
   width: 100%;
   font-family: var(--font-mono);
-  font-size: 12.5px;
-  color: #3a2f56;
+  font-size: calc(12.5px * var(--font-scale));
+  color: var(--text-primary);
 }
 
 .foods-table th,
@@ -1102,8 +1128,31 @@ input {
 .foods-table th {
   color: var(--text-muted);
   font-weight: 500;
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--font-scale));
   background: var(--surface-tint-2);
+}
+
+.foods-table th:last-child,
+.foods-table-delete-cell {
+  width: 32px;
+  padding: 4px;
+  text-align: center;
+}
+
+.foods-delete-button {
+  min-width: 24px;
+  min-height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: calc(13px * var(--font-scale));
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.foods-delete-button:hover {
+  color: var(--destructive-text);
+  background: var(--destructive-hover-bg);
 }
 
 .foods-table th:nth-child(1),

@@ -11,9 +11,12 @@ export default function MessageInput() {
   const wasLoading = useRef(false)
 
   // The input is disabled while a request is in flight, which blurs it; once the reply lands and
-  // it's re-enabled, focus doesn't come back on its own, so bring it back here.
+  // it's re-enabled, focus doesn't come back on its own, so bring it back here - but only on
+  // devices with a real keyboard. On a touchscreen, focusing a text input reopens the on-screen
+  // keyboard, which is exactly what the user just dismissed by hitting enter/send.
   useEffect(() => {
-    if (wasLoading.current && status !== 'loading') {
+    const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches
+    if (wasLoading.current && status !== 'loading' && !hasCoarsePointer) {
       inputRef.current?.focus()
     }
     wasLoading.current = status === 'loading'

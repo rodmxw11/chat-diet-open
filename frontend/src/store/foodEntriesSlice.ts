@@ -33,6 +33,12 @@ export const loadFoodEntries = createAsyncThunk('foodEntries/load', async (date:
   return (await response.json()) as FoodEntry[]
 })
 
+export const deleteFoodEntry = createAsyncThunk('foodEntries/delete', async (id: number) => {
+  const response = await fetch(`/api/food-entries/${id}`, { method: 'DELETE' })
+  if (!response.ok) throw new Error(`Food entry delete failed: ${response.status}`)
+  return id
+})
+
 const foodEntriesSlice = createSlice({
   name: 'foodEntries',
   initialState,
@@ -52,6 +58,9 @@ const foodEntriesSlice = createSlice({
       })
       .addCase(loadFoodEntries.rejected, (state) => {
         state.status = 'error'
+      })
+      .addCase(deleteFoodEntry.fulfilled, (state, action) => {
+        state.items = state.items.filter((item) => item.id !== action.payload)
       })
   },
 })

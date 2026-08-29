@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { setScreen } from '../../store/uiSlice'
-import { loadFoodEntries, setFoodEntriesDate } from '../../store/foodEntriesSlice'
+import { deleteFoodEntry, loadFoodEntries, setFoodEntriesDate } from '../../store/foodEntriesSlice'
+import { loadMacros } from '../../store/dashboardSlice'
+import { loadSummary } from '../../store/summarySlice'
 
 const TIME_FORMAT: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' }
 
@@ -26,6 +28,11 @@ function shiftDate(dateStr: string, days: number): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
+function localIsoDate(): string {
+  const date = new Date()
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
 // Full-page view that replaces the chat screen entirely, same pattern as NotesView. Read-only:
 // this is just for browsing what was logged on a given day, one at a time.
 export default function DailyFoodsView() {
@@ -34,6 +41,7 @@ export default function DailyFoodsView() {
   const items = useAppSelector((state) => state.foodEntries.items)
   const status = useAppSelector((state) => state.foodEntries.status)
   const metabolicDate = useAppSelector((state) => state.summary.data?.metabolicDate)
+  const macroRange = useAppSelector((state) => state.dashboard.range)
 
   // Corrects the initial date to the server's current metabolic day (accounts for the
   // day-rollover hour) instead of the browser's raw local date - but only once, on first load.
@@ -53,6 +61,21 @@ export default function DailyFoodsView() {
 
   const changeDate = (newDate: string) => {
     dispatch(setFoodEntriesDate(newDate))
+  }
+
+  // Same fallback as the initial-load correction above: prefer the server's metabolic date
+  // (accounts for the day-rollover hour) and only fall back to the browser's local date if the
+  // summary hasn't loaded yet.
+  const today = metabolicDate ?? localIsoDate()
+
+  // The backend recomputes that day's macro cache as part of the delete itself; these refetches
+  // just pull the corrected numbers into the header and sidebar chart so they don't show stale
+  // totals until their next unrelated refresh.
+  const handleDelete = (id: number) => {
+    dispatch(deleteFoodEntry(id)).then(() => {
+      dispatch(loadSummary())
+      dispatch(loadMacros(macroRange))
+    })
   }
 
   const totalCalories = items.reduce((sum, entry) => sum + (entry.totalCalories ?? 0), 0)
@@ -104,6 +127,14 @@ export default function DailyFoodsView() {
           >
             ›
           </button>
+          <button
+            type="button"
+            className="today-button"
+            onClick={() => changeDate(today)}
+            disabled={date === today}
+          >
+            Today
+          </button>
         </div>
 
         {status === 'loading' && items.length === 0 && <p className="shop-empty">Loading…</p>}
@@ -121,6 +152,7 @@ export default function DailyFoodsView() {
                   <th>Food</th>
                   <th>Calories</th>
                   <th>Macros</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -130,6 +162,17 @@ export default function DailyFoodsView() {
                     <td>{entry.rawUtterance}</td>
                     <td>{entry.totalCalories ?? 0}</td>
                     <td>{formatMacros(entry.totalCarbsG, entry.totalFatG, entry.totalProteinG)}</td>
+                    <td className="foods-table-delete-cell">
+                      <button
+                        type="button"
+                        className="foods-delete-button"
+                        onClick={() => handleDelete(entry.id)}
+                        aria-label={`Delete ${entry.rawUtterance}`}
+                        title="Delete this entry"
+                      >
+                        ✕
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
