@@ -140,6 +140,9 @@ export default function Header() {
             <button type="button" role="menuitem" onClick={() => dispatch(setScreen('foods'))}>
               <span>Daily foods</span>
             </button>
+            <button type="button" role="menuitem" onClick={() => dispatch(setScreen('chatHistory'))}>
+              <span>Chat history</span>
+            </button>
             <button type="button" role="menuitem" onClick={() => dispatch(openOverlay('queue'))}>
               <span>Waiting to send</span>
               <span className="menu-hint">{queueCount}</span>

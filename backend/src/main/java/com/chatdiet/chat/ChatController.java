@@ -8,9 +8,11 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -57,15 +59,18 @@ public class ChatController {
                 sqlResultContext.answer().orElse(null), foodItemPickerContext.options().orElse(null));
     }
 
-    /** Returns the current metabolic day's conversation so a reload or another device can restore it. */
+    /**
+     * Returns a metabolic day's conversation - the current one by default, so a reload or another
+     * device can restore it, or an explicit past day for the read-only chat history review page.
+     */
     @GetMapping("/api/chat/history")
-    public ChatHistoryResponse history() {
-        var today = dayBoundaryService.today();
-        var messages = historyStore.messagesFor(today).stream()
+    public ChatHistoryResponse history(@RequestParam(required = false) LocalDate date) {
+        var day = date != null ? date : dayBoundaryService.today();
+        var messages = historyStore.messagesFor(day).stream()
                 .map(message -> new ChatHistoryResponse.ChatHistoryMessage(
                         message.role(), message.content(), message.createdAt()))
                 .toList();
-        return new ChatHistoryResponse(today, messages);
+        return new ChatHistoryResponse(day, messages);
     }
 
     /**

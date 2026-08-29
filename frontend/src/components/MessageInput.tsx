@@ -33,33 +33,54 @@ export default function MessageInput() {
     dispatch(setDraftText(''))
   }
 
+  // Focusing here is a direct response to the tap itself, not a delayed side effect like the
+  // post-reply refocus above - it happens inside the same user gesture, so it's safe to do
+  // unconditionally on touch devices too (it won't pop the keyboard back open unexpectedly).
+  const quickEntry = (prefix: string) => {
+    dispatch(setDraftText(prefix))
+    inputRef.current?.focus()
+  }
+
   return (
     <form className="message-input" onSubmit={submit}>
-      <div className="input-pill">
-        <input
-          ref={inputRef}
-          value={text}
-          onChange={(event) => dispatch(setDraftText(event.target.value))}
-          placeholder="Say something..."
-          disabled={status === 'loading'}
-        />
-        {/* Always displayed rather than appearing with the first keystroke: a control that comes
-            and goes shifts the input sideways and is hard to find when you want it. Disabled
-            while empty so it reads as inert instead of merely doing nothing when pressed. */}
-        <button
-          type="button"
-          className="clear-input-button"
-          onClick={() => dispatch(setDraftText(''))}
-          disabled={!text}
-          title="Clear text"
-          aria-label="Clear text"
-        >
-          ✕
+      <div className="quick-entry-row">
+        <button type="button" className="quick-entry-button" onClick={() => quickEntry('Note that ')}>
+          Note
+        </button>
+        <button type="button" className="quick-entry-button" onClick={() => quickEntry('Weight ')}>
+          Weight
+        </button>
+        <button type="button" className="quick-entry-button" onClick={() => quickEntry('I ate ')}>
+          Ate
         </button>
       </div>
-      <button type="submit" className="send-button" disabled={status === 'loading'}>
-        Send
-      </button>
+      <div className="message-input-row">
+        <div className="input-pill">
+          <input
+            ref={inputRef}
+            value={text}
+            onChange={(event) => dispatch(setDraftText(event.target.value))}
+            placeholder="Say something..."
+            disabled={status === 'loading'}
+          />
+          {/* Always displayed rather than appearing with the first keystroke: a control that comes
+              and goes shifts the input sideways and is hard to find when you want it. Disabled
+              while empty so it reads as inert instead of merely doing nothing when pressed. */}
+          <button
+            type="button"
+            className="clear-input-button"
+            onClick={() => dispatch(setDraftText(''))}
+            disabled={!text}
+            title="Clear text"
+            aria-label="Clear text"
+          >
+            ✕
+          </button>
+        </div>
+        <button type="submit" className="send-button" disabled={status === 'loading'}>
+          Send
+        </button>
+      </div>
     </form>
   )
 }

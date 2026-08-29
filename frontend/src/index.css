@@ -385,6 +385,15 @@ input {
   max-width: 86%;
 }
 
+/* .chat-window inside .shop-list-wrapper (Chat History review page): the wrapper already
+   handles padding/max-width/centering and provides the scroll container, so drop the
+   duplicated ones .chat-window normally sets for its standalone live-chat placement. */
+.chat-history-window {
+  padding: 0;
+  max-width: none;
+  margin: 0;
+}
+
 .message.assistant {
   align-self: flex-start;
 }
@@ -573,12 +582,40 @@ input {
 /* ---------- Input bar ---------- */
 .message-input {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
   padding: 12px 16px;
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--border);
   background: var(--header-bg);
+}
+
+.message-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quick-entry-row {
+  display: flex;
+  gap: 8px;
+}
+
+.quick-entry-button {
+  min-height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--border-input);
+  border-radius: 999px;
+  background: var(--surface-tint);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: calc(12.5px * var(--font-scale));
+  cursor: pointer;
+}
+
+.quick-entry-button:hover {
+  background: var(--accent-tint);
+  color: var(--accent-tint-text);
 }
 
 .input-pill {

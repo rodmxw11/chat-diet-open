@@ -119,6 +119,20 @@ class ChatControllerTest {
                 .andExpect(jsonPath("$.messages[1].text").value("logged"));
     }
 
+    @Test
+    void historyForAnExplicitDateReturnsThatDaysConversation() throws Exception {
+        var pastDay = dayBoundaryService.today().minusDays(3);
+        when(historyStore.messagesFor(pastDay)).thenReturn(List.of(
+                new ChatMessage(pastDay, "user", "old question", pastDay.atTime(9, 0)),
+                new ChatMessage(pastDay, "assistant", "old answer", pastDay.atTime(9, 1))));
+
+        mockMvc.perform(get("/api/chat/history").param("date", pastDay.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.metabolicDate").value(pastDay.toString()))
+                .andExpect(jsonPath("$.messages[0].text").value("old question"))
+                .andExpect(jsonPath("$.messages[1].text").value("old answer"));
+    }
+
     private void postChat(String json) throws Exception {
         mockMvc.perform(post("/api/chat").contentType("application/json").content(json))
                 .andExpect(status().isOk());
