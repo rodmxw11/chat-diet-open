@@ -2,68 +2,74 @@ package com.chatdiet.food;
 
 import com.chatdiet.dashboard.DailyMacroCacheService;
 import com.chatdiet.fdc.FdcClient;
-import com.chatdiet.fdc.FdcProduct;
+import com.chatdiet.fdc.FdcDetail;
+import com.chatdiet.food.resolve.Candidate;
+import com.chatdiet.food.resolve.FoodResolution;
+import com.chatdiet.food.resolve.FoodResolver;
+import com.chatdiet.food.resolve.QuantityResolution;
+import com.chatdiet.food.resolve.QuantityResolver;
 import com.chatdiet.fooditem.FoodItem;
-import com.chatdiet.fooditem.FoodItemLogger;
 import com.chatdiet.fooditem.FoodItemRepository;
 import com.chatdiet.fooditem.PortionUnitService;
 import com.chatdiet.intent.IntentTool;
 import com.chatdiet.intent.ToolResult;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 
 /**
- * IntentTool that logs a named food item, resolving its nutrition in tiers before falling back
- * to the model's own estimate: (1) the {@code FOOD_ITEM} cache by fuzzy name match, scaled by a
- * weighed gram amount; (2) a USDA FoodData Central lookup, scaled by a weighed gram amount; (3)
- * the cache or an FDC match, scaled by a natural quantity+unit resolved against
- * {@code PORTION_UNIT} (e.g. "1 medium banana" -> 118g); (4) the model-estimated totals supplied
- * directly in the request. Tiers 1-3 all require either a weighed gram amount or a
- * resolvable unit to scale their per-100g data to; without either, resolution goes straight to
- * the model's estimate.
+ * IntentTool that logs one or more named foods from a single utterance. Identity and quantity are
+ * resolved separately: {@link FoodResolver} decides which {@link FoodItem} a phrase refers to
+ * (an exact alias hit, or a numbered clarification list when it's ambiguous or unknown - never a
+ * silent guess), and {@link QuantityResolver} decides how many grams were eaten. Both must
+ * succeed before a row is written. See docs/fixing-substring-problem-spec.md §4.
  *
- * <p>A tier-2, tier-3, or tier-4 result is cached as a new {@link FoodItem} (when an amount is
- * known, so a per-100g figure can be derived) so every later mention of the same food is
- * deterministic instead of re-estimating from scratch. A newly FDC-cached item also gets its
- * known portions fetched and stored, and any request that states both a quantity+unit *and* a
- * gram amount teaches {@code PORTION_UNIT} that unit's real weight for next time - the two
- * together are what let ordinary, non-gram-weighed utterances ("a bowl of oatmeal" doesn't
- * qualify, but "2 eggs" or "1 medium banana" does) reach the deterministic tiers at all, instead
- * of hitting the LLM estimator on every single mention.
+ * <p>A batch resolves partially: items that resolve are saved immediately into one
+ * {@code entry_group_id}; unresolved items are named in a combined clarification, and a follow-up
+ * call for just those items (with {@code attachToGroupId} set to the echoed group id) lands in the
+ * same group.
  */
 @Component
 @IntentTool(
         name = "log_food",
         intents = {"log_food"},
-        description = "Log a named food item. If the user states a weighed amount in grams, provide " +
-                "amountGrams so the app can check its own food cache and USDA FoodData Central for real " +
-                "nutrition data first. If instead they state a natural count (e.g. \"2 eggs\", \"1 medium " +
-                "banana\", \"1 cup of rice\"), provide quantity and unit so the app can try to resolve that " +
-                "unit to a known gram weight before falling back to your estimate. Always still provide your " +
-                "own best-effort estimate of calories, macros, and micronutrients (fiber, sugar, sodium, " +
-                "saturated fat, cholesterol, potassium) as a fallback for when nothing resolves. Named foods " +
-                "only - not for UPC-based entries. Do not call for items under 10 calories (e.g. black tea, " +
-                "water); just acknowledge those in the reply."
+        description = "Log one or more named foods from a single utterance. For each item, provide foodRef " +
+                "(the food name as spoken) and amountText (the amount phrase verbatim, e.g. \"142g\", \"2\", " +
+                "\"a bowl\", or \"\" if unstated) - never invent a gram number yourself, there is no amountGrams " +
+                "field; the app resolves the phrase against its own cache and USDA FoodData Central. Always " +
+                "still provide your own best-effort estimate of calories/macros/micronutrients on each item as " +
+                "a fallback. If the tool's reply is a numbered clarification list (each option tagged with a " +
+                "hidden [ref:...] marker), relay only the human-readable options to the user - never show the " +
+                "[ref:...] markers - then once they pick one, call log_food again for that item with " +
+                "resolvedFoodItemId set to the id from an [ref:item:N] marker, resolvedFdcId from an " +
+                "[ref:fdc:N] marker, or useEstimate:true if they picked \"estimate it yourself\" (keep " +
+                "totalCalories/macros filled in for that case). If a prior reply named a group id for a " +
+                "partial batch, pass that as attachToGroupId on the follow-up call so it joins the same log " +
+                "entry group instead of starting a new one. Named foods only - not for UPC-based entries."
 )
 public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
 
     private final FoodEntryRepository foodEntryRepository;
     private final FoodItemRepository foodItemRepository;
+    private final FoodResolver foodResolver;
+    private final QuantityResolver quantityResolver;
     private final FdcClient fdcClient;
-    private final FoodItemLogger foodItemLogger;
     private final PortionUnitService portionUnitService;
     private final DailyMacroCacheService dailyMacroCacheService;
     private final FoodLogVerificationContext foodLogVerificationContext;
 
     public LogFoodTool(FoodEntryRepository foodEntryRepository, FoodItemRepository foodItemRepository,
-                        FdcClient fdcClient, FoodItemLogger foodItemLogger, PortionUnitService portionUnitService,
-                        DailyMacroCacheService dailyMacroCacheService,
+                        FoodResolver foodResolver, QuantityResolver quantityResolver, FdcClient fdcClient,
+                        PortionUnitService portionUnitService, DailyMacroCacheService dailyMacroCacheService,
                         FoodLogVerificationContext foodLogVerificationContext) {
         this.foodEntryRepository = foodEntryRepository;
         this.foodItemRepository = foodItemRepository;
+        this.foodResolver = foodResolver;
+        this.quantityResolver = quantityResolver;
         this.fdcClient = fdcClient;
-        this.foodItemLogger = foodItemLogger;
         this.portionUnitService = portionUnitService;
         this.dailyMacroCacheService = dailyMacroCacheService;
         this.foodLogVerificationContext = foodLogVerificationContext;
@@ -71,136 +77,216 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
 
     @Override
     public ToolResult apply(LogFoodRequest request) {
-        if (request.amountGrams() != null && request.amountGrams() > 0) {
-            return logByGrams(request);
-        }
-        if (hasQuantityAndUnit(request)) {
-            var resolved = logByQuantityUnit(request);
-            if (resolved != null) {
-                return resolved;
+        Long groupId = request.attachToGroupId();
+        var echoes = new ArrayList<String>();
+        var clarifications = new ArrayList<String>();
+        FoodEntry lastEntry = null;
+
+        for (var itemReq : request.items()) {
+            var outcome = resolveItem(itemReq);
+            if (outcome instanceof ItemOutcome.Clarify clarify) {
+                clarifications.add(clarify.message());
+                continue;
             }
-        }
-        return logFromEstimate(request);
-    }
-
-    /** Tier 1/2: cache or FDC, scaled by a stated gram amount. */
-    private ToolResult logByGrams(LogFoodRequest request) {
-        var cached = foodItemRepository.findBestMatchByName(request.description());
-        if (cached.isPresent()) {
-            maybeLearnPortion(cached.get().id(), request);
-            return foodItemLogger.logScaled(cached.get(), request.amountGrams(), request.loggedAt());
-        }
-
-        var fdcMatch = fdcClient.search(request.description());
-        if (fdcMatch.isPresent()) {
-            var item = cacheFdcMatch(request.description(), fdcMatch.get());
-            maybeLearnPortion(item.id(), request);
-            return foodItemLogger.logScaled(item, request.amountGrams(), request.loggedAt());
-        }
-
-        return logFromEstimate(request);
-    }
-
-    /**
-     * Tier 3: cache or FDC, scaled by a natural quantity+unit resolved against
-     * {@code PORTION_UNIT} - returns {@code null} (rather than a result) when nothing resolves,
-     * so the caller falls through to the model's estimate instead of treating "unit unknown" as
-     * a hard failure.
-     */
-    private ToolResult logByQuantityUnit(LogFoodRequest request) {
-        FoodItem item;
-        var cached = foodItemRepository.findBestMatchByName(request.description());
-        if (cached.isPresent()) {
-            item = cached.get();
-        } else {
-            var fdcMatch = fdcClient.search(request.description());
-            if (fdcMatch.isEmpty()) {
-                return null;
+            if (outcome instanceof ItemOutcome.UseEstimate) {
+                var logged = logEstimate(itemReq, groupId, request.loggedAt());
+                if (logged == null) {
+                    clarifications.add("\"" + itemReq.foodRef() + "\": what should I log for calories/macros?");
+                    continue;
+                }
+                groupId = logged.entry().entryGroupId();
+                echoes.add(logged.echo());
+                lastEntry = logged.entry();
+                continue;
             }
-            item = cacheFdcMatch(request.description(), fdcMatch.get());
+
+            var item = ((ItemOutcome.ResolvedTo) outcome).item();
+            var qty = quantityResolver.resolve(item, itemReq.amountText());
+            if (!(qty instanceof QuantityResolution.Grams grams)) {
+                clarifications.add("\"" + itemReq.foodRef() + "\": how many grams (or what count/unit)?");
+                continue;
+            }
+
+            var logged = logResolvedItem(item, itemReq, grams, groupId, request.loggedAt());
+            groupId = logged.entry().entryGroupId();
+            echoes.add(logged.echo());
+            lastEntry = logged.entry();
         }
 
-        var gramsPerUnit = portionUnitService.resolveGrams(item.id(), request.unit());
-        if (gramsPerUnit.isEmpty()) {
-            return null;
+        if (echoes.isEmpty()) {
+            return new ToolResult.NeedsClarification(String.join("\n\n", clarifications), null);
         }
-        return foodItemLogger.logScaled(item, gramsPerUnit.getAsDouble() * request.quantity(), request.loggedAt());
+        var body = String.join("\n", echoes);
+        if (!clarifications.isEmpty()) {
+            return new ToolResult.NeedsClarification(
+                    body + "\n\n(group #" + groupId + ") " + String.join("\n\n", clarifications), lastEntry);
+        }
+        return new ToolResult.Success(body, lastEntry);
     }
 
-    /** Caches a new FDC match as a {@link FoodItem} and fetches/stores its known portions. */
-    private FoodItem cacheFdcMatch(String description, FdcProduct product) {
-        var item = foodItemRepository.save(new FoodItem(description, null,
-                product.caloriesPer100g(), product.proteinPer100g(), product.carbsPer100g(),
-                product.fatPer100g(), product.fiberPer100g(), product.sugarPer100g(),
-                product.sodiumMgPer100g(), product.saturatedFatPer100g(), product.cholesterolMgPer100g(),
-                product.potassiumMgPer100g(), product.typicalServingG(), "FDC"));
-        if (product.fdcId() != null) {
-            portionUnitService.populateFromFdc(item.id(), product.fdcId());
+    private sealed interface ItemOutcome {
+        record ResolvedTo(FoodItem item) implements ItemOutcome {
+        }
+
+        record UseEstimate() implements ItemOutcome {
+        }
+
+        record Clarify(String message) implements ItemOutcome {
+        }
+    }
+
+    private ItemOutcome resolveItem(LogFoodItemRequest itemReq) {
+        if (Boolean.TRUE.equals(itemReq.useEstimate())) {
+            return new ItemOutcome.UseEstimate();
+        }
+
+        if (itemReq.resolvedFoodItemId() != null) {
+            var item = foodItemRepository.findById(itemReq.resolvedFoodItemId())
+                    .filter(i -> i.deletedAt() == null);
+            if (item.isEmpty()) {
+                return new ItemOutcome.Clarify(
+                        "That cached item for \"" + itemReq.foodRef() + "\" is gone now - try again.");
+            }
+            var wasAmbiguous = foodResolver.resolve(itemReq.foodRef()) instanceof FoodResolution.Ambiguous;
+            foodResolver.confirmSelection(itemReq.foodRef(), item.get().id(), wasAmbiguous);
+            return new ItemOutcome.ResolvedTo(item.get());
+        }
+
+        if (itemReq.resolvedFdcId() != null) {
+            var detail = fdcClient.fetchDetail(itemReq.resolvedFdcId());
+            if (detail.isEmpty()) {
+                return new ItemOutcome.Clarify(
+                        "Couldn't fetch nutrition for that FDC match for \"" + itemReq.foodRef() + "\" - try again.");
+            }
+            var item = cacheFdcItem(detail.get());
+            foodResolver.confirmSelection(itemReq.foodRef(), item.id(), false);
+            return new ItemOutcome.ResolvedTo(item);
+        }
+
+        var resolution = foodResolver.resolve(itemReq.foodRef());
+        return switch (resolution) {
+            case FoodResolution.Resolved r -> new ItemOutcome.ResolvedTo(r.item());
+            case FoodResolution.Ambiguous a ->
+                    new ItemOutcome.Clarify(renderCandidates(itemReq.foodRef(), a.candidates(), true));
+            case FoodResolution.Unknown u ->
+                    new ItemOutcome.Clarify(renderCandidates(itemReq.foodRef(), u.candidates(), false));
+        };
+    }
+
+    private FoodItem cacheFdcItem(FdcDetail detail) {
+        var product = detail.product();
+        var item = foodItemRepository.save(new FoodItem(product.name(), null,
+                product.caloriesPer100g(), product.proteinPer100g(), product.carbsPer100g(), product.fatPer100g(),
+                product.fiberPer100g(), product.sugarPer100g(), product.sodiumMgPer100g(),
+                product.saturatedFatPer100g(), product.cholesterolMgPer100g(), product.potassiumMgPer100g(),
+                product.typicalServingG(), "FDC"));
+        if (!detail.portions().isEmpty()) {
+            portionUnitService.storePortions(item.id(), detail.portions());
         }
         return item;
     }
 
-    private void maybeLearnPortion(long foodItemId, LogFoodRequest request) {
-        if (hasQuantityAndUnit(request)) {
-            portionUnitService.learnFromWeighedEntry(foodItemId, request.unit(), request.quantity(),
-                    request.amountGrams());
-        }
+    private record Logged(FoodEntry entry, String echo) {
     }
 
-    private static boolean hasQuantityAndUnit(LogFoodRequest request) {
-        return request.quantity() != null && request.quantity() > 0
-                && request.unit() != null && !request.unit().isBlank();
-    }
+    /** Logs a resolved item, assigning it to {@code groupId} or starting a new self-referential group. */
+    private Logged logResolvedItem(FoodItem item, LogFoodItemRequest itemReq, QuantityResolution.Grams grams,
+                                    Long groupId, LocalDateTime loggedAt) {
+        var scaled = item.scaledTo(grams.grams());
+        var entry = new FoodEntry(LoggedAtResolver.resolve(loggedAt), itemReq.foodRef(), scaled.calories(),
+                scaled.proteinG(), scaled.carbsG(), scaled.fatG(), scaled.fiberG(), scaled.sugarG(),
+                scaled.sodiumMg(), scaled.saturatedFatG(), scaled.cholesterolMg(), scaled.potassiumMg(),
+                item.id(), grams.grams(), item.lookupSource());
+        entry = persistIntoGroup(entry, groupId);
 
-    /** Tier 4: nothing resolved - use the model's estimate. */
-    private ToolResult logFromEstimate(LogFoodRequest request) {
-        if (request.totalCalories() == null) {
-            return new ToolResult.NeedsClarification(
-                    "How many calories (and macros, if you can estimate them) should I log for \""
-                            + request.description() + "\"?",
-                    request.description());
+        foodItemRepository.save(item.withUsageBumped());
+        if (grams.teachUnitName() != null && grams.teachUnitCount() != null) {
+            portionUnitService.learnFromWeighedEntry(item.id(), grams.teachUnitName(), grams.teachUnitCount(),
+                    grams.grams());
         }
-        if (request.totalCalories() < 10) {
-            return new ToolResult.Success(
-                    "Noted \"" + request.description() + "\" - under 10 calories, not logged.", null);
-        }
-
-        // A known gram amount lets this estimate be cached as a reusable per-100g FoodItem, so a
-        // repeat mention of the same food is deterministic instead of re-estimated from scratch.
-        Long newFoodItemId = null;
-        if (request.amountGrams() != null && request.amountGrams() > 0) {
-            double factor = 100.0 / request.amountGrams();
-            var item = foodItemRepository.save(new FoodItem(request.description(), null,
-                    request.totalCalories() * factor, scale(request.totalProteinG(), factor),
-                    scale(request.totalCarbsG(), factor), scale(request.totalFatG(), factor),
-                    scale(request.fiberG(), factor), scale(request.sugarG(), factor),
-                    scale(request.sodiumMg(), factor), scale(request.saturatedFatG(), factor),
-                    scale(request.cholesterolMg(), factor), scale(request.potassiumMg(), factor),
-                    null, "MODEL_ESTIMATE"));
-            newFoodItemId = item.id();
-            maybeLearnPortion(newFoodItemId, request);
-        }
-
-        var entry = new FoodEntry(LoggedAtResolver.resolve(request.loggedAt()), request.description(),
-                request.totalCalories(), request.totalProteinG(), request.totalCarbsG(), request.totalFatG(),
-                request.fiberG(), request.sugarG(), request.sodiumMg(), request.saturatedFatG(),
-                request.cholesterolMg(), request.potassiumMg(), newFoodItemId, request.amountGrams(), "MANUAL");
-        foodEntryRepository.save(entry);
         dailyMacroCacheService.recomputeForTimestamp(entry.loggedAt());
         foodLogVerificationContext.markLogged();
 
-        return new ToolResult.Success(
-                "Logged \"%s\": %d kcal, %.1fg protein, %.1fg carbs, %.1fg fat."
-                        .formatted(entry.rawUtterance(), entry.totalCalories(), orZero(entry.totalProteinG()),
-                                orZero(entry.totalCarbsG()), orZero(entry.totalFatG())),
-                entry);
+        var echo = "%s (%.0fg) → %s (%s) — %d cal"
+                .formatted(itemReq.foodRef(), grams.grams(), item.name(), tierTag(item.lookupSource()),
+                        scaled.calories());
+        return new Logged(entry, echo);
+    }
+
+    /** Tier 4: no identity resolved - the model's estimate, explicitly chosen from a clarification list. */
+    private Logged logEstimate(LogFoodItemRequest itemReq, Long groupId, LocalDateTime loggedAt) {
+        if (itemReq.totalCalories() == null) {
+            return null;
+        }
+
+        Long newFoodItemId = null;
+        var explicit = QuantityResolver.parseExplicitGrams(itemReq.amountText());
+        if (explicit != null) {
+            double factor = 100.0 / explicit.grams();
+            var item = foodItemRepository.save(new FoodItem(itemReq.foodRef(), null,
+                    itemReq.totalCalories() * factor, scale(itemReq.totalProteinG(), factor),
+                    scale(itemReq.totalCarbsG(), factor), scale(itemReq.totalFatG(), factor),
+                    scale(itemReq.fiberG(), factor), scale(itemReq.sugarG(), factor),
+                    scale(itemReq.sodiumMg(), factor), scale(itemReq.saturatedFatG(), factor),
+                    scale(itemReq.cholesterolMg(), factor), scale(itemReq.potassiumMg(), factor),
+                    null, "MODEL_ESTIMATE"));
+            newFoodItemId = item.id();
+            foodResolver.confirmSelection(itemReq.foodRef(), item.id(), false);
+            if (explicit.teachUnitName() != null && explicit.teachUnitCount() != null) {
+                portionUnitService.learnFromWeighedEntry(item.id(), explicit.teachUnitName(),
+                        explicit.teachUnitCount(), explicit.grams());
+            }
+        }
+
+        var entry = new FoodEntry(LoggedAtResolver.resolve(loggedAt), itemReq.foodRef(), itemReq.totalCalories(),
+                itemReq.totalProteinG(), itemReq.totalCarbsG(), itemReq.totalFatG(), itemReq.fiberG(),
+                itemReq.sugarG(), itemReq.sodiumMg(), itemReq.saturatedFatG(), itemReq.cholesterolMg(),
+                itemReq.potassiumMg(), newFoodItemId, explicit != null ? explicit.grams() : null, "MANUAL");
+        entry = persistIntoGroup(entry, groupId);
+        dailyMacroCacheService.recomputeForTimestamp(entry.loggedAt());
+        foodLogVerificationContext.markLogged();
+
+        var echo = "%s → %d cal (estimate)".formatted(itemReq.foodRef(), itemReq.totalCalories());
+        return new Logged(entry, echo);
+    }
+
+    /** Saves the entry into {@code groupId}, or starts a new self-referential group if none is open yet. */
+    private FoodEntry persistIntoGroup(FoodEntry entry, Long groupId) {
+        if (groupId != null) {
+            return foodEntryRepository.save(entry.withEntryGroupId(groupId));
+        }
+        var saved = foodEntryRepository.save(entry);
+        return foodEntryRepository.save(saved.withEntryGroupId(saved.id()));
+    }
+
+    private static String tierTag(String lookupSource) {
+        return switch (lookupSource) {
+            case "MODEL_ESTIMATE" -> "estimate";
+            case "MANUAL" -> "manual";
+            default -> lookupSource;
+        };
+    }
+
+    private String renderCandidates(String foodRef, List<Candidate> candidates, boolean ambiguous) {
+        var sb = new StringBuilder();
+        sb.append(ambiguous ? "Which \"" : "Couldn't find \"").append(foodRef)
+                .append(ambiguous ? "\" did you mean?" : "\" - which of these?").append('\n');
+        var i = 1;
+        for (var c : candidates) {
+            sb.append(i++).append(") ").append(c.label());
+            if (c.foodItemId() != null) {
+                sb.append(" [ref:item:").append(c.foodItemId()).append(']');
+            } else if (c.fdcId() != null) {
+                sb.append(" [ref:fdc:").append(c.fdcId()).append(']');
+            } else if (c.isEstimateOption()) {
+                sb.append(" [ref:estimate]");
+            }
+            sb.append('\n');
+        }
+        return sb.toString().stripTrailing();
     }
 
     private static Double scale(Double value, double factor) {
         return value != null ? value * factor : null;
-    }
-
-    private static double orZero(Double value) {
-        return value != null ? value : 0.0;
     }
 }

@@ -245,14 +245,16 @@ class IntentRoutingTest {
     }
 
     @Test
-    void routesRepeatedNamedUtteranceToLogCachedFoodTool() {
+    void routesRepeatedNamedUtteranceThroughAliasResolutionToLogFood() {
         chatService.reply("I scanned a UPC 5449000000996, I had one can");
         assertThat(foodEntryRepository.findAll()).hasSize(1);
 
+        // The UPC scan wrote an alias for the product's name, so a later name-only mention resolves
+        // deterministically through log_food's own alias lookup - no separate cached-food tool needed.
         chatService.reply("I had another Coca-Cola");
 
         assertThat(foodEntryRepository.findAll())
-                .as("log_cached_food should have reused the cached FoodItem for a second entry")
+                .as("log_food should have resolved the alias written by the earlier UPC scan and logged a second entry")
                 .hasSize(2);
     }
 

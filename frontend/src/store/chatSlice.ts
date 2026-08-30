@@ -46,6 +46,10 @@ interface ChatState {
       while hidden. Null while not hidden, or if the chat was empty at that moment (so everything
       that follows counts as "new"). */
   hiddenSinceMessageId: string | null
+  /** True after an external prefill (e.g. a barcode scan resolving a product name) sets draftText -
+      consumed once by MessageInput to put the cursor at position 0 instead of the end, so the
+      scale reading can be typed in front of the resolved name. */
+  pendingCursorStart: boolean
 }
 
 const initialState: ChatState = {
@@ -56,6 +60,7 @@ const initialState: ChatState = {
   queue: [],
   hidden: false,
   hiddenSinceMessageId: null,
+  pendingCursorStart: false,
 }
 
 interface ChatApiResponse {
@@ -179,6 +184,15 @@ const chatSlice = createSlice({
     setDraftText: (state, action: PayloadAction<string>) => {
       state.draftText = action.payload
     },
+    // A scan just resolved a product name - prefill "g {name}" with the cursor at the start so the
+    // scale reading can be typed in front of it, instead of round-tripping the raw UPC through chat.
+    setDraftTextWithCursorStart: (state, action: PayloadAction<string>) => {
+      state.draftText = action.payload
+      state.pendingCursorStart = true
+    },
+    clearPendingCursorStart: (state) => {
+      state.pendingCursorStart = false
+    },
     appendDraftText: (state, action: PayloadAction<string>) => {
       state.draftText = state.draftText ? `${state.draftText} ${action.payload}` : action.payload
     },
@@ -298,5 +312,14 @@ const chatSlice = createSlice({
   },
 })
 
-export const { toggleTts, setDraftText, appendDraftText, hideChat, showChat, queueItemSent } = chatSlice.actions
+export const {
+  toggleTts,
+  setDraftText,
+  setDraftTextWithCursorStart,
+  clearPendingCursorStart,
+  appendDraftText,
+  hideChat,
+  showChat,
+  queueItemSent,
+} = chatSlice.actions
 export default chatSlice.reducer

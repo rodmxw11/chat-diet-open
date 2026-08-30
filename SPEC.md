@@ -58,8 +58,10 @@ These are not features. They constrain every response the app produces.
    ground truth; the food log is a noisy estimator. Drift is expected. UPC
    lookups are the exception — those carry real Open Food Facts data, not an
    estimate.
-6. **Sub-10-calorie items are not logged.** Black tea, water. Brief
-   acknowledgement, no row written.
+6. **No silent resolution.** Where the app chooses between plausible
+   interpretations, or falls back to a lower-quality source, it says which
+   one it used. A wrong answer indistinguishable from a right one is worse
+   than a question.
 
 ---
 
@@ -154,6 +156,7 @@ recipe system, no per-item cost tracking.
 erDiagram
     FOOD_ENTRY }o--|| FOOD_ITEM : "may reference (cache/FDC/OFF reuse, or a freshly cached model estimate)"
     PORTION_UNIT }o--|| FOOD_ITEM : "known unit -> grams mappings"
+    FOOD_ALIAS }o--|| FOOD_ITEM : "exact-match name a food is known by"
 
     FOOD_ENTRY {
         long id PK
@@ -171,6 +174,7 @@ erDiagram
         real potassium_mg
         long food_item_id FK
         real amount_grams
+        long entry_group_id "undo/display boundary - all entries from one utterance share the first entry's own id"
         int prep_minutes
         string source
         datetime corrected_at
@@ -196,6 +200,14 @@ erDiagram
         int use_count
         datetime last_used_at
         datetime deleted_at
+    }
+
+    FOOD_ALIAS {
+        long id PK
+        string alias_normalized UK "exact lookup key - no LIKE, no ranking"
+        long food_item_id FK
+        string source "USER, OFF, FDC, or MANUAL"
+        datetime created_at
     }
 
     WEIGHT_ENTRY {
@@ -380,7 +392,7 @@ existing intents, to the base prompt, or to `ChatService`.
 
 | Intent | Purpose |
 |---|---|
-| `log_food` | Named-food logging (cache → USDA FDC → LLM estimate, in that order when a gram amount is given), UPC logging (Open Food Facts), and cached-item reuse |
+| `log_food` | Named-food logging (exact-alias cache → clarification against cached/FDC candidates → LLM estimate as a chosen option) and UPC logging (Open Food Facts / FDC Branded) |
 | `log_weight` | Weight entries |
 | `log_vitals` | BP / heart rate |
 | `log_exercise` | Exercise by name |
@@ -400,14 +412,13 @@ see the Appendix.
 
 `log_weight`, `correct_weight_entry`, `log_vitals`, `correct_vitals_entry`,
 `log_exercise`, `log_digestive_event`, `save_note`, `log_food`,
-`log_food_by_upc`, `log_cached_food`, `correct_food_entry`,
-`list_food_entries`, `set_calorie_goal`, `get_daily_target`,
-`get_weight_projection`, `get_fasting_status`, `get_tdee`, `show_chart`,
-`run_sql` — 19 tools total. Note `log_cached_food` (servings-aware, for
-naming a previously UPC-scanned product by name — "another Clif bar") is a
-distinct, model-visible tool from `log_food`'s own internal, amount-in-grams-
-only cache/FDC pre-check (see §6); they solve overlapping but not identical
-cases.
+`log_food_by_upc`, `correct_food_entry`, `list_food_entries`,
+`set_calorie_goal`, `get_daily_target`, `get_weight_projection`,
+`get_fasting_status`, `get_tdee`, `show_chart`, `run_sql` — 18 tools total.
+`log_cached_food` (naming a previously UPC-scanned product by name —
+"another Clif bar") was folded into `log_food`'s own alias resolution:
+under `FOOD_ALIAS`, a name-only mention of a cached product resolves the
+same way any other named food does (see §6).
 
 ### Tool discovery
 
@@ -497,118 +508,95 @@ happened, not the time they synced.
 
 ## 6. Food logging paths
 
+Identity and quantity are resolved separately. `FoodResolver` decides which
+`FOOD_ITEM` a phrase refers to; `QuantityResolver` decides how many grams
+were eaten. Both must succeed before a row is written.
+
 ```mermaid
 stateDiagram-v2
-    [*] --> Utterance
-    Utterance --> NamedWithGrams: named food, weighed amount in grams
-    Utterance --> NamedWithUnit: named food, natural count (no grams) - "2 eggs", "1 medium banana"
-    Utterance --> NamedOther: named food, no amount at all
-    Utterance --> UpcPath: UPC (typed, spoken, or camera-scanned)
-    Utterance --> CachedByName: names a previously UPC-cached product
-
-    NamedWithGrams --> CacheCheck: FoodItemRepository best-match-by-name
-    CacheCheck --> Scale: cache hit
-    CacheCheck --> FdcCheck: cache miss
-    FdcCheck --> CacheFdcItem: USDA FDC plausible match
-    CacheFdcItem --> Scale
-    FdcCheck --> Estimate: no FDC match either
-    NamedWithGrams --> LearnPortion: quantity+unit also given - upsert PORTION_UNIT (WEIGHED)
-
-    NamedWithUnit --> CacheCheck2: same cache/FDC match as above
-    CacheCheck2 --> PortionCheck: item found (cached or freshly FDC-cached)
-    CacheFdcItem --> FetchPortions: fetch FDC foodPortions once, store all as PORTION_UNIT (FDC)
-    PortionCheck --> Scale: unit resolves (exact, or unambiguous substring)
-    PortionCheck --> Estimate: unit unknown, or no item found at all
-
-    NamedOther --> Estimate: model estimates calories, macros, micronutrients
-    Estimate --> CacheEstimate: amountGrams known - cache as FOOD_ITEM (MODEL_ESTIMATE)
-    CacheEstimate --> Persist
-    Estimate --> Persist: amountGrams unknown - not cached
-
-    UpcPath --> Decode: camera photo only - ZXing, full res
-    Decode --> Lookup: Open Food Facts
-    Lookup --> CacheOffItem: create/update FOOD_ITEM (real macro + micronutrient data)
-    CacheOffItem --> Scale
-
-    CachedByName --> Scale: FoodQuantity resolves servings/grams
-
-    Scale --> Persist: scale per-100g values by amount eaten
-    LearnPortion --> Persist
-    Persist --> Echo: read numbers back
+    [*] --> Normalize
+    Normalize --> AliasLookup: exact match on FOOD_ALIAS.alias_normalized
+    AliasLookup --> QuantityResolve: hit
+    AliasLookup --> Candidates: miss
+    Candidates --> Ambiguous: 2+ plausible cached items
+    Candidates --> Unknown: 0-1 cached; FDC candidates + "estimate it" added
+    Ambiguous --> Clarify: numbered list, no alias written on selection
+    Unknown --> Clarify: numbered list, alias written on selection
+    Clarify --> QuantityResolve: user picks by number/name
+    QuantityResolve --> Persist: grams resolved
+    QuantityResolve --> Clarify: unresolvable amount
+    Persist --> Echo: resolved name + source tier + numbers, e.g. "(FDC) - 165 cal"
     Echo --> [*]
-    Persist --> UnderTen: <10 cal
-    UnderTen --> [*]: ack, no row
 ```
 
-A camera button in the header (chat screen only) captures a barcode photo,
-POSTs it to `POST /api/barcode/decode` (ZXing, server-side, full resolution —
-downscaling destroys barcode density), and relays the decoded UPC into chat
-as plain text — reusing the same `log_food_by_upc` path a typed or spoken UPC
-already goes through, rather than adding a separate mutation route.
+**Alias resolution is exact only** (`WHERE alias_normalized = ?`) - no
+`LIKE`, no ranking, no threshold. It's the only path that writes a row
+without asking, so it must be incapable of guessing. `FoodAliasNormalizer`
+lowercases, strips accents/punctuation/a single leading article, and folds
+`&`/hyphens - deliberately narrow: no stemming (`oat` vs `oats` stay
+distinct), no preparation-word or brand-word stripping.
+
+**Candidate generation, on a miss, is fuzzy and never auto-selects at any
+score.** `FuzzyCandidateGenerator` scores cached items by substring
+containment, Levenshtein edit distance, a naive plural flip, and token
+overlap; two or more plausible cached matches is `Ambiguous` (cached-only,
+FDC never mixed in); zero or one is `Unknown` (that cached match, if any,
+plus up to 5 USDA FoodData Central candidates via `FdcClient.search`, plus
+an explicit "estimate it yourself" option). Cached candidates always rank
+above FDC ones. **Writing an alias on selection happens only for `Unknown`**
+- an `Ambiguous` phrase stays ambiguous next time by design, since aliasing
+it would make the other candidate unreachable by that phrase forever.
 
 **Two external nutrition sources, split by product type.** Open Food Facts
 (`OpenFoodFactsClient`) supplies real calories, macros, and micronutrients
-for **UPC-identified branded/packaged products** — meaningfully more
-accurate than a free-text estimate, and free. **USDA FoodData Central**
-(`FdcClient`, `Foundation`/`SR Legacy` data types only) covers **named
-raw/generic foods** the same way (e.g. "42g of celery" or "1 medium
-banana") — either a weighed gram amount or a resolvable natural
-quantity+unit makes the lookup worth trying; with neither, there's nothing
-to scale a per-100g figure to, so resolution goes straight to the model's
-estimate. FDC requires a free `api.data.gov` key (`chat-diet.fdc.api-key`);
-unset, the lookup tier is silently skipped.
+for **UPC-identified branded/packaged products**. **USDA FoodData Central**
+(`FdcClient`) covers **named raw/generic foods** via `Foundation`/`SR
+Legacy` for the candidate-list path, and **Branded** (GTIN-verified only, no
+ranking heuristic) as a UPC fallback behind Open Food Facts. `search()`
+returns lightweight name+id candidates only; `fetchDetail()` (a second,
+one-time call per selected item) fetches full per-100g nutrition and known
+portions together. FDC requires a free `api.data.gov` key
+(`chat-diet.fdc.api-key`); unset, every FDC method returns empty so the
+tier it feeds just falls through.
 
-**`PORTION_UNIT` turns a natural count into grams.** A gram amount alone
-only covers utterances where the user (or model) states a weight - the
-majority of ordinary phrasing ("2 eggs", "a cup of rice") never did.
-`PORTION_UNIT(food_item_id, unit_name, grams, source)` maps a normalized
-unit word to a gram weight per cached food, populated two ways: **from
-FDC** (`FdcClient.fetchPortions`, a separate call to the single-food detail
-endpoint - the search endpoint's `foodMeasures` field is empty for
-Foundation/SR Legacy foods, so this costs one extra request, but only once
-per newly FDC-cached item, not per log) and **from the user's own weighed
-entries** (`PortionUnitService.learnFromWeighedEntry` - if a request states
-*both* a gram amount and a quantity+unit, e.g. "2 eggs, about 100g", the
-derived 50g/egg gets stored too). Matching a stated unit against known
-portions prefers an exact normalized match, and only accepts a
-bidirectional-substring match when it's unambiguous - FDC often reports
-several preparations of the same rough word ("cup, sliced" vs. "cup,
-mashed" both contain "cup" but differ by 75g), and picking one would be a
-silent guess, not a resolution.
+**`PORTION_UNIT` turns a natural count into grams**, unchanged from before -
+the same discipline (exact match first, unambiguous-substring fallback,
+otherwise unresolved) was the model this whole rework generalized to
+identity resolution. Populated from FDC's own portions on first cache, and
+from the user's own weighed entries that state a count+unit alongside a
+gram figure in the same phrase (`"2 eggs, 100g"`).
 
-*(Observed in practice: Claude Haiku, even when instructed not to, tends to
-pair a natural quantity+unit with its own confident gram guess rather than
-omitting the gram amount to force a real FDC lookup - so the dominant
-realized benefit today is the self-learning path, not the pure
-FDC-portion-lookup path. Both still teach `PORTION_UNIT` real data either
-way, but the "never touches the LLM estimator" outcome the pure lookup path
-promises isn't yet the common case in live use.)*
+**One `FOOD_ENTRY` row per food, grouped by `entry_group_id`.** A multi-food
+utterance ("eggs and toast") logs one row each, sharing one group id (the
+first row's own id). A batch resolves partially: items that resolve save
+immediately; unresolved ones are named in a combined clarification, and the
+clarifying follow-up (naming `attachToGroupId`) lands in the same group.
+`entry_group_id` is an undo boundary and display grouping only - not a meal
+or recipe concept.
 
-**Match-confidence, not just "first result."** Both `FoodItemRepository`'s
-cache lookup and `FdcClient` use the same bidirectional-substring test
-(query contains the candidate's name, or vice versa) to reject an
-implausible top result rather than trusting it blindly. `FdcClient`
-additionally sorts plausible FDC matches by a cheap "qualifier count" (comma/
-whitespace token count in the description) so a plain query like "banana"
-prefers "Bananas, raw" over a processed variant like "Bananas, dehydrated,
-or banana powder" that FDC's own relevance ranking might rank first — this
-matters most for the fully-automated tier (`search()`, used by chat logging,
-picks one match with no human to disambiguate); the food-item form's lookup
-(`searchCandidates()`) shows up to 5 candidates for a person to pick from
-instead.
+**Echo always shows the resolved name and source tier**, not just the
+numbers - `165 cal` from an FDC Foundation row and `165 cal` from a model
+estimate are the same six characters otherwise. Format:
+`142g chicken breast → Chicken, broilers or fryers, breast, meat only, raw (FDC) — 165 cal`.
 
-**Every named-food logging path that produces real per-100g data caches or
-reuses a `FOOD_ITEM` row** (cache hit, FDC match, OFF match, or the model's
-own one-time estimate when an amount - gram or resolved unit - was known)
-— so the same food resolves deterministically on its next mention rather
-than re-estimating every time, and a systematic bias in the model's
-estimates gets captured once instead of repeated indefinitely. One real
-caveat to that: the cached row's name is whatever free-text `description`
-the model passed (sometimes the whole phrase, e.g. "1 medium banana"
-rather than bare "banana"), and the fuzzy name-match tier only accepts a
-candidate up to one word longer than the query - so this determinism holds
-best when the model phrases the same food consistently, not across
-arbitrarily different wordings of it.
+**No sub-10-calorie skip.** Logging is deliberate (weighed or scanned) now,
+not free-text estimation the model might volunteer for anything mentioned
+in passing - the old threshold's only real effect was a silent no-op
+indistinguishable from a normal acknowledgement.
+
+**A camera button in the header** (chat screen only) captures a barcode
+photo and POSTs it to `POST /api/barcode/decode` (ZXing, server-side, full
+resolution). `UpcResolutionService` resolves identity server-side before the
+message is ever composed: local cache hit (no network) → Open Food Facts →
+FDC Branded (GTIN-verified), each external hit upserting a `FOOD_ITEM` and
+writing a `FOOD_ALIAS` for its name so the resolution is guaranteed. On a
+hit, the client prefills `"g {name}"` with the cursor at position 0 and
+routes through `log_food` like any other utterance - no fuzzy matching, no
+raw UPC digits round-tripped through chat. A miss on both sources opens the
+Food Items page's edit modal, UPC-prebound (§10), instead.
+
+`log_food_by_upc` still exists for typed/spoken UPCs, where there's no
+prefill opportunity.
 
 **Photo-based plate analysis and a recipe system were both part of an earlier
 design and do not exist today** — see the Appendix.
@@ -819,10 +807,20 @@ see the Appendix.
 bad or partial cached `FOOD_ITEM` row (a UPC lookup missing sodium, a stale
 model estimate) had no other path before this page existed. It supports:
 searching active/deleted items; editing the full nutrient set directly; a
-USDA FDC lookup by name (auto-fills on a single plausible match, shows a
-picker for several — e.g. "canned beans"); an Open Food Facts lookup by UPC;
-manual entry at any gram amount (e.g. straight off a nutrition label),
-auto-scaled to per-100g on save; and soft-delete/restore.
+USDA FDC lookup by name (shows up to 5 candidates with nutrition already
+fetched); an Open Food Facts lookup by UPC; manual entry at any gram amount
+(e.g. straight off a nutrition label), auto-scaled to per-100g on save; an
+optional household-measure field that writes a `PORTION_UNIT` row; an
+**alias list** per item (add/remove) so an annoying chat clarification is
+fixable in seconds instead of recurring; and soft-delete/restore.
+
+**Manual-entry modal, UPC-prebound.** The terminus for every barcode scan
+that Open Food Facts and FDC Branded both miss (§6): the same edit modal
+opens automatically with the scanned UPC filled in, rather than a second
+form. Saving writes a `FOOD_ALIAS` for the entered name (every new
+`FOOD_ITEM` created here does, not just this path) and hands back to chat
+with `"g {name}"` prefilled, cursor at the start — the return-to-chat
+handoff is the only genuinely new wiring; the rest is reachability.
 
 **Overlays**: `chartsMacros` and `chartsWeight` (the dashboard cards, as a
 bottom sheet on mobile) and `queue` (the offline-queue panel).
@@ -844,7 +842,9 @@ Components:
 - **Push-to-talk** — Web Speech API for input; TTS output as an optional
   toggle
 - **Barcode camera button** — `<input type="file" capture="environment">`,
-  POSTs to the decode endpoint and relays the UPC into chat
+  POSTs to the decode endpoint, which resolves identity server-side (§6);
+  prefills chat on a hit, or routes to the Food Items manual-entry modal on
+  a miss on both external sources
 - **Offline queue** — explicit IndexedDB-backed queue (see §5), with a panel
   to view/remove individual pending messages
 

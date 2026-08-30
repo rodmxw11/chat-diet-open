@@ -1,5 +1,10 @@
 package com.chatdiet.food;
 
+import com.chatdiet.food.resolve.QuantityResolution;
+import com.chatdiet.food.resolve.QuantityResolver;
+import com.chatdiet.fooditem.FoodAlias;
+import com.chatdiet.fooditem.FoodAliasNormalizer;
+import com.chatdiet.fooditem.FoodAliasRepository;
 import com.chatdiet.fooditem.FoodItem;
 import com.chatdiet.fooditem.FoodItemLogger;
 import com.chatdiet.fooditem.FoodItemRepository;
@@ -25,14 +30,19 @@ import java.util.function.Function;
 public class LogFoodByUpcTool implements Function<LogFoodByUpcRequest, ToolResult> {
 
     private final FoodItemRepository foodItemRepository;
+    private final FoodAliasRepository foodAliasRepository;
     private final OpenFoodFactsClient openFoodFactsClient;
     private final FoodItemLogger foodItemLogger;
+    private final QuantityResolver quantityResolver;
 
-    public LogFoodByUpcTool(FoodItemRepository foodItemRepository, OpenFoodFactsClient openFoodFactsClient,
-                             FoodItemLogger foodItemLogger) {
+    public LogFoodByUpcTool(FoodItemRepository foodItemRepository, FoodAliasRepository foodAliasRepository,
+                             OpenFoodFactsClient openFoodFactsClient, FoodItemLogger foodItemLogger,
+                             QuantityResolver quantityResolver) {
         this.foodItemRepository = foodItemRepository;
+        this.foodAliasRepository = foodAliasRepository;
         this.openFoodFactsClient = openFoodFactsClient;
         this.foodItemLogger = foodItemLogger;
+        this.quantityResolver = quantityResolver;
     }
 
     /**
@@ -56,14 +66,19 @@ public class LogFoodByUpcTool implements Function<LogFoodByUpcRequest, ToolResul
                     off.proteinPer100g(), off.carbsPer100g(), off.fatPer100g(), off.fiberPer100g(),
                     off.sugarPer100g(), off.sodiumMgPer100g(), off.saturatedFatPer100g(),
                     off.cholesterolMgPer100g(), off.potassiumMgPer100g(), off.typicalServingG(), "UPC"));
+            // A name-based mention later ("another Coca-Cola") should resolve deterministically too.
+            var normalized = FoodAliasNormalizer.normalize(off.name());
+            if (foodAliasRepository.findByAliasNormalized(normalized).isEmpty()) {
+                foodAliasRepository.save(new FoodAlias(normalized, item.id(), "OFF"));
+            }
         }
 
-        var grams = FoodQuantity.resolveGrams(request.quantityG(), request.quantityServings(), item.typicalServingG());
-        if (grams.isEmpty()) {
+        var qty = quantityResolver.resolve(item, request.quantityG(), request.quantityServings());
+        if (!(qty instanceof QuantityResolution.Grams grams)) {
             return new ToolResult.NeedsClarification(
                     "How many servings (or how many grams) did you have of " + item.name() + "?", item.name());
         }
 
-        return foodItemLogger.logScaled(item, grams.getAsDouble(), request.loggedAt());
+        return foodItemLogger.logScaled(item, grams.grams(), request.loggedAt());
     }
 }

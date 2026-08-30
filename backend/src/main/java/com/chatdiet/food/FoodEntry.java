@@ -20,6 +20,9 @@ import java.time.LocalDateTime;
  *                        {@code null} for an entry with no per-100g reference to scale from
  * @param amountGrams     the weighed portion size in grams, or {@code null} if this entry wasn't
  *                        gram-based (logged before gram-scale logging, or eating out with no scale)
+ * @param entryGroupId    the undo boundary/display grouping this entry belongs to - all entries
+ *                        logged from the same utterance share one group id (the first entry's own
+ *                        {@code id}). Not a meal or recipe concept, just one food per row.
  * @param prepMinutes     optional prep time in minutes, if known; typically {@code null}
  * @param source          origin of this entry, e.g. {@code "MANUAL"} or a UPC/cached-food source tag
  * @param correctedAt     timestamp of the most recent correction via {@link #corrected}, or
@@ -43,6 +46,7 @@ public record FoodEntry(
         Double potassiumMg,
         Long foodItemId,
         Double amountGrams,
+        Long entryGroupId,
         Integer prepMinutes,
         String source,
         LocalDateTime correctedAt,
@@ -57,7 +61,7 @@ public record FoodEntry(
     public FoodEntry(LocalDateTime loggedAt, String rawUtterance, Integer totalCalories,
                       Double totalProteinG, Double totalCarbsG, Double totalFatG, String source) {
         this(null, loggedAt, rawUtterance, totalCalories, totalProteinG, totalCarbsG, totalFatG,
-                null, null, null, null, null, null, null, null, null, source, null, null);
+                null, null, null, null, null, null, null, null, null, null, source, null, null);
     }
 
     /** Convenience constructor for a freshly logged entry, including estimated micronutrients. */
@@ -67,7 +71,7 @@ public record FoodEntry(
                       Double cholesterolMg, Double potassiumMg, String source) {
         this(null, loggedAt, rawUtterance, totalCalories, totalProteinG, totalCarbsG, totalFatG,
                 fiberG, sugarG, sodiumMg, saturatedFatG, cholesterolMg, potassiumMg,
-                null, null, null, source, null, null);
+                null, null, null, null, source, null, null);
     }
 
     /**
@@ -82,7 +86,14 @@ public record FoodEntry(
                       Long foodItemId, Double amountGrams, String source) {
         this(null, loggedAt, rawUtterance, totalCalories, totalProteinG, totalCarbsG, totalFatG,
                 fiberG, sugarG, sodiumMg, saturatedFatG, cholesterolMg, potassiumMg,
-                foodItemId, amountGrams, null, source, null, null);
+                foodItemId, amountGrams, null, null, source, null, null);
+    }
+
+    /** Returns a copy of this entry with {@code entryGroupId} set - called once the row's own id is known. */
+    public FoodEntry withEntryGroupId(long entryGroupId) {
+        return new FoodEntry(id, loggedAt, rawUtterance, totalCalories, totalProteinG, totalCarbsG, totalFatG,
+                fiberG, sugarG, sodiumMg, saturatedFatG, cholesterolMg, potassiumMg,
+                foodItemId, amountGrams, entryGroupId, prepMinutes, source, correctedAt, priorValuesJson);
     }
 
     /**
@@ -112,6 +123,6 @@ public record FoodEntry(
                 newPotassiumMg != null ? newPotassiumMg : potassiumMg,
                 foodItemId,
                 newAmountGrams != null ? newAmountGrams : amountGrams,
-                prepMinutes, source, LocalDateTime.now(), priorValuesJson);
+                entryGroupId, prepMinutes, source, LocalDateTime.now(), priorValuesJson);
     }
 }

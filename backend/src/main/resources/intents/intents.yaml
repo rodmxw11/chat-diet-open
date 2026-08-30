@@ -10,51 +10,53 @@
   enabled: true
 
 - name: log_food
-  description: Named, UPC-scanned, and previously-cached food entries
+  description: Named and UPC-scanned food entries
   toolNames:
     - log_food
     - log_food_by_upc
-    - log_cached_food
   promptFragment: >
-    Log named foods with log_food, always providing your own best-effort
-    estimate of calories, macros, and micronutrients as a fallback - but if
-    the user states a weighed amount in grams (e.g. "42g of celery"), also
-    pass amountGrams: log_food checks its own food cache and USDA FoodData
-    Central for real nutrition data first in that case, using your estimate
-    only if neither has a match. If instead the user states a natural count
-    with no gram weight (e.g. "2 eggs", "1 medium banana", "1 cup of rice"),
-    do NOT invent your own gram number for amountGrams - even if you're
-    confident what it typically weighs, a guessed number denies the app a
-    real lookup it could otherwise do. Instead pass quantity (the count,
-    e.g. 2) and unit (the size/measure word alone, e.g. "medium", "cup",
-    "egg", "slice" - never repeating the food name itself) and leave
-    amountGrams unset: log_food tries to resolve that unit to a known gram
-    weight (its own cache, then USDA FoodData Central) before falling back
-    to your estimate - only fall back to guessing amountGrams yourself if
-    there's truly no natural counting unit at all (a mixed dish, "some
-    chips"). If the user states both a count and a weight together (e.g.
-    "2 eggs, about 100g"), pass amountGrams AND quantity/unit together -
-    that teaches the app that unit's real weight for next time, on top of
-    logging this entry
-    normally. For a UPC barcode, use log_food_by_upc. For
-    any named branded/packaged food, always call log_cached_food FIRST (it's
-    a real database lookup, not your memory, and costs nothing to try)
-    before falling back to log_food's own estimate. Only ask a clarifying
-    question first when a missing detail would make the estimate
-    meaningless - otherwise save immediately. Skip
-    logging (just acknowledge) anything under 10 calories, like black tea or
-    water. If the user mentions a past day (e.g. "yesterday", "Tuesday")
-    and/or a named meal, resolve a loggedAt timestamp and pass it to whichever
-    logging tool you call, anchored to the current time you've been given
-    for this message, not any other assumption of "now": breakfast = 8:00am,
-    lunch = 12:30pm, dinner = 6:00pm, any other meal word (snack, etc.) =
-    whatever specific time is implied by the wording, or a reasonable
-    default if none is. An explicit clock time in the message always wins
-    over a meal-name default. Leave loggedAt unset when no past day or meal
-    is mentioned - it then logs under the current time as before. Never
-    compose a "Logged: ..." reply without actually calling one of these
-    tools first, even mid-conversation after several similar turns in a
-    row - each food mention needs its own real tool call, every time; a
+    Log named foods with log_food, passing one entry per food in the items
+    array (several foods mentioned in one message go in one call, one entry
+    each). For each item, set foodRef to the food name as said and amountText
+    to the amount phrase verbatim ("142g", "2", "a bowl", "1 cup", or "" if
+    truly unstated) - never invent your own gram number, there is no
+    amountGrams field; the app resolves the phrase itself against its own
+    cache and USDA FoodData Central. Always still fill in your own
+    best-effort estimate of calories, macros, and micronutrients on every
+    item as a fallback for when nothing resolves.
+
+    log_food's reply falls into one of two shapes. If it's a plain
+    confirmation, you're done - relay it. If it contains a numbered list (each
+    option silently tagged with a marker like "[ref:item:57]",
+    "[ref:fdc:172686]", or "[ref:estimate]"), that's a clarification: relay
+    only the human-readable options to the user, NEVER show the [ref:...]
+    tags themselves. Once they pick one (by number, or by naming it), call
+    log_food again for that item with resolvedFoodItemId set to the id from
+    an [ref:item:N] tag, or resolvedFdcId from an [ref:fdc:N] tag, or
+    useEstimate:true if they picked the estimate option (keep
+    totalCalories/macros filled in on that call). If the earlier reply also
+    named a group ("(group #123)") alongside some items that already saved,
+    pass that number as attachToGroupId on the follow-up call so it joins the
+    same log entry instead of starting a new one - this happens when only
+    some foods in a multi-item message resolved on the first try.
+
+    For a UPC barcode, use log_food_by_upc instead - it takes quantityG or
+    quantityServings (not both) rather than amountText, and quantityG or
+    quantityServings, not both. Only ask a clarifying question first when a
+    missing detail would make the estimate meaningless - otherwise save
+    immediately (a numbered candidate list from log_food itself is not this
+    case; relay it as described above). If the user mentions a past day (e.g.
+    "yesterday", "Tuesday") and/or a named meal, resolve a loggedAt timestamp
+    and pass it to whichever logging tool you call, anchored to the current
+    time you've been given for this message, not any other assumption of
+    "now": breakfast = 8:00am, lunch = 12:30pm, dinner = 6:00pm, any other
+    meal word (snack, etc.) = whatever specific time is implied by the
+    wording, or a reasonable default if none is. An explicit clock time in the
+    message always wins over a meal-name default. Leave loggedAt unset when no
+    past day or meal is mentioned - it then logs under the current time as
+    before. Never compose a "Logged: ..." reply without actually calling one
+    of these tools first, even mid-conversation after several similar turns
+    in a row - each food mention needs its own real tool call, every time; a
     reply describing calories/macros with no tool call behind it is data
     loss, not a shortcut.
   enabled: true

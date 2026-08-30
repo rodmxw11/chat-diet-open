@@ -44,16 +44,21 @@ class CorrectFoodEntryToolTest {
         foodItemRepository.deleteAll();
     }
 
+    /** Saves an entry the way the real logging path does: self-referential entryGroupId. */
+    private FoodEntry saveAsOwnGroup(FoodEntry entry) {
+        var saved = foodEntryRepository.save(entry);
+        return foodEntryRepository.save(saved.withEntryGroupId(saved.id()));
+    }
+
     @Test
     void gramsCorrectionRecomputesFromTheCachedItemsPer100gValues() {
         var item = foodItemRepository.save(new FoodItem("chicken breast", null,
                 165.0, 31.0, 0.0, 3.6, 0.0, 0.0, 74.0, 1.0, 85.0, 256.0, null, "FDC"));
-        var entry = foodEntryRepository.save(new FoodEntry(LocalDateTime.now(), "chicken breast", 82,
+        saveAsOwnGroup(new FoodEntry(LocalDateTime.now(), "chicken breast", 82,
                 15.5, 0.0, 1.8, 0.0, 0.0, 37.0, 0.5, 42.5, 128.0, item.id(), 50.0, "FDC"));
-        assertMostRecentIs(entry);
 
         var result = correctFoodEntryTool.apply(new CorrectFoodRequest(
-                null, null, null, null, null, null, null, null, null, null, 100.0));
+                null, null, null, null, null, null, null, null, null, null, null, 100.0));
 
         assertThat(result).isInstanceOf(ToolResult.Success.class);
         var updated = (FoodEntry) ((ToolResult.Success) result).payload();
@@ -67,12 +72,10 @@ class CorrectFoodEntryToolTest {
 
     @Test
     void gramsCorrectionOnAnEntryWithNoCachedItemAsksForDirectValuesInstead() {
-        var entry = foodEntryRepository.save(
-                new FoodEntry(LocalDateTime.now(), "homemade chili", 450, 25.0, 40.0, 20.0, "MANUAL"));
-        assertMostRecentIs(entry);
+        saveAsOwnGroup(new FoodEntry(LocalDateTime.now(), "homemade chili", 450, 25.0, 40.0, 20.0, "MANUAL"));
 
         var result = correctFoodEntryTool.apply(new CorrectFoodRequest(
-                null, null, null, null, null, null, null, null, null, null, 300.0));
+                null, null, null, null, null, null, null, null, null, null, null, 300.0));
 
         assertThat(result).isInstanceOf(ToolResult.NeedsClarification.class);
         // Left unchanged - no recomputation was possible.
@@ -81,12 +84,10 @@ class CorrectFoodEntryToolTest {
 
     @Test
     void directValueCorrectionStillWorksWithoutAGramsAmount() {
-        var entry = foodEntryRepository.save(
-                new FoodEntry(LocalDateTime.now(), "pizza slice", 300, 12.0, 35.0, 10.0, "MANUAL"));
-        assertMostRecentIs(entry);
+        saveAsOwnGroup(new FoodEntry(LocalDateTime.now(), "pizza slice", 300, 12.0, 35.0, 10.0, "MANUAL"));
 
         var result = correctFoodEntryTool.apply(new CorrectFoodRequest(
-                350, null, null, null, null, null, null, null, null, null, null));
+                null, 350, null, null, null, null, null, null, null, null, null, null));
 
         assertThat(result).isInstanceOf(ToolResult.Success.class);
         var updated = (FoodEntry) ((ToolResult.Success) result).payload();
@@ -95,7 +96,46 @@ class CorrectFoodEntryToolTest {
         assertThat(updated.amountGrams()).isNull();
     }
 
-    private void assertMostRecentIs(FoodEntry entry) {
-        assertThat(foodEntryRepository.findMostRecent()).contains(entry);
+    @Test
+    void singleEntryGroupCorrectsUnambiguouslyWithNoFoodRefNeeded() {
+        saveAsOwnGroup(new FoodEntry(LocalDateTime.now(), "banana", 105, 1.3, 27.0, 0.4, "MANUAL"));
+
+        var result = correctFoodEntryTool.apply(new CorrectFoodRequest(
+                null, 110, null, null, null, null, null, null, null, null, null, null));
+
+        assertThat(result).isInstanceOf(ToolResult.Success.class);
+    }
+
+    @Test
+    void multiEntryGroupWithNoFoodRefAsksWhichOne() {
+        var chicken = foodEntryRepository.save(new FoodEntry(LocalDateTime.now(), "chicken breast", 165,
+                31.0, 0.0, 3.6, "FDC"));
+        var bread = foodEntryRepository.save(new FoodEntry(LocalDateTime.now(), "wheat bread", 250,
+                8.0, 45.0, 3.0, "MANUAL"));
+        foodEntryRepository.save(chicken.withEntryGroupId(chicken.id()));
+        foodEntryRepository.save(bread.withEntryGroupId(chicken.id()));
+
+        var result = correctFoodEntryTool.apply(new CorrectFoodRequest(
+                null, 300, null, null, null, null, null, null, null, null, null, null));
+
+        assertThat(result).isInstanceOf(ToolResult.NeedsClarification.class);
+    }
+
+    @Test
+    void multiEntryGroupResolvesByNamedFoodRef() {
+        var chicken = foodEntryRepository.save(new FoodEntry(LocalDateTime.now(), "chicken breast", 165,
+                31.0, 0.0, 3.6, "FDC"));
+        var bread = foodEntryRepository.save(new FoodEntry(LocalDateTime.now(), "wheat bread", 250,
+                8.0, 45.0, 3.0, "MANUAL"));
+        foodEntryRepository.save(chicken.withEntryGroupId(chicken.id()));
+        foodEntryRepository.save(bread.withEntryGroupId(chicken.id()));
+
+        var result = correctFoodEntryTool.apply(new CorrectFoodRequest(
+                "chicken", 200, null, null, null, null, null, null, null, null, null, null));
+
+        assertThat(result).isInstanceOf(ToolResult.Success.class);
+        var updated = (FoodEntry) ((ToolResult.Success) result).payload();
+        assertThat(updated.rawUtterance()).isEqualTo("chicken breast");
+        assertThat(updated.totalCalories()).isEqualTo(200);
     }
 }

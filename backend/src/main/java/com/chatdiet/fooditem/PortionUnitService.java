@@ -1,6 +1,6 @@
 package com.chatdiet.fooditem;
 
-import com.chatdiet.fdc.FdcClient;
+import com.chatdiet.fdc.FdcPortion;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,11 +18,9 @@ import java.util.OptionalDouble;
 public class PortionUnitService {
 
     private final PortionUnitRepository portionUnitRepository;
-    private final FdcClient fdcClient;
 
-    public PortionUnitService(PortionUnitRepository portionUnitRepository, FdcClient fdcClient) {
+    public PortionUnitService(PortionUnitRepository portionUnitRepository) {
         this.portionUnitRepository = portionUnitRepository;
-        this.fdcClient = fdcClient;
     }
 
     /**
@@ -48,9 +46,9 @@ public class PortionUnitService {
         return substringMatches.size() == 1 ? OptionalDouble.of(substringMatches.get(0).grams()) : OptionalDouble.empty();
     }
 
-    /** Fetches and stores every portion USDA reports for the given FDC food, for future lookups. */
-    public void populateFromFdc(long foodItemId, long fdcId) {
-        for (var portion : fdcClient.fetchPortions(fdcId)) {
+    /** Stores every portion USDA reported for the given FDC food (fetched by the caller's detail call), for future lookups. */
+    public void storePortions(long foodItemId, List<FdcPortion> portions) {
+        for (var portion : portions) {
             upsert(foodItemId, normalize(portion.unitName()), portion.grams(), "FDC");
         }
     }
@@ -61,6 +59,11 @@ public class PortionUnitService {
             return;
         }
         upsert(foodItemId, normalize(unit), amountGrams / quantity, "WEIGHED");
+    }
+
+    /** Records a household measure entered directly on the Food Items page (e.g. "slice" -> 43g). */
+    public void recordManualPortion(long foodItemId, String unit, double grams) {
+        upsert(foodItemId, normalize(unit), grams, "MANUAL");
     }
 
     private void upsert(long foodItemId, String unitName, double grams, String source) {

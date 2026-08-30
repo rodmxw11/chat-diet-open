@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * REST surface for the food-items management page - the one form-based CRUD screen in an
@@ -27,12 +28,17 @@ import java.util.List;
 public class FoodItemController {
 
     private final FoodItemRepository foodItemRepository;
+    private final FoodAliasRepository foodAliasRepository;
+    private final PortionUnitService portionUnitService;
     private final FdcClient fdcClient;
     private final OpenFoodFactsClient openFoodFactsClient;
 
-    public FoodItemController(FoodItemRepository foodItemRepository, FdcClient fdcClient,
+    public FoodItemController(FoodItemRepository foodItemRepository, FoodAliasRepository foodAliasRepository,
+                               PortionUnitService portionUnitService, FdcClient fdcClient,
                                OpenFoodFactsClient openFoodFactsClient) {
         this.foodItemRepository = foodItemRepository;
+        this.foodAliasRepository = foodAliasRepository;
+        this.portionUnitService = portionUnitService;
         this.fdcClient = fdcClient;
         this.openFoodFactsClient = openFoodFactsClient;
     }
@@ -46,13 +52,55 @@ public class FoodItemController {
 
     /**
      * Looks up a name in USDA FoodData Central to help fill out the form - returns up to 5
-     * plausible candidates for the caller to choose from; empty list if no key is configured or
-     * nothing matched. Not cached as a FoodItem itself - the form decides whether to save
-     * whichever candidate is picked.
+     * candidates with nutrition already fetched (a manual, occasional form action, unlike the
+     * automated chat clarification list which defers the detail call to selection until one is
+     * actually picked). Empty list if no key is configured or nothing matched. Not cached as a
+     * FoodItem itself - the form decides whether to save whichever candidate is picked.
      */
     @GetMapping("/api/food-items/lookup")
     public List<FdcProduct> lookup(@RequestParam String q) {
-        return fdcClient.searchCandidates(q, 5);
+        return fdcClient.search(q, 5).stream()
+                .map(candidate -> fdcClient.fetchDetail(candidate.fdcId()))
+                .flatMap(Optional::stream)
+                .map(detail -> detail.product())
+                .toList();
+    }
+
+    /** Lists the aliases a food item is known by, for the alias-management UI. */
+    @GetMapping("/api/food-items/{id}/aliases")
+    public List<FoodAlias> aliases(@PathVariable long id) {
+        return foodAliasRepository.findByFoodItemId(id);
+    }
+
+    /** Adds a manually-entered alias for a food item. */
+    @PostMapping("/api/food-items/{id}/aliases")
+    public FoodAlias addAlias(@PathVariable long id, @RequestBody AliasRequest request) {
+        var normalized = FoodAliasNormalizer.normalize(request.alias());
+        var existing = foodAliasRepository.findByAliasNormalized(normalized);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        return foodAliasRepository.save(new FoodAlias(normalized, id, "USER"));
+    }
+
+    /** Removes an alias - a clarification that turns out annoying is fixable in seconds. */
+    @DeleteMapping("/api/food-items/aliases/{aliasId}")
+    public ResponseEntity<Void> removeAlias(@PathVariable long aliasId) {
+        foodAliasRepository.deleteById(aliasId);
+        return ResponseEntity.noContent().build();
+    }
+
+    public record AliasRequest(String alias) {
+    }
+
+    /** Records a household measure ("slice" -> 43g) entered directly on the Food Items page. */
+    @PostMapping("/api/food-items/{id}/portion-units")
+    public ResponseEntity<Void> addPortionUnit(@PathVariable long id, @RequestBody PortionUnitRequest request) {
+        portionUnitService.recordManualPortion(id, request.unitName(), request.grams());
+        return ResponseEntity.noContent().build();
+    }
+
+    public record PortionUnitRequest(String unitName, double grams) {
     }
 
     /**
@@ -71,13 +119,19 @@ public class FoodItemController {
         return foodItemRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
+    /** Aliases accrete from clarification turns, scans, and Food Items saves - every new item here writes one. */
     @PostMapping("/api/food-items")
     public FoodItem create(@RequestBody FoodItemUpsertRequest request) {
-        return foodItemRepository.save(new FoodItem(request.name(), request.upc(), request.per100gCalories(),
+        var item = foodItemRepository.save(new FoodItem(request.name(), request.upc(), request.per100gCalories(),
                 request.per100gProtein(), request.per100gCarbs(), request.per100gFat(), request.per100gFiber(),
                 request.per100gSugar(), request.per100gSodiumMg(), request.per100gSaturatedFat(),
                 request.per100gCholesterolMg(), request.per100gPotassiumMg(), request.typicalServingG(),
                 request.lookupSource() != null ? request.lookupSource() : "MANUAL"));
+        var normalized = FoodAliasNormalizer.normalize(request.name());
+        if (foodAliasRepository.findByAliasNormalized(normalized).isEmpty()) {
+            foodAliasRepository.save(new FoodAlias(normalized, item.id(), "MANUAL"));
+        }
+        return item;
     }
 
     /** Edits an item's nutrition data in place - prospective only; past logged entries snapshot their own totals. */

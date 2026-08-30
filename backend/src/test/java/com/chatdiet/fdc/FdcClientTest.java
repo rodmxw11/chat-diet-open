@@ -8,76 +8,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class FdcClientTest {
 
-    private final FdcClient client = new FdcClient("unused-in-these-tests");
-
-    @Test
-    void plausibleMatchAcceptsSubstringInEitherDirection() {
-        assertThat(FdcClient.isPlausibleMatch("celery", "Celery, raw")).isTrue();
-        assertThat(FdcClient.isPlausibleMatch("Celery, raw", "celery")).isTrue();
-        assertThat(FdcClient.isPlausibleMatch("yogurt", "Yogurt, plain, whole milk")).isTrue();
-    }
-
-    @Test
-    void implausibleMatchIsRejected() {
-        assertThat(FdcClient.isPlausibleMatch("celery", "Beef, ground, 80% lean")).isFalse();
-    }
-
-    @Test
-    void nullDescriptionIsNeverAMatch() {
-        assertThat(FdcClient.isPlausibleMatch("celery", null)).isFalse();
-    }
-
-    @Test
-    void toProductMapsKnownNutrientIdsToAppFields() {
-        var nutrients = List.of(
-                new FdcApiNutrient(FdcNutrientMapping.CALORIES, 16.0),
-                new FdcApiNutrient(FdcNutrientMapping.PROTEIN, 0.69),
-                new FdcApiNutrient(FdcNutrientMapping.CARBS, 2.97),
-                new FdcApiNutrient(FdcNutrientMapping.FAT, 0.17),
-                new FdcApiNutrient(FdcNutrientMapping.FIBER, 1.6),
-                new FdcApiNutrient(FdcNutrientMapping.SODIUM_MG, 80.0),
-                new FdcApiNutrient(FdcNutrientMapping.POTASSIUM_MG, 260.0));
-        var food = new FdcApiFood(173917L, "Celery, raw", nutrients);
-
-        var product = client.toProduct(food).orElseThrow();
-
-        assertThat(product.name()).isEqualTo("Celery, raw");
-        assertThat(product.caloriesPer100g()).isEqualTo(16.0);
-        assertThat(product.proteinPer100g()).isEqualTo(0.69);
-        assertThat(product.sodiumMgPer100g()).isEqualTo(80.0);
-        assertThat(product.potassiumMgPer100g()).isEqualTo(260.0);
-        assertThat(product.fdcId()).isEqualTo(173917L);
-        // Not reported for this food - should stay null, not default to 0.
-        assertThat(product.sugarPer100g()).isNull();
-        assertThat(product.cholesterolMgPer100g()).isNull();
-    }
-
-    @Test
-    void toProductIsEmptyWithoutUsableCalorieData() {
-        var food = new FdcApiFood(1L, "Mystery item", List.of(new FdcApiNutrient(FdcNutrientMapping.PROTEIN, 5.0)));
-
-        assertThat(client.toProduct(food)).isEmpty();
-    }
-
     @Test
     void searchReturnsEmptyWhenNoApiKeyIsConfigured() {
         var unconfigured = new FdcClient("");
-
-        assertThat(unconfigured.search("celery")).isEmpty();
+        assertThat(unconfigured.search("celery", 5)).isEmpty();
     }
 
     @Test
-    void searchCandidatesReturnsEmptyWhenNoApiKeyIsConfigured() {
+    void fetchDetailReturnsEmptyWhenNoApiKeyIsConfigured() {
         var unconfigured = new FdcClient("");
-
-        assertThat(unconfigured.searchCandidates("celery", 5)).isEmpty();
+        assertThat(unconfigured.fetchDetail(173944L)).isEmpty();
     }
 
     @Test
-    void fetchPortionsReturnsEmptyWhenNoApiKeyIsConfigured() {
+    void lookupBrandedByUpcReturnsEmptyWhenNoApiKeyIsConfigured() {
         var unconfigured = new FdcClient("");
-
-        assertThat(unconfigured.fetchPortions(173944L)).isEmpty();
+        assertThat(unconfigured.lookupBrandedByUpc("049000028911")).isEmpty();
     }
 
     @Test
@@ -92,5 +38,32 @@ class FdcClientTest {
     void qualifierCountTreatsMissingDescriptionAsMaximallyQualified() {
         assertThat(FdcClient.qualifierCount(null)).isEqualTo(Integer.MAX_VALUE);
         assertThat(FdcClient.qualifierCount("")).isEqualTo(Integer.MAX_VALUE);
+    }
+
+    @Test
+    void rankingPrefersAnExactLeadingTokenMatch() {
+        var exact = new FdcApiFood(1L, "Bananas, raw", null);
+        var partial = new FdcApiFood(2L, "Bananas, dehydrated, or banana powder", null);
+
+        var sorted = List.of(partial, exact).stream().sorted(FdcClient.rankingComparator("bananas")).toList();
+
+        assertThat(sorted.get(0)).isEqualTo(exact);
+    }
+
+    @Test
+    void rankingPrefersMoreTokenOverlapWhenNoExactLeadingMatch() {
+        var moreOverlap = new FdcApiFood(1L, "Celery, raw, sticks", null);
+        var lessOverlap = new FdcApiFood(2L, "Celery juice", null);
+
+        var sorted = List.of(lessOverlap, moreOverlap).stream()
+                .sorted(FdcClient.rankingComparator("celery sticks")).toList();
+
+        assertThat(sorted.get(0)).isEqualTo(moreOverlap);
+    }
+
+    @Test
+    void gtinStrippingIgnoresLeadingZerosOnBothSides() {
+        assertThat(FdcClient.stripLeadingZeros("00049000028911")).isEqualTo(FdcClient.stripLeadingZeros("49000028911"));
+        assertThat(FdcClient.stripLeadingZeros("0000")).isEqualTo("0");
     }
 }
