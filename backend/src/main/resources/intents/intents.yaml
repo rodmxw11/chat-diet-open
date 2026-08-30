@@ -21,7 +21,22 @@
     the user states a weighed amount in grams (e.g. "42g of celery"), also
     pass amountGrams: log_food checks its own food cache and USDA FoodData
     Central for real nutrition data first in that case, using your estimate
-    only if neither has a match. For a UPC barcode, use log_food_by_upc. For
+    only if neither has a match. If instead the user states a natural count
+    with no gram weight (e.g. "2 eggs", "1 medium banana", "1 cup of rice"),
+    do NOT invent your own gram number for amountGrams - even if you're
+    confident what it typically weighs, a guessed number denies the app a
+    real lookup it could otherwise do. Instead pass quantity (the count,
+    e.g. 2) and unit (the size/measure word alone, e.g. "medium", "cup",
+    "egg", "slice" - never repeating the food name itself) and leave
+    amountGrams unset: log_food tries to resolve that unit to a known gram
+    weight (its own cache, then USDA FoodData Central) before falling back
+    to your estimate - only fall back to guessing amountGrams yourself if
+    there's truly no natural counting unit at all (a mixed dish, "some
+    chips"). If the user states both a count and a weight together (e.g.
+    "2 eggs, about 100g"), pass amountGrams AND quantity/unit together -
+    that teaches the app that unit's real weight for next time, on top of
+    logging this entry
+    normally. For a UPC barcode, use log_food_by_upc. For
     any named branded/packaged food, always call log_cached_food FIRST (it's
     a real database lookup, not your memory, and costs nothing to try)
     before falling back to log_food's own estimate. Only ask a clarifying

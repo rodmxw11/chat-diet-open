@@ -131,6 +131,45 @@ public class FdcClient {
                 FdcNutrientMapping.extract(nutrients, FdcNutrientMapping.SATURATED_FAT),
                 FdcNutrientMapping.extract(nutrients, FdcNutrientMapping.CHOLESTEROL_MG),
                 FdcNutrientMapping.extract(nutrients, FdcNutrientMapping.POTASSIUM_MG),
-                null));
+                null,
+                food.fdcId()));
+    }
+
+    /**
+     * Fetches the real per-unit portion weights USDA reports for a specific food (e.g. "medium"
+     * -> 118g for a banana) - a separate call from {@link #search}/{@link #searchCandidates},
+     * since the search response doesn't include usable portion data for Foundation/SR Legacy
+     * foods; only the single-food detail endpoint does. Called once per newly FDC-cached {@code
+     * FoodItem}, not per log, so the extra round trip is a one-time cost.
+     *
+     * @return every portion FDC reports, normalized, or empty if no key is configured, nothing
+     *         came back, or the food has no portion data
+     */
+    public List<FdcPortion> fetchPortions(long fdcId) {
+        if (apiKey == null || apiKey.isBlank()) {
+            return List.of();
+        }
+
+        try {
+            var response = restClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .scheme("https").host("api.nal.usda.gov").path("/fdc/v1/food/{fdcId}")
+                            .queryParam("api_key", apiKey)
+                            .build(fdcId))
+                    .retrieve()
+                    .body(FdcApiFoodDetail.class);
+
+            if (response == null || response.foodPortions() == null) {
+                return List.of();
+            }
+
+            return response.foodPortions().stream()
+                    .filter(portion -> portion.gramWeight() != null && portion.modifier() != null
+                            && !portion.modifier().isBlank())
+                    .map(portion -> new FdcPortion(portion.modifier(), portion.gramWeight()))
+                    .toList();
+        } catch (Exception e) {
+            return List.of();
+        }
     }
 }

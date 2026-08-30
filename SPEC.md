@@ -153,6 +153,7 @@ recipe system, no per-item cost tracking.
 ```mermaid
 erDiagram
     FOOD_ENTRY }o--|| FOOD_ITEM : "may reference (cache/FDC/OFF reuse, or a freshly cached model estimate)"
+    PORTION_UNIT }o--|| FOOD_ITEM : "known unit -> grams mappings"
 
     FOOD_ENTRY {
         long id PK
@@ -279,6 +280,14 @@ erDiagram
         string model
         real input_cost_per_million_usd
         real output_cost_per_million_usd
+    }
+
+    PORTION_UNIT {
+        long id PK
+        long food_item_id FK
+        string unit_name
+        real grams
+        string source
     }
 ```
 
@@ -492,7 +501,8 @@ happened, not the time they synced.
 stateDiagram-v2
     [*] --> Utterance
     Utterance --> NamedWithGrams: named food, weighed amount in grams
-    Utterance --> NamedOther: named food, servings or no amount
+    Utterance --> NamedWithUnit: named food, natural count (no grams) - "2 eggs", "1 medium banana"
+    Utterance --> NamedOther: named food, no amount at all
     Utterance --> UpcPath: UPC (typed, spoken, or camera-scanned)
     Utterance --> CachedByName: names a previously UPC-cached product
 
@@ -502,6 +512,13 @@ stateDiagram-v2
     FdcCheck --> CacheFdcItem: USDA FDC plausible match
     CacheFdcItem --> Scale
     FdcCheck --> Estimate: no FDC match either
+    NamedWithGrams --> LearnPortion: quantity+unit also given - upsert PORTION_UNIT (WEIGHED)
+
+    NamedWithUnit --> CacheCheck2: same cache/FDC match as above
+    CacheCheck2 --> PortionCheck: item found (cached or freshly FDC-cached)
+    CacheFdcItem --> FetchPortions: fetch FDC foodPortions once, store all as PORTION_UNIT (FDC)
+    PortionCheck --> Scale: unit resolves (exact, or unambiguous substring)
+    PortionCheck --> Estimate: unit unknown, or no item found at all
 
     NamedOther --> Estimate: model estimates calories, macros, micronutrients
     Estimate --> CacheEstimate: amountGrams known - cache as FOOD_ITEM (MODEL_ESTIMATE)
@@ -516,6 +533,7 @@ stateDiagram-v2
     CachedByName --> Scale: FoodQuantity resolves servings/grams
 
     Scale --> Persist: scale per-100g values by amount eaten
+    LearnPortion --> Persist
     Persist --> Echo: read numbers back
     Echo --> [*]
     Persist --> UnderTen: <10 cal
@@ -533,12 +551,38 @@ already goes through, rather than adding a separate mutation route.
 for **UPC-identified branded/packaged products** — meaningfully more
 accurate than a free-text estimate, and free. **USDA FoodData Central**
 (`FdcClient`, `Foundation`/`SR Legacy` data types only) covers **named
-raw/generic foods** the same way (e.g. "42g of celery") — but only when the
-model passes a weighed gram amount, since that's the only case where trying
-a real lookup before falling back to an estimate is worth the round trip.
-FDC requires a free `api.data.gov` key (`chat-diet.fdc.api-key`); unset, the
-lookup tier is silently skipped and logging falls straight through to the
-model's own estimate.
+raw/generic foods** the same way (e.g. "42g of celery" or "1 medium
+banana") — either a weighed gram amount or a resolvable natural
+quantity+unit makes the lookup worth trying; with neither, there's nothing
+to scale a per-100g figure to, so resolution goes straight to the model's
+estimate. FDC requires a free `api.data.gov` key (`chat-diet.fdc.api-key`);
+unset, the lookup tier is silently skipped.
+
+**`PORTION_UNIT` turns a natural count into grams.** A gram amount alone
+only covers utterances where the user (or model) states a weight - the
+majority of ordinary phrasing ("2 eggs", "a cup of rice") never did.
+`PORTION_UNIT(food_item_id, unit_name, grams, source)` maps a normalized
+unit word to a gram weight per cached food, populated two ways: **from
+FDC** (`FdcClient.fetchPortions`, a separate call to the single-food detail
+endpoint - the search endpoint's `foodMeasures` field is empty for
+Foundation/SR Legacy foods, so this costs one extra request, but only once
+per newly FDC-cached item, not per log) and **from the user's own weighed
+entries** (`PortionUnitService.learnFromWeighedEntry` - if a request states
+*both* a gram amount and a quantity+unit, e.g. "2 eggs, about 100g", the
+derived 50g/egg gets stored too). Matching a stated unit against known
+portions prefers an exact normalized match, and only accepts a
+bidirectional-substring match when it's unambiguous - FDC often reports
+several preparations of the same rough word ("cup, sliced" vs. "cup,
+mashed" both contain "cup" but differ by 75g), and picking one would be a
+silent guess, not a resolution.
+
+*(Observed in practice: Claude Haiku, even when instructed not to, tends to
+pair a natural quantity+unit with its own confident gram guess rather than
+omitting the gram amount to force a real FDC lookup - so the dominant
+realized benefit today is the self-learning path, not the pure
+FDC-portion-lookup path. Both still teach `PORTION_UNIT` real data either
+way, but the "never touches the LLM estimator" outcome the pure lookup path
+promises isn't yet the common case in live use.)*
 
 **Match-confidence, not just "first result."** Both `FoodItemRepository`'s
 cache lookup and `FdcClient` use the same bidirectional-substring test
@@ -554,11 +598,17 @@ picks one match with no human to disambiguate); the food-item form's lookup
 instead.
 
 **Every named-food logging path that produces real per-100g data caches or
-reuses a `FOOD_ITEM` row** (cache hit, FDC match, OFF match, or even the
-model's own one-time estimate when a gram amount was given) — so the same
-food resolves deterministically on its next mention rather than
-re-estimating every time. This also means a systematic bias in the model's
-estimates gets captured once, not repeated indefinitely.
+reuses a `FOOD_ITEM` row** (cache hit, FDC match, OFF match, or the model's
+own one-time estimate when an amount - gram or resolved unit - was known)
+— so the same food resolves deterministically on its next mention rather
+than re-estimating every time, and a systematic bias in the model's
+estimates gets captured once instead of repeated indefinitely. One real
+caveat to that: the cached row's name is whatever free-text `description`
+the model passed (sometimes the whole phrase, e.g. "1 medium banana"
+rather than bare "banana"), and the fuzzy name-match tier only accepts a
+candidate up to one word longer than the query - so this determinism holds
+best when the model phrases the same food consistently, not across
+arbitrarily different wordings of it.
 
 **Photo-based plate analysis and a recipe system were both part of an earlier
 design and do not exist today** — see the Appendix.

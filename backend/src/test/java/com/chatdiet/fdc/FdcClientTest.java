@@ -37,7 +37,7 @@ class FdcClientTest {
                 new FdcApiNutrient(FdcNutrientMapping.FIBER, 1.6),
                 new FdcApiNutrient(FdcNutrientMapping.SODIUM_MG, 80.0),
                 new FdcApiNutrient(FdcNutrientMapping.POTASSIUM_MG, 260.0));
-        var food = new FdcApiFood("Celery, raw", nutrients);
+        var food = new FdcApiFood(173917L, "Celery, raw", nutrients);
 
         var product = client.toProduct(food).orElseThrow();
 
@@ -46,6 +46,7 @@ class FdcClientTest {
         assertThat(product.proteinPer100g()).isEqualTo(0.69);
         assertThat(product.sodiumMgPer100g()).isEqualTo(80.0);
         assertThat(product.potassiumMgPer100g()).isEqualTo(260.0);
+        assertThat(product.fdcId()).isEqualTo(173917L);
         // Not reported for this food - should stay null, not default to 0.
         assertThat(product.sugarPer100g()).isNull();
         assertThat(product.cholesterolMgPer100g()).isNull();
@@ -53,7 +54,7 @@ class FdcClientTest {
 
     @Test
     void toProductIsEmptyWithoutUsableCalorieData() {
-        var food = new FdcApiFood("Mystery item", List.of(new FdcApiNutrient(FdcNutrientMapping.PROTEIN, 5.0)));
+        var food = new FdcApiFood(1L, "Mystery item", List.of(new FdcApiNutrient(FdcNutrientMapping.PROTEIN, 5.0)));
 
         assertThat(client.toProduct(food)).isEmpty();
     }
@@ -70,6 +71,13 @@ class FdcClientTest {
         var unconfigured = new FdcClient("");
 
         assertThat(unconfigured.searchCandidates("celery", 5)).isEmpty();
+    }
+
+    @Test
+    void fetchPortionsReturnsEmptyWhenNoApiKeyIsConfigured() {
+        var unconfigured = new FdcClient("");
+
+        assertThat(unconfigured.fetchPortions(173944L)).isEmpty();
     }
 
     @Test

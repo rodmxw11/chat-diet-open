@@ -9,7 +9,13 @@ package com.chatdiet.fdc;
  *
  * @param typicalServingG FDC's basic search response doesn't include portion data; always
  *                         {@code null} today, which {@link com.chatdiet.food.FoodQuantity}
- *                         already treats as "assume 100g servings".
+ *                         already treats as "assume 100g servings". Real per-unit portion data
+ *                         ("medium" -> 118g) is fetched separately via {@code fdcId} and
+ *                         {@link FdcClient#fetchPortions}, not carried on this record.
+ * @param fdcId           this food's FDC identifier, used to fetch its {@code foodPortions}
+ *                         (a separate API call - the search response this came from doesn't
+ *                         include usable portion data for Foundation/SR Legacy foods); {@code
+ *                         null} only if FDC's response omitted it, which shouldn't normally happen
  */
 public record FdcProduct(
         String name,
@@ -23,6 +29,7 @@ public record FdcProduct(
         Double saturatedFatPer100g,
         Double cholesterolMgPer100g,
         Double potassiumMgPer100g,
-        Double typicalServingG
+        Double typicalServingG,
+        Long fdcId
 ) {
 }
