@@ -1324,6 +1324,51 @@ input {
   font-size: calc(14px * var(--font-scale));
 }
 
+.food-item-lookup-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.food-item-lookup-status {
+  font-size: calc(12px * var(--font-scale));
+  color: var(--text-muted);
+}
+
+.food-item-lookup-candidates {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--border-nested);
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.food-item-lookup-candidates button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-bottom: 1px solid var(--border-nested-2);
+  background: var(--surface);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  font-size: calc(13px * var(--font-scale));
+}
+
+.food-item-lookup-candidates li:last-child button {
+  border-bottom: none;
+}
+
+.food-item-lookup-candidates button:hover {
+  background: var(--surface-tint-2);
+}
+
 /* ---------- Micronutrients (view-only) ---------- */
 .nutrient-list {
   display: flex;

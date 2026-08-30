@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -29,15 +30,29 @@ public class FdcClient {
 
     /**
      * Searches FoodData Central for the given food name and returns the best match, if any is a
-     * plausible match for the query - not just FDC's top-ranked result regardless of relevance.
+     * plausible match for the query - not just FDC's top-ranked result regardless of relevance,
+     * and preferring the plainest (fewest-qualifier) match rather than FDC's own relevance order
+     * (which for an unqualified name like "banana" can rank a processed variant like "Bananas,
+     * dehydrated, or banana powder" ahead of "Bananas, raw"). Used by the automated food-logging
+     * flow, where there's no person present to pick between several candidates; see
+     * {@link #searchCandidates} for that case.
      *
      * @param query the food name to search for
      * @return the best match's nutrition info, or empty if no key is configured, nothing came
      *         back, or nothing returned was a plausible match for the query
      */
     public Optional<FdcProduct> search(String query) {
+        return searchCandidates(query, 1).stream().findFirst();
+    }
+
+    /**
+     * Like {@link #search}, but returns up to {@code limit} plausible matches instead of just the
+     * best one - for the food-item form, where a person is present to pick the right one out of
+     * several (e.g. "canned beans" -> black/kidney/pinto/...).
+     */
+    public List<FdcProduct> searchCandidates(String query, int limit) {
         if (apiKey == null || apiKey.isBlank()) {
-            return Optional.empty();
+            return List.of();
         }
 
         try {
@@ -53,15 +68,18 @@ public class FdcClient {
                     .body(FdcApiResponse.class);
 
             if (response == null || response.foods() == null) {
-                return Optional.empty();
+                return List.of();
             }
 
             return response.foods().stream()
                     .filter(food -> isPlausibleMatch(query, food.description()))
-                    .findFirst()
-                    .flatMap(this::toProduct);
+                    .sorted(Comparator.comparingInt(food -> qualifierCount(food.description())))
+                    .map(this::toProduct)
+                    .flatMap(Optional::stream)
+                    .limit(limit)
+                    .toList();
         } catch (Exception e) {
-            return Optional.empty();
+            return List.of();
         }
     }
 
@@ -77,6 +95,20 @@ public class FdcClient {
         var q = query.toLowerCase(Locale.ROOT).trim();
         var d = description.toLowerCase(Locale.ROOT).trim();
         return d.contains(q) || q.contains(d);
+    }
+
+    /**
+     * Rough measure of how qualified/processed a description is, by counting its comma- and
+     * whitespace-separated tokens (e.g. "Bananas, raw" -> 2, "Bananas, dehydrated, or banana
+     * powder" -> 5) - used to sort plausible matches so the plainest one is picked first, instead
+     * of trusting FDC's own relevance ranking to have put the generic form ahead of a processed
+     * or branded variant. Not real NLP, just a cheap proxy: more description = more qualifiers.
+     */
+    static int qualifierCount(String description) {
+        if (description == null || description.isBlank()) {
+            return Integer.MAX_VALUE;
+        }
+        return description.split("[,\\s]+").length;
     }
 
     Optional<FdcProduct> toProduct(FdcApiFood food) {

@@ -64,4 +64,25 @@ class FdcClientTest {
 
         assertThat(unconfigured.search("celery")).isEmpty();
     }
+
+    @Test
+    void searchCandidatesReturnsEmptyWhenNoApiKeyIsConfigured() {
+        var unconfigured = new FdcClient("");
+
+        assertThat(unconfigured.searchCandidates("celery", 5)).isEmpty();
+    }
+
+    @Test
+    void qualifierCountPrefersPlainerDescriptions() {
+        // Real case that motivated this: FDC's own relevance ranking put the powder ahead of the
+        // raw fruit for a bare "banana" query - qualifier count should rank the plain one first.
+        assertThat(FdcClient.qualifierCount("Bananas, raw"))
+                .isLessThan(FdcClient.qualifierCount("Bananas, dehydrated, or banana powder"));
+    }
+
+    @Test
+    void qualifierCountTreatsMissingDescriptionAsMaximallyQualified() {
+        assertThat(FdcClient.qualifierCount(null)).isEqualTo(Integer.MAX_VALUE);
+        assertThat(FdcClient.qualifierCount("")).isEqualTo(Integer.MAX_VALUE);
+    }
 }

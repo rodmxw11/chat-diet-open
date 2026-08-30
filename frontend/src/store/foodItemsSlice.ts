@@ -38,6 +38,21 @@ export interface FoodItemUpsert {
   lookupSource: string
 }
 
+export interface NutritionLookupResult {
+  name: string
+  caloriesPer100g: number | null
+  proteinPer100g: number | null
+  carbsPer100g: number | null
+  fatPer100g: number | null
+  fiberPer100g: number | null
+  sugarPer100g: number | null
+  sodiumMgPer100g: number | null
+  saturatedFatPer100g: number | null
+  cholesterolMgPer100g: number | null
+  potassiumMgPer100g: number | null
+  typicalServingG: number | null
+}
+
 interface FoodItemsState {
   query: string
   includeDeleted: boolean
@@ -95,6 +110,18 @@ export const restoreFoodItem = createAsyncThunk('foodItems/restore', async (id: 
   const response = await fetch(`/api/food-items/${id}/restore`, { method: 'POST' })
   if (!response.ok) throw new Error(`Food item restore failed: ${response.status}`)
   return (await response.json()) as FoodItem
+})
+
+export const lookupFoodItemNutrition = createAsyncThunk('foodItems/lookup', async (query: string) => {
+  const response = await fetch(`/api/food-items/lookup?q=${encodeURIComponent(query)}`)
+  if (!response.ok) throw new Error(`Lookup failed: ${response.status}`)
+  return (await response.json()) as NutritionLookupResult[]
+})
+
+export const lookupFoodItemByUpc = createAsyncThunk('foodItems/lookupUpc', async (upc: string) => {
+  const response = await fetch(`/api/food-items/lookup-upc?upc=${encodeURIComponent(upc)}`)
+  if (!response.ok) throw new Error(`UPC lookup failed: ${response.status}`)
+  return (await response.json()) as NutritionLookupResult | null
 })
 
 const foodItemsSlice = createSlice({

@@ -5,10 +5,13 @@ import {
   createFoodItem,
   deleteFoodItem,
   loadFoodItems,
+  lookupFoodItemByUpc,
+  lookupFoodItemNutrition,
   restoreFoodItem,
   setFoodItemsIncludeDeleted,
   setFoodItemsQuery,
   updateFoodItem,
+  type NutritionLookupResult,
   type FoodItem,
   type FoodItemUpsert,
 } from '../../store/foodItemsSlice'
@@ -56,6 +59,33 @@ function round(value: number | null): string {
   return value === null ? '—' : String(Math.round(value * 10) / 10)
 }
 
+const NUTRIENT_KEYS = [
+  'per100gCalories',
+  'per100gProtein',
+  'per100gCarbs',
+  'per100gFat',
+  'per100gFiber',
+  'per100gSugar',
+  'per100gSodiumMg',
+  'per100gSaturatedFat',
+  'per100gCholesterolMg',
+  'per100gPotassiumMg',
+] as const
+
+// Nutrition labels are usually printed per-serving, not per-100g - this lets someone type the
+// numbers exactly as read off a label (at whatever gram amount) and scales to per-100g here,
+// instead of requiring that math be done by hand before typing.
+function scaledForSave(form: FoodItemUpsert, entryGrams: number): FoodItemUpsert {
+  if (entryGrams === 100) return form
+  const factor = 100 / entryGrams
+  const scaled = { ...form }
+  for (const key of NUTRIENT_KEYS) {
+    const value = form[key]
+    scaled[key] = value === null ? null : value * factor
+  }
+  return scaled
+}
+
 // Full-page CRUD screen, a deliberate exception to the chat-first/no-forms pattern the rest of
 // the app follows - fixing a bad cached lookup (a UPC scan missing sodium, a stale model
 // estimate) had no way to be corrected directly before this existed.
@@ -69,6 +99,10 @@ export default function FoodItemsView() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState<FoodItemUpsert>(BLANK_FORM)
   const [modalOpen, setModalOpen] = useState(false)
+  const [entryGrams, setEntryGrams] = useState(100)
+  const [lookupStatus, setLookupStatus] = useState<'idle' | 'loading' | 'notfound'>('idle')
+  const [candidates, setCandidates] = useState<NutritionLookupResult[]>([])
+  const [upcLookupStatus, setUpcLookupStatus] = useState<'idle' | 'loading' | 'notfound'>('idle')
 
   useEffect(() => {
     dispatch(loadFoodItems({ query, includeDeleted }))
@@ -81,23 +115,87 @@ export default function FoodItemsView() {
   const openCreate = () => {
     setEditingId(null)
     setForm(BLANK_FORM)
+    setEntryGrams(100)
+    setLookupStatus('idle')
+    setCandidates([])
+    setUpcLookupStatus('idle')
     setModalOpen(true)
   }
 
   const openEdit = (item: FoodItem) => {
     setEditingId(item.id)
     setForm(toFormState(item))
+    setEntryGrams(100)
+    setLookupStatus('idle')
+    setCandidates([])
+    setUpcLookupStatus('idle')
     setModalOpen(true)
   }
 
   const handleSave = () => {
     if (!form.name.trim()) return
+    const payload = scaledForSave(form, entryGrams)
     if (editingId === null) {
-      dispatch(createFoodItem(form))
+      dispatch(createFoodItem(payload))
     } else {
-      dispatch(updateFoodItem({ id: editingId, body: form }))
+      dispatch(updateFoodItem({ id: editingId, body: payload }))
     }
     setModalOpen(false)
+  }
+
+  const applyLookupResult = (result: NutritionLookupResult, source: string) => {
+    setForm({
+      ...form,
+      per100gCalories: result.caloriesPer100g,
+      per100gProtein: result.proteinPer100g,
+      per100gCarbs: result.carbsPer100g,
+      per100gFat: result.fatPer100g,
+      per100gFiber: result.fiberPer100g,
+      per100gSugar: result.sugarPer100g,
+      per100gSodiumMg: result.sodiumMgPer100g,
+      per100gSaturatedFat: result.saturatedFatPer100g,
+      per100gCholesterolMg: result.cholesterolMgPer100g,
+      per100gPotassiumMg: result.potassiumMgPer100g,
+      typicalServingG: result.typicalServingG,
+      lookupSource: source,
+    })
+    setEntryGrams(100)
+    setCandidates([])
+  }
+
+  const handleLookup = async () => {
+    setLookupStatus('loading')
+    setCandidates([])
+    try {
+      const results = await dispatch(lookupFoodItemNutrition(form.name)).unwrap()
+      if (results.length === 0) {
+        setLookupStatus('notfound')
+      } else if (results.length === 1) {
+        applyLookupResult(results[0], 'FDC')
+        setLookupStatus('idle')
+      } else {
+        setCandidates(results)
+        setLookupStatus('idle')
+      }
+    } catch {
+      setLookupStatus('notfound')
+    }
+  }
+
+  const handleUpcLookup = async () => {
+    if (!form.upc) return
+    setUpcLookupStatus('loading')
+    try {
+      const result = await dispatch(lookupFoodItemByUpc(form.upc)).unwrap()
+      if (result === null) {
+        setUpcLookupStatus('notfound')
+      } else {
+        applyLookupResult(result, 'OFF')
+        setUpcLookupStatus('idle')
+      }
+    } catch {
+      setUpcLookupStatus('notfound')
+    }
   }
 
   const numberField = (key: keyof FoodItemUpsert, label: string) => (
@@ -249,6 +347,34 @@ export default function FoodItemsView() {
               onChange={(event) => setForm({ ...form, name: event.target.value })}
             />
           </label>
+          <div className="food-item-field food-item-field--wide food-item-lookup-row">
+            <button
+              type="button"
+              className="today-button"
+              onClick={handleLookup}
+              disabled={!form.name.trim() || lookupStatus === 'loading'}
+            >
+              Look up nutrition (USDA)
+            </button>
+            {lookupStatus === 'loading' && <span className="food-item-lookup-status">Looking up…</span>}
+            {lookupStatus === 'notfound' && (
+              <span className="food-item-lookup-status">
+                No USDA match found — check the name or fill in manually below.
+              </span>
+            )}
+          </div>
+          {candidates.length > 0 && (
+            <ul className="food-item-lookup-candidates food-item-field--wide">
+              {candidates.map((candidate, index) => (
+                <li key={index}>
+                  <button type="button" onClick={() => applyLookupResult(candidate, 'FDC')}>
+                    {candidate.name}
+                    {candidate.caloriesPer100g !== null && ` — ${Math.round(candidate.caloriesPer100g)} cal/100g`}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           <label className="food-item-field food-item-field--wide">
             <span>UPC</span>
             <input
@@ -257,6 +383,22 @@ export default function FoodItemsView() {
               onChange={(event) => setForm({ ...form, upc: event.target.value === '' ? null : event.target.value })}
             />
           </label>
+          <div className="food-item-field food-item-field--wide food-item-lookup-row">
+            <button
+              type="button"
+              className="today-button"
+              onClick={handleUpcLookup}
+              disabled={!form.upc || upcLookupStatus === 'loading'}
+            >
+              Look up by UPC (Open Food Facts)
+            </button>
+            {upcLookupStatus === 'loading' && <span className="food-item-lookup-status">Looking up…</span>}
+            {upcLookupStatus === 'notfound' && (
+              <span className="food-item-lookup-status">
+                No Open Food Facts match for that UPC — fill in manually below.
+              </span>
+            )}
+          </div>
           <label className="food-item-field">
             <span>Source</span>
             <select
@@ -270,17 +412,27 @@ export default function FoodItemsView() {
               ))}
             </select>
           </label>
+          <label className="food-item-field food-item-field--wide">
+            <span>Values entered for how many grams?</span>
+            <input
+              type="number"
+              min="1"
+              step="any"
+              value={entryGrams}
+              onChange={(event) => setEntryGrams(Number(event.target.value) || 100)}
+            />
+          </label>
           {numberField('typicalServingG', 'Typical serving (g)')}
-          {numberField('per100gCalories', 'Calories / 100g')}
-          {numberField('per100gProtein', 'Protein (g)')}
-          {numberField('per100gCarbs', 'Carbs (g)')}
-          {numberField('per100gFat', 'Fat (g)')}
-          {numberField('per100gFiber', 'Fiber (g)')}
-          {numberField('per100gSugar', 'Sugar (g)')}
-          {numberField('per100gSodiumMg', 'Sodium (mg)')}
-          {numberField('per100gSaturatedFat', 'Saturated fat (g)')}
-          {numberField('per100gCholesterolMg', 'Cholesterol (mg)')}
-          {numberField('per100gPotassiumMg', 'Potassium (mg)')}
+          {numberField('per100gCalories', `Calories (per ${entryGrams}g)`)}
+          {numberField('per100gProtein', `Protein (g, per ${entryGrams}g)`)}
+          {numberField('per100gCarbs', `Carbs (g, per ${entryGrams}g)`)}
+          {numberField('per100gFat', `Fat (g, per ${entryGrams}g)`)}
+          {numberField('per100gFiber', `Fiber (g, per ${entryGrams}g)`)}
+          {numberField('per100gSugar', `Sugar (g, per ${entryGrams}g)`)}
+          {numberField('per100gSodiumMg', `Sodium (mg, per ${entryGrams}g)`)}
+          {numberField('per100gSaturatedFat', `Saturated fat (g, per ${entryGrams}g)`)}
+          {numberField('per100gCholesterolMg', `Cholesterol (mg, per ${entryGrams}g)`)}
+          {numberField('per100gPotassiumMg', `Potassium (mg, per ${entryGrams}g)`)}
         </div>
       </Modal>
     </div>

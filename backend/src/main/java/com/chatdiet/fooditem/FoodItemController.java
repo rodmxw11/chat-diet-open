@@ -1,5 +1,9 @@
 package com.chatdiet.fooditem;
 
+import com.chatdiet.fdc.FdcClient;
+import com.chatdiet.fdc.FdcProduct;
+import com.chatdiet.openfoodfacts.OffProduct;
+import com.chatdiet.openfoodfacts.OpenFoodFactsClient;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,9 +27,14 @@ import java.util.List;
 public class FoodItemController {
 
     private final FoodItemRepository foodItemRepository;
+    private final FdcClient fdcClient;
+    private final OpenFoodFactsClient openFoodFactsClient;
 
-    public FoodItemController(FoodItemRepository foodItemRepository) {
+    public FoodItemController(FoodItemRepository foodItemRepository, FdcClient fdcClient,
+                               OpenFoodFactsClient openFoodFactsClient) {
         this.foodItemRepository = foodItemRepository;
+        this.fdcClient = fdcClient;
+        this.openFoodFactsClient = openFoodFactsClient;
     }
 
     /** Searches cached food items by name substring (blank matches everything). */
@@ -33,6 +42,28 @@ public class FoodItemController {
     public List<FoodItem> search(@RequestParam(required = false, defaultValue = "") String q,
                                   @RequestParam(required = false, defaultValue = "false") boolean includeDeleted) {
         return foodItemRepository.search(q, includeDeleted);
+    }
+
+    /**
+     * Looks up a name in USDA FoodData Central to help fill out the form - returns up to 5
+     * plausible candidates for the caller to choose from; empty list if no key is configured or
+     * nothing matched. Not cached as a FoodItem itself - the form decides whether to save
+     * whichever candidate is picked.
+     */
+    @GetMapping("/api/food-items/lookup")
+    public List<FdcProduct> lookup(@RequestParam String q) {
+        return fdcClient.searchCandidates(q, 5);
+    }
+
+    /**
+     * Looks up a barcode against Open Food Facts to help fill out the form for a packaged product
+     * without needing to scan it. Unlike the FDC name search, a barcode lookup is exact, so there's
+     * only ever one possible result - {@code null} (still a 200) if the barcode is unknown, same as
+     * the FDC lookup returning an empty list rather than a 404 for "nothing found".
+     */
+    @GetMapping("/api/food-items/lookup-upc")
+    public OffProduct lookupByUpc(@RequestParam String upc) {
+        return openFoodFactsClient.lookup(upc).orElse(null);
     }
 
     @GetMapping("/api/food-items/{id}")
