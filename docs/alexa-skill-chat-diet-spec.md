@@ -1,5 +1,28 @@
 # Alexa Skill for chat-diet
 
+<!-- TOC -->
+* [Alexa Skill for chat-diet](#alexa-skill-for-chat-diet)
+  * [Context](#context)
+    * [Decisions (superseding the original draft)](#decisions-superseding-the-original-draft)
+  * [Status](#status)
+  * [A. Interaction model (done — recorded for reference)](#a-interaction-model-done--recorded-for-reference)
+    * [Why three intents and not one catch-all](#why-three-intents-and-not-one-catch-all)
+    * [Why `AMAZON.SearchQuery` and not typed slots](#why-amazonsearchquery-and-not-typed-slots)
+    * [Homophone samples](#homophone-samples)
+    * [`AMAZON.FallbackIntent` is load-bearing](#amazonfallbackintent-is-load-bearing)
+  * [B. Backend changes (`backend/`)](#b-backend-changes-backend)
+    * [B1. Port move and second connector](#b1-port-move-and-second-connector)
+    * [B2. Alexa controller and signature verification](#b2-alexa-controller-and-signature-verification)
+    * [B3. Request handling](#b3-request-handling)
+    * [B4. Voice channel](#b4-voice-channel)
+    * [B5. Latency](#b5-latency)
+    * [B6. Response shaping](#b6-response-shaping)
+  * [C. Transcription risk](#c-transcription-risk)
+  * [D. Build order](#d-build-order)
+  * [E. Verification](#e-verification)
+  * [Critical files](#critical-files)
+<!-- TOC -->
+
 ## Context
 
 chat-diet is a personal, single-user diet/weight/vitals tracker whose primary
@@ -35,6 +58,10 @@ and the Appendix settled on a different shape. What follows matches the spec.
 
 Network and certificate configuration is out of scope here — see
 `scripts/TAILSCALE-ALEXA-CONFIG.md`.
+
+### Architecture Diagram
+
+<img src="images/chatdiet_alexa_network_topology.svg" alt="Architecture Diagram" width="758">
 
 ---
 
