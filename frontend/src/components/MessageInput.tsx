@@ -53,6 +53,9 @@ export default function MessageInput() {
         <button type="button" className="quick-entry-button" onClick={() => quickEntry('Weight ')}>
           Weight
         </button>
+        <button type="button" className="quick-entry-button" onClick={() => quickEntry('Run SQL query that ')}>
+          Query
+        </button>
       </div>
       <div className="message-input-row">
         <div className="input-pill">
