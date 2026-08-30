@@ -21,4 +21,11 @@ public interface FoodEntryRepository extends ListCrudRepository<FoodEntry, Long>
     /** Returns all entries logged within {@code [start, end)}, ordered chronologically. */
     @Query("SELECT * FROM food_entry WHERE logged_at >= :start AND logged_at < :end ORDER BY logged_at")
     List<FoodEntry> findByLoggedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    /** Returns every entry in the given undo/display group, ordered chronologically. */
+    List<FoodEntry> findByEntryGroupIdOrderByLoggedAt(Long entryGroupId);
+
+    /** Returns the group id of the most recently logged entry, if any - used when a correction names no food. */
+    @Query("SELECT entry_group_id FROM food_entry ORDER BY logged_at DESC LIMIT 1")
+    Optional<Long> findMostRecentGroupId();
 }

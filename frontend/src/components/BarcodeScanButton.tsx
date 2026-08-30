@@ -1,15 +1,18 @@
 import { useRef, useState } from 'react'
 import { useAppDispatch } from '../store/hooks'
-import { sendMessage } from '../store/chatSlice'
-import { loadSummary } from '../store/summarySlice'
+import { setDraftTextWithCursorStart } from '../store/chatSlice'
+import { openUpcPrebind } from '../store/foodItemsSlice'
+import { setScreen } from '../store/uiSlice'
 
 interface DecodeResponse {
   upc: string
+  resolvedName: string | null
+  needsManualEntry: boolean
 }
 
 // `capture="environment"` opens the device's rear camera directly on mobile - no getUserMedia/
 // live-video scanning UI needed, since the backend already does single-image server-side decode
-// (ZXing) via the existing (previously unused) POST /api/barcode/decode endpoint.
+// (ZXing) and identity resolution (cache/Open Food Facts/FDC Branded) via POST /api/barcode/decode.
 export default function BarcodeScanButton() {
   const dispatch = useAppDispatch()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -29,11 +32,21 @@ export default function BarcodeScanButton() {
         setStatus('error')
         return
       }
-      const { upc }: DecodeResponse = await response.json()
+      const { upc, resolvedName, needsManualEntry }: DecodeResponse = await response.json()
       setStatus('idle')
-      // Round-trips through chat as the UPC digits, staying consistent with the model-drives-all-
-      // writes architecture: this is exactly what typing/speaking the barcode already does.
-      dispatch(sendMessage(upc)).finally(() => dispatch(loadSummary()))
+
+      if (needsManualEntry || !resolvedName) {
+        // Nothing resolved anywhere - the manual-entry modal on the Food Items page is the
+        // terminus, prebound with this UPC so the label can be typed in directly.
+        dispatch(openUpcPrebind(upc))
+        dispatch(setScreen('foodItems'))
+        return
+      }
+
+      // Identity resolved server-side and is guaranteed an exact alias hit - prefill the amount
+      // field with the resolved name, cursor at the start, instead of round-tripping the raw UPC
+      // digits through a chat turn.
+      dispatch(setDraftTextWithCursorStart(`g ${resolvedName}`))
     } catch {
       setStatus('error')
     }

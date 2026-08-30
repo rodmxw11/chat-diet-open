@@ -16,16 +16,20 @@ import java.io.UncheckedIOException;
 public class BarcodeController {
 
     private final BarcodeDecodeService barcodeDecodeService;
+    private final UpcResolutionService upcResolutionService;
 
-    public BarcodeController(BarcodeDecodeService barcodeDecodeService) {
+    public BarcodeController(BarcodeDecodeService barcodeDecodeService, UpcResolutionService upcResolutionService) {
         this.barcodeDecodeService = barcodeDecodeService;
+        this.upcResolutionService = upcResolutionService;
     }
 
     /**
-     * Decodes a barcode from an uploaded image.
+     * Decodes a barcode from an uploaded image and resolves its product identity server-side, so
+     * the client can prefill chat with the resolved name rather than round-tripping the raw UPC
+     * digits through a chat turn.
      *
      * @param image the uploaded product photo (multipart form field "image")
-     * @return 200 with the decoded UPC, or 404 if no barcode could be decoded
+     * @return 200 with the decoded UPC and resolution outcome, or 404 if no barcode could be decoded
      * @throws UncheckedIOException if the uploaded file cannot be read
      */
     @PostMapping(value = "/decode", consumes = "multipart/form-data")
@@ -38,7 +42,11 @@ public class BarcodeController {
         }
 
         return barcodeDecodeService.decode(bytes)
-                .map(upc -> ResponseEntity.ok(new BarcodeDecodeResponse(upc)))
+                .map(upc -> {
+                    var resolved = upcResolutionService.resolve(upc);
+                    return ResponseEntity.ok(
+                            new BarcodeDecodeResponse(upc, resolved.resolvedName(), resolved.needsManualEntry()));
+                })
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

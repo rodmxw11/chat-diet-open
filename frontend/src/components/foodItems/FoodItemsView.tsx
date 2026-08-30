@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
+import { setDraftTextWithCursorStart } from '../../store/chatSlice'
 import { setScreen } from '../../store/uiSlice'
 import {
+  addFoodAlias,
+  clearUpcPrebind,
   createFoodItem,
   deleteFoodItem,
+  loadFoodAliases,
   loadFoodItems,
   lookupFoodItemByUpc,
   lookupFoodItemNutrition,
+  removeFoodAlias,
   restoreFoodItem,
   setFoodItemsIncludeDeleted,
   setFoodItemsQuery,
@@ -95,6 +100,8 @@ export default function FoodItemsView() {
   const status = useAppSelector((state) => state.foodItems.status)
   const query = useAppSelector((state) => state.foodItems.query)
   const includeDeleted = useAppSelector((state) => state.foodItems.includeDeleted)
+  const prebindUpc = useAppSelector((state) => state.foodItems.prebindUpc)
+  const aliases = useAppSelector((state) => state.foodItems.aliases)
 
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState<FoodItemUpsert>(BLANK_FORM)
@@ -103,10 +110,31 @@ export default function FoodItemsView() {
   const [lookupStatus, setLookupStatus] = useState<'idle' | 'loading' | 'notfound'>('idle')
   const [candidates, setCandidates] = useState<NutritionLookupResult[]>([])
   const [upcLookupStatus, setUpcLookupStatus] = useState<'idle' | 'loading' | 'notfound'>('idle')
+  const [fromPrebind, setFromPrebind] = useState(false)
+  const [portionUnitName, setPortionUnitName] = useState('')
+  const [portionUnitGrams, setPortionUnitGrams] = useState('')
+  const [newAlias, setNewAlias] = useState('')
 
   useEffect(() => {
     dispatch(loadFoodItems({ query, includeDeleted }))
   }, [dispatch, query, includeDeleted])
+
+  // A barcode scan that missed everywhere routes here, UPC prebound, instead of stranding the
+  // user on this page mid-sandwich - the modal opens automatically with the scanned code filled in.
+  useEffect(() => {
+    if (prebindUpc === null) return
+    setEditingId(null)
+    setForm({ ...BLANK_FORM, upc: prebindUpc })
+    setEntryGrams(100)
+    setLookupStatus('idle')
+    setCandidates([])
+    setUpcLookupStatus('idle')
+    setFromPrebind(true)
+    setPortionUnitName('')
+    setPortionUnitGrams('')
+    setModalOpen(true)
+    dispatch(clearUpcPrebind())
+  }, [dispatch, prebindUpc])
 
   const visibleItems = includeDeleted
     ? items.filter((item) => item.deletedAt !== null)
@@ -119,6 +147,9 @@ export default function FoodItemsView() {
     setLookupStatus('idle')
     setCandidates([])
     setUpcLookupStatus('idle')
+    setFromPrebind(false)
+    setPortionUnitName('')
+    setPortionUnitGrams('')
     setModalOpen(true)
   }
 
@@ -129,18 +160,49 @@ export default function FoodItemsView() {
     setLookupStatus('idle')
     setCandidates([])
     setUpcLookupStatus('idle')
+    setFromPrebind(false)
+    setPortionUnitName('')
+    setPortionUnitGrams('')
+    setNewAlias('')
+    dispatch(loadFoodAliases(item.id))
     setModalOpen(true)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim()) return
     const payload = scaledForSave(form, entryGrams)
+    const wasPrebind = fromPrebind
+
+    let savedItem: FoodItem
     if (editingId === null) {
-      dispatch(createFoodItem(payload))
+      savedItem = await dispatch(createFoodItem(payload)).unwrap()
     } else {
-      dispatch(updateFoodItem({ id: editingId, body: payload }))
+      savedItem = await dispatch(updateFoodItem({ id: editingId, body: payload })).unwrap()
     }
+
+    const unitGrams = Number(portionUnitGrams)
+    if (portionUnitName.trim() && unitGrams > 0) {
+      await fetch(`/api/food-items/${savedItem.id}/portion-units`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unitName: portionUnitName.trim(), grams: unitGrams }),
+      })
+    }
+
     setModalOpen(false)
+
+    if (wasPrebind) {
+      // Don't strand the user here mid-sandwich - hand back to chat with the amount prefilled,
+      // same as a normal scan resolution.
+      dispatch(setDraftTextWithCursorStart(`g ${savedItem.name}`))
+      dispatch(setScreen('chat'))
+    }
+  }
+
+  const handleAddAlias = () => {
+    if (editingId === null || !newAlias.trim()) return
+    dispatch(addFoodAlias({ foodItemId: editingId, alias: newAlias.trim() }))
+    setNewAlias('')
   }
 
   const applyLookupResult = (result: NutritionLookupResult, source: string) => {
@@ -433,6 +495,60 @@ export default function FoodItemsView() {
           {numberField('per100gSaturatedFat', `Saturated fat (g, per ${entryGrams}g)`)}
           {numberField('per100gCholesterolMg', `Cholesterol (mg, per ${entryGrams}g)`)}
           {numberField('per100gPotassiumMg', `Potassium (mg, per ${entryGrams}g)`)}
+
+          <label className="food-item-field food-item-field--wide">
+            <span>Household measure (optional) - e.g. "slice"</span>
+            <input
+              type="text"
+              value={portionUnitName}
+              onChange={(event) => setPortionUnitName(event.target.value)}
+              placeholder="slice"
+            />
+          </label>
+          <label className="food-item-field">
+            <span>...weighs how many grams?</span>
+            <input
+              type="number"
+              min="0"
+              step="any"
+              value={portionUnitGrams}
+              onChange={(event) => setPortionUnitGrams(event.target.value)}
+            />
+          </label>
+
+          {editingId !== null && (
+            <div className="food-item-field food-item-field--wide">
+              <span>Aliases</span>
+              <ul className="food-item-lookup-candidates">
+                {aliases.map((alias) => (
+                  <li key={alias.id}>
+                    {alias.aliasNormalized}
+                    <button
+                      type="button"
+                      className="foods-delete-button"
+                      onClick={() => dispatch(removeFoodAlias(alias.id))}
+                      aria-label={`Remove alias ${alias.aliasNormalized}`}
+                      title="Remove this alias"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+                {aliases.length === 0 && <li>No aliases yet.</li>}
+              </ul>
+              <div className="food-item-lookup-row">
+                <input
+                  type="text"
+                  value={newAlias}
+                  onChange={(event) => setNewAlias(event.target.value)}
+                  placeholder="Add an alias…"
+                />
+                <button type="button" className="today-button" onClick={handleAddAlias} disabled={!newAlias.trim()}>
+                  Add
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
     </div>

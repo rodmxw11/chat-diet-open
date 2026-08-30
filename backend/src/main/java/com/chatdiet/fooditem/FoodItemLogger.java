@@ -43,7 +43,8 @@ public class FoodItemLogger {
                 scaled.proteinG(), scaled.carbsG(), scaled.fatG(), scaled.fiberG(), scaled.sugarG(),
                 scaled.sodiumMg(), scaled.saturatedFatG(), scaled.cholesterolMg(), scaled.potassiumMg(),
                 item.id(), grams, item.lookupSource());
-        foodEntryRepository.save(entry);
+        entry = foodEntryRepository.save(entry);
+        entry = foodEntryRepository.save(entry.withEntryGroupId(entry.id()));
         foodItemRepository.save(item.withUsageBumped());
         dailyMacroCacheService.recomputeForTimestamp(entry.loggedAt());
         foodLogVerificationContext.markLogged();

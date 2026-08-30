@@ -53,11 +53,23 @@ export interface NutritionLookupResult {
   typicalServingG: number | null
 }
 
+export interface FoodAlias {
+  id: number
+  aliasNormalized: string
+  foodItemId: number
+  source: string
+  createdAt: string
+}
+
 interface FoodItemsState {
   query: string
   includeDeleted: boolean
   items: FoodItem[]
   status: 'idle' | 'loading' | 'error'
+  /** Set when a barcode scan couldn't resolve identity anywhere - opens the "new item, UPC
+      prebound" modal instead of the barcode round-tripping through chat as raw digits. */
+  prebindUpc: string | null
+  aliases: FoodAlias[]
 }
 
 const initialState: FoodItemsState = {
@@ -65,6 +77,8 @@ const initialState: FoodItemsState = {
   includeDeleted: false,
   items: [],
   status: 'idle',
+  prebindUpc: null,
+  aliases: [],
 }
 
 export const loadFoodItems = createAsyncThunk(
@@ -124,6 +138,31 @@ export const lookupFoodItemByUpc = createAsyncThunk('foodItems/lookupUpc', async
   return (await response.json()) as NutritionLookupResult | null
 })
 
+export const loadFoodAliases = createAsyncThunk('foodItems/loadAliases', async (foodItemId: number) => {
+  const response = await fetch(`/api/food-items/${foodItemId}/aliases`)
+  if (!response.ok) throw new Error(`Alias list failed: ${response.status}`)
+  return (await response.json()) as FoodAlias[]
+})
+
+export const addFoodAlias = createAsyncThunk(
+  'foodItems/addAlias',
+  async ({ foodItemId, alias }: { foodItemId: number; alias: string }) => {
+    const response = await fetch(`/api/food-items/${foodItemId}/aliases`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alias }),
+    })
+    if (!response.ok) throw new Error(`Alias add failed: ${response.status}`)
+    return (await response.json()) as FoodAlias
+  },
+)
+
+export const removeFoodAlias = createAsyncThunk('foodItems/removeAlias', async (aliasId: number) => {
+  const response = await fetch(`/api/food-items/aliases/${aliasId}`, { method: 'DELETE' })
+  if (!response.ok) throw new Error(`Alias remove failed: ${response.status}`)
+  return aliasId
+})
+
 const foodItemsSlice = createSlice({
   name: 'foodItems',
   initialState,
@@ -134,9 +173,24 @@ const foodItemsSlice = createSlice({
     setFoodItemsIncludeDeleted: (state, action: PayloadAction<boolean>) => {
       state.includeDeleted = action.payload
     },
+    openUpcPrebind: (state, action: PayloadAction<string>) => {
+      state.prebindUpc = action.payload
+    },
+    clearUpcPrebind: (state) => {
+      state.prebindUpc = null
+    },
   },
   extraReducers: (builder) => {
     builder
+      .addCase(loadFoodAliases.fulfilled, (state, action) => {
+        state.aliases = action.payload
+      })
+      .addCase(addFoodAlias.fulfilled, (state, action) => {
+        state.aliases.push(action.payload)
+      })
+      .addCase(removeFoodAlias.fulfilled, (state, action) => {
+        state.aliases = state.aliases.filter((a) => a.id !== action.payload)
+      })
       .addCase(loadFoodItems.pending, (state) => {
         state.status = 'loading'
       })
@@ -169,5 +223,6 @@ const foodItemsSlice = createSlice({
   },
 })
 
-export const { setFoodItemsQuery, setFoodItemsIncludeDeleted } = foodItemsSlice.actions
+export const { setFoodItemsQuery, setFoodItemsIncludeDeleted, openUpcPrebind, clearUpcPrebind } =
+  foodItemsSlice.actions
 export default foodItemsSlice.reducer

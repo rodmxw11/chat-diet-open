@@ -1,21 +1,17 @@
 package com.chatdiet.fdc;
 
 /**
- * Simplified, application-facing view of a food returned by {@link FdcClient}, with nutrition
- * values normalized to per-100g figures - mirrors
- * {@link com.chatdiet.openfoodfacts.OffProduct}'s shape so both lookup tiers feed the same
- * downstream caching/scaling code. Unlike Open Food Facts, FDC already reports sodium/
- * cholesterol/potassium in milligrams natively, so no unit conversion is needed here.
+ * Simplified, application-facing view of a food's nutrition from {@link FdcClient#fetchDetail},
+ * normalized to per-100g figures - mirrors {@link com.chatdiet.openfoodfacts.OffProduct}'s shape
+ * so both lookup tiers feed the same downstream caching/scaling code. Unlike Open Food Facts, FDC
+ * already reports sodium/cholesterol/potassium in milligrams natively, so no unit conversion is
+ * needed here.
  *
- * @param typicalServingG FDC's basic search response doesn't include portion data; always
- *                         {@code null} today, which {@link com.chatdiet.food.FoodQuantity}
- *                         already treats as "assume 100g servings". Real per-unit portion data
- *                         ("medium" -> 118g) is fetched separately via {@code fdcId} and
- *                         {@link FdcClient#fetchPortions}, not carried on this record.
- * @param fdcId           this food's FDC identifier, used to fetch its {@code foodPortions}
- *                         (a separate API call - the search response this came from doesn't
- *                         include usable portion data for Foundation/SR Legacy foods); {@code
- *                         null} only if FDC's response omitted it, which shouldn't normally happen
+ * @param typicalServingG the label's serving size in grams, or {@code null} if FDC reported none
+ *                         or reported it in a non-gram unit (e.g. {@code ml} on a liquid) - see
+ *                         {@link FdcNutrientMapper}. A {@code null} here is treated as "assume
+ *                         100g servings" by callers.
+ * @param fdcId           this food's FDC identifier
  */
 public record FdcProduct(
         String name,

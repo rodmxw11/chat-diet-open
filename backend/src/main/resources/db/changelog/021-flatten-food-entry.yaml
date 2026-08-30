@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: 021-flatten-food-entry
+      author: chat-diet
+      changes:
+        - addColumn:
+            tableName: food_entry
+            columns:
+              - column:
+                  name: entry_group_id
+                  type: BIGINT
+        - sql:
+            sql: UPDATE food_entry SET entry_group_id = id WHERE entry_group_id IS NULL;
+        - createIndex:
+            indexName: idx_food_entry_group
+            tableName: food_entry
+            columns:
+              - column:
+                  name: entry_group_id

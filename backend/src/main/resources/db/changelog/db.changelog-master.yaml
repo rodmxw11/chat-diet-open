@@ -39,3 +39,7 @@ databaseChangeLog:
       file: db/changelog/019-create-model-pricing-table.yaml
   - include:
       file: db/changelog/020-create-portion-unit-table.yaml
+  - include:
+      file: db/changelog/021-flatten-food-entry.yaml
+  - include:
+      file: db/changelog/022-create-food-alias-table.yaml
