@@ -19,4 +19,12 @@ public interface DailyTargetRepository extends ListCrudRepository<DailyTarget, L
      */
     @Query("SELECT * FROM daily_target WHERE target_date <= :date ORDER BY target_date DESC LIMIT 1")
     Optional<DailyTarget> findMostRecentOnOrBefore(LocalDate date);
+
+    /**
+     * The most recent goal change on or after the given date, if any - used as a "new diet phase"
+     * proxy (e.g. for the Adaptive TDEE water-weight caveat), not for resolving what target is
+     * currently in effect.
+     */
+    @Query("SELECT * FROM daily_target WHERE target_date >= :date ORDER BY target_date DESC LIMIT 1")
+    Optional<DailyTarget> findMostRecentOnOrAfter(LocalDate date);
 }

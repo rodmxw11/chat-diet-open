@@ -41,17 +41,18 @@ public class DashboardController {
     }
 
     /** Flat DTO wrapping {@link TdeeResult} so the frontend has one predictable response shape. */
-    public record TdeeStatusResponse(Integer estimatedCalories, Integer windowDays, Integer loggedDays,
-                                      Double weightChangeLbs, String unavailableReason) {
+    public record TdeeStatusResponse(Integer estimatedCalories, Integer standardErrorCalories, Integer windowDays,
+                                      Integer loggedDays, Double weightChangeLbs, String caveat,
+                                      String unavailableReason) {
     }
 
     /** The adaptive TDEE estimate for the weight trend chart's stat line. */
     @GetMapping("/api/dashboard/tdee")
     public TdeeStatusResponse tdee() {
         return switch (adaptiveTdeeService.estimate()) {
-            case TdeeResult.Estimate e -> new TdeeStatusResponse(
-                    e.estimatedCalories(), e.windowDays(), e.loggedDays(), e.weightChangeLbs(), null);
-            case TdeeResult.Unavailable u -> new TdeeStatusResponse(null, null, null, null, u.reason());
+            case TdeeResult.Estimate e -> new TdeeStatusResponse(e.estimatedCalories(), e.standardErrorCalories(),
+                    e.windowDays(), e.loggedDays(), e.weightChangeLbs(), e.caveat(), null);
+            case TdeeResult.Unavailable u -> new TdeeStatusResponse(null, null, null, null, null, null, u.reason());
         };
     }
 }

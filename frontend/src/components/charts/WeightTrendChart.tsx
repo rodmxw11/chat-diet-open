@@ -60,9 +60,15 @@ export default function WeightTrendChart() {
       </div>
       {tdee && (
         <div className="dash-card-stat">
-          {tdee.estimatedCalories !== null
-            ? `Est. TDEE (${tdee.windowDays}-day): ${tdee.estimatedCalories.toLocaleString()} cal/day`
-            : `TDEE estimate: ${tdee.unavailableReason}`}
+          {tdee.estimatedCalories !== null ? (
+            <>
+              Est. TDEE ({tdee.windowDays}-day): {tdee.estimatedCalories.toLocaleString()} ±{' '}
+              {tdee.standardErrorCalories?.toLocaleString()} cal/day
+              {tdee.caveat && <div className="dash-card-stat-caveat">⚠ {tdee.caveat}</div>}
+            </>
+          ) : (
+            `TDEE estimate: ${tdee.unavailableReason}`
+          )}
         </div>
       )}
       <ResponsiveContainer width="100%" height={220}>

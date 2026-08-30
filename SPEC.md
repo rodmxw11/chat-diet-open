@@ -589,13 +589,31 @@ gain, 0 for maintenance.
 
 A **read-only** estimate of total daily energy expenditure, back-calculated
 from the user's own data instead of a generic BMR formula:
-`TDEE ≈ avgDailyIntake - (ΔweightLbs × 3500 / windowDays)` over a 14-day
-rolling window, where `ΔweightLbs` comes from the *smoothed* weight trend
-(§9's EWMA), not raw weigh-ins. `AdaptiveTdeeService.estimate()` requires a
-weigh-in from roughly 14 days back and at least 7 of the last 14 days
-logged, or returns a plain-English reason instead of a number. Surfaced via
-`get_tdee` in chat and a stat line on the Weight Trend chart — never
-auto-adjusts `DAILY_TARGET`.
+`TDEE ≈ avgDailyIntake - (slope × 3500)` over a 14-day rolling window, where
+`slope` (lbs/day) comes from an **OLS fit of the window's smoothed weight
+trend values** (§9's EWMA), not a two-point endpoint difference — a bare
+`trend(day14) - trend(day0)` uses only 2 of the 14+ points and is the
+highest-variance way to estimate a slope for a given window width; fitting a
+line through every real trend point in the window uses all of it instead.
+The regression's standard error (converted to calories/day) is reported
+alongside the point estimate, not just a bare number.
+`AdaptiveTdeeService.estimate()` requires at least 7 real (non-carried-
+forward) trend points and at least 7 of the last 14 days logged, or returns
+a plain-English reason instead of a number. Surfaced via `get_tdee` in chat
+and a stat line on the Weight Trend chart — never auto-adjusts
+`DAILY_TARGET`.
+
+**3500 kcal/lb is a fat-mass constant, and it doesn't hold for the first
+couple weeks of a new deficit/surplus** (glycogen and water dominate the
+scale before fat mass does). Rather than gate the estimate on a "phase"
+concept this app doesn't otherwise track, `AdaptiveTdeeService` uses the
+`DAILY_TARGET` history as a proxy: if the calorie goal changed within 21
+days before the window starts, the estimate still computes but carries a
+caveat string (shown in both the chat reply and the chart stat line)
+warning that the number may reflect water/glycogen shifts rather than real
+fat-mass change. Imperfect — a phase can start without a goal change — but
+it's the only "started something new" signal already in the schema, rather
+than inventing a new one.
 
 This is a deliberate revival of a previously-removed idea in a narrower
 shape: the original design closed the loop (auto-adjusting the effective

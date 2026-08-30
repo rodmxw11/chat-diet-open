@@ -3,6 +3,8 @@ package com.chatdiet.tdee;
 import com.chatdiet.dashboard.DailyMacroCache;
 import com.chatdiet.dashboard.DailyMacroCacheRepository;
 import com.chatdiet.day.DayBoundaryService;
+import com.chatdiet.nutrition.DailyTarget;
+import com.chatdiet.nutrition.DailyTargetRepository;
 import com.chatdiet.weight.WeightEntry;
 import com.chatdiet.weight.WeightEntryRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,21 +44,26 @@ class AdaptiveTdeeServiceTest {
     private DailyMacroCacheRepository dailyMacroCacheRepository;
 
     @Autowired
+    private DailyTargetRepository dailyTargetRepository;
+
+    @Autowired
     private DayBoundaryService dayBoundaryService;
 
     @BeforeEach
     void clearAll() {
         weightEntryRepository.deleteAll();
         dailyMacroCacheRepository.deleteAll();
+        dailyTargetRepository.deleteAll();
     }
 
     @Test
-    void computesTdeeFromIntakeAndSmoothedWeightTrendChange() {
+    void computesTdeeFromIntakeAndAnOlsFitOfTheSmoothedWeightTrend() {
         var to = dayBoundaryService.today();
         var from = to.minusDays(14);
 
         // Two weigh-ins only, 14 days apart, straight-line from 200 to 193 lbs - interpolateGaps
-        // fills the days between linearly, so the EWMA smoothing runs over a clean, exact ramp.
+        // fills the days between linearly, so the EWMA smoothing runs over a clean, exact ramp,
+        // and every one of the 15 days in [from, to] is a real (interpolated) trend point.
         weightEntryRepository.save(new WeightEntry(from.atTime(12, 0), 200.0));
         weightEntryRepository.save(new WeightEntry(to.atTime(12, 0), 193.0));
 
@@ -72,12 +79,37 @@ class AdaptiveTdeeServiceTest {
         var estimate = (TdeeResult.Estimate) result;
         assertThat(estimate.windowDays()).isEqualTo(14);
         assertThat(estimate.loggedDays()).isEqualTo(7);
-        // Hand-computed via the documented EWMA (alpha=0.1, seeded at the first value) over the
-        // 15-point linear ramp from 200 to 193: trend ends at ~196.4705, not the raw -7lb change -
-        // the lag is the point of smoothing before using it in the TDEE formula.
-        assertThat(estimate.weightChangeLbs()).isCloseTo(-3.5294556604732463, within(0.0001));
-        // TDEE = avgIntake - (ΔweightLbs * 3500 / 14) = 2000 - (-3.5294... * 250) = 2000 + 882.36... ≈ 2882
-        assertThat(estimate.estimatedCalories()).isEqualTo(2882);
+        assertThat(estimate.caveat()).isNull();
+        // Hand-computed: OLS slope over the 15-point EWMA-smoothed ramp (alpha=0.1, seeded at the
+        // first value) from 200 to 193 is -0.2589045855271196 lb/day (not the raw -0.5/day input
+        // ramp, and not the -3.5294/14 endpoint-difference the old estimator used) - fitting a
+        // line through every point pulls the estimate toward the ramp's true average slope
+        // instead of relying on just the two, still EWMA-lagged, endpoints.
+        assertThat(estimate.weightChangeLbs()).isCloseTo(-3.6246641973796745, within(0.0001));
+        // TDEE = avgIntake - slope*3500 = 2000 - (-0.2589045855271196*3500) = 2000 + 906.166... ≈ 2906
+        assertThat(estimate.estimatedCalories()).isEqualTo(2906);
+        // standard error of the slope (0.013395730353110246 lb/day) converted to calories/day.
+        assertThat(estimate.standardErrorCalories()).isEqualTo(47);
+    }
+
+    @Test
+    void flagsACaveatWhenTheCalorieGoalChangedRecently() {
+        var to = dayBoundaryService.today();
+        var from = to.minusDays(14);
+        weightEntryRepository.save(new WeightEntry(from.atTime(12, 0), 200.0));
+        weightEntryRepository.save(new WeightEntry(to.atTime(12, 0), 193.0));
+        for (int i = 0; i < 7; i++) {
+            dailyMacroCacheRepository.save(
+                    new DailyMacroCache(null, to.minusDays(i), 2000, 0, 0, 0, LocalDateTime.now()));
+        }
+        // A goal change 10 days before the window even starts - well within the 21-day lookback,
+        // so the estimate could still be skewed by water/glycogen from that new phase.
+        dailyTargetRepository.save(new DailyTarget(from.minusDays(10), 1800));
+
+        var result = adaptiveTdeeService.estimate();
+
+        assertThat(result).isInstanceOf(TdeeResult.Estimate.class);
+        assertThat(((TdeeResult.Estimate) result).caveat()).contains("calorie target changed");
     }
 
     @Test
@@ -100,9 +132,10 @@ class AdaptiveTdeeServiceTest {
     }
 
     @Test
-    void unavailableWhenNoWeighInReachesFarEnoughBack() {
+    void unavailableWhenFewerThanMinTrendPointsExistInTheWindow() {
         var to = dayBoundaryService.today();
-        // Weigh-ins only from the last 3 days - none anywhere near 14 days ago.
+        // Weigh-ins only from the last 3 days - the trend map has no entries at all before the
+        // first one, so only 3 of the 15 days in the window resolve to a real point.
         for (int i = 0; i < 3; i++) {
             weightEntryRepository.save(new WeightEntry(to.minusDays(i).atTime(12, 0), 190.0));
         }
@@ -114,6 +147,6 @@ class AdaptiveTdeeServiceTest {
         var result = adaptiveTdeeService.estimate();
 
         assertThat(result).isInstanceOf(TdeeResult.Unavailable.class);
-        assertThat(((TdeeResult.Unavailable) result).reason()).contains("not enough weigh-in history");
+        assertThat(((TdeeResult.Unavailable) result).reason()).contains("days of weight-trend data");
     }
 }

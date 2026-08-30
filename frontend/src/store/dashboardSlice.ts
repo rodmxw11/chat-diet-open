@@ -32,9 +32,11 @@ export interface WeightTrendResponse {
 
 export interface TdeeStatus {
   estimatedCalories: number | null
+  standardErrorCalories: number | null
   windowDays: number | null
   loggedDays: number | null
   weightChangeLbs: number | null
+  caveat: string | null
   unavailableReason: string | null
 }
 

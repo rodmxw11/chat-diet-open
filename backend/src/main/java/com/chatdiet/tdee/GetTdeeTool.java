@@ -27,10 +27,11 @@ public class GetTdeeTool implements Function<GetTdeeRequest, ToolResult> {
     public ToolResult apply(GetTdeeRequest request) {
         return switch (adaptiveTdeeService.estimate()) {
             case TdeeResult.Estimate e -> new ToolResult.Success(
-                    ("Your estimated TDEE over the last %d days is about %,d cal/day (based on %d days of food "
-                            + "logs and a %s%.1f lb weight-trend change).")
-                            .formatted(e.windowDays(), e.estimatedCalories(), e.loggedDays(),
-                                    e.weightChangeLbs() >= 0 ? "+" : "", e.weightChangeLbs()),
+                    ("Your estimated TDEE over the last %d days is about %,d ± %,d cal/day (based on %d days of "
+                            + "food logs and a %s%.1f lb fitted weight-trend change)%s.")
+                            .formatted(e.windowDays(), e.estimatedCalories(), e.standardErrorCalories(),
+                                    e.loggedDays(), e.weightChangeLbs() >= 0 ? "+" : "", e.weightChangeLbs(),
+                                    e.caveat() != null ? " - note: " + e.caveat() : ""),
                     e);
             case TdeeResult.Unavailable u -> new ToolResult.NotFound(u.reason());
         };
