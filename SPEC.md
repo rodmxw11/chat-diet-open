@@ -16,9 +16,9 @@ or reshaped several subsystems (see the Appendix for what changed and why).
 
 | Constraint | Value |
 |---|---|
-| Users | Exactly one (the owner). No auth beyond network isolation. |
-| Access | Tailscale on home network. No public exposure. |
-| Deployment | Single Docker container on a home server; HTTPS served directly via a Tailscale-issued cert. |
+| Users | Exactly one (the owner). No auth beyond network isolation, except `/alexa` (see below). |
+| Access | Tailscale on home network for the app itself. One public path, `/alexa`, exposed via Tailscale Funnel for the Alexa skill and authenticated by Alexa request-signature verification, not network isolation — see `scripts/TAILSCALE-ALEXA-CONFIG.md`. |
+| Deployment | Single Docker container on a home server. Spring Boot serves API + PWA over HTTPS on 8443 (Tailscale-issued cert, tailnet-only). A second connector on 8081 (loopback-only) serves `/alexa`; Tailscale Funnel binds 443 and reverse-proxies only that path to it. |
 | Backend | Java 21 on Spring Boot, Spring AI for Anthropic. |
 | Frontend | React + Redux PWA, light/dark theme, Recharts. |
 | Database | SQLite (file-mode), Liquibase-managed schema. |
@@ -854,13 +854,20 @@ Components:
 
 ```mermaid
 graph LR
+    subgraph Internet
+        AX[Alexa cloud]
+    end
+
     subgraph Home["Home server"]
-        BE[chat-diet backend<br/>Spring Boot, serves API + built PWA]
+        TSD[tailscaled<br/>:443 public, Funnel, /alexa only]
+        BE["Spring Boot<br/>:8443 TLS (tailnet) · :8081 plaintext (loopback, /alexa)"]
         VOL[(Volume:<br/>SQLite + backups)]
         BK[Nightly BackupJob]
     end
 
-    TS[Tailscale] -.HTTPS, Tailscale-issued cert.-> BE
+    AX -->|"HTTPS 443<br/>/alexa"| TSD
+    TSD -->|"http://localhost:8081"| BE
+    TS[Tailscale] -.HTTPS 8443, Tailscale-issued cert.-> BE
     BE --> VOL
     BK --> VOL
     BE -.HTTPS.-> ANT[api.anthropic.com]
@@ -873,9 +880,20 @@ graph LR
 ```
 
 - **One container.** The Spring Boot backend serves both the API and the
-  built frontend; no separate nginx/web tier, no Docker Compose file. HTTPS
-  is served directly on 443 using a Tailscale-issued certificate
-  (`TAILSCALE-certificates.md`) — no reverse proxy.
+  built frontend; no separate nginx/web tier, no Docker Compose file. The
+  app's own HTTPS is served on 8443 using a Tailscale-issued certificate
+  (`TAILSCALE-certificates.md`), tailnet-only — no reverse proxy.
+- **Public Alexa path.** A second Tomcat connector, bound to `127.0.0.1:8081`,
+  carries only the `/alexa` controller. Tailscale Funnel owns port 443
+  exclusively (a port can't be both Serve and Funnel at once) and mounts just
+  that one path, returning 404 for everything else; Funnel terminates TLS at
+  the relay and reverse-proxies plaintext to `localhost:8081` over the
+  tailnet. Every request on `/alexa` passes Alexa signature/timestamp/
+  `applicationId` verification (ASK SDK's `SkillRequestSignatureVerifier` /
+  `SkillRequestTimestampVerifier`) before any parsing — this, not network
+  isolation, is what secures the one public hole in an otherwise
+  tailnet-only app. Full rationale, cutover steps, and the rejected-Lambda
+  reasoning: `scripts/TAILSCALE-ALEXA-CONFIG.md`.
 - SQLite lives on a mounted volume as a single `.db` file.
 - **Nightly automatic backup** (`BackupJob`, cron, 14-day retention) plus an
   **on-demand export** (`GET /api/export`). Both build their archive via
@@ -931,6 +949,7 @@ already tried.
 | Feature-request capture | A `capture_requirement` intent for the user to log feature ideas about the app itself | **Removed.** Use `save_note` instead — freeform notes cover the same need without a dedicated intent. |
 | Deployment | Two-service Docker Compose (backend + nginx-served frontend) | **Simplified to one container.** The Spring Boot backend serves the built frontend directly; HTTPS is handled by Spring itself with a Tailscale cert, no reverse proxy. |
 | Shopping list | Built in an early phase: `SHOPPING_ITEM` table, a `manage_shopping` intent with 6 tools (add/list/bulk-add/mark-purchased/revert), a dedicated `shop` chat screen | **Removed.** Once `FOOD_ITEM` gained a full management page (lookup, manual entry, soft-delete/restore), the shopping list was a redundant, less-capable second place to maintain the same product data. The table was renamed to `shopping_item_archived` (kept for historical rows, read/written by nothing) rather than dropped. |
+| Public exposure | None planned; §1 originally stated "No public exposure," full stop | **One path opened, deliberately.** An Alexa custom skill requires either an AWS Lambda handler or a public HTTPS endpoint on port 443 with an Amazon-trusted cert; Lambda was rejected (a Tailscale client inside Lambda adds 2-4s of cold-start latency to an already-tight voice response budget, plus an unwanted AWS dependency). Tailscale Funnel now exposes exactly `/alexa` on 443; the app itself moved to 8443 (tailnet-only) since a port can't be Funnel and Serve simultaneously. The hole is authenticated by Alexa request-signature verification, not network isolation — see §1, §11, and `scripts/TAILSCALE-ALEXA-CONFIG.md`. |
 
 ### Still-standing rejected designs
 
