@@ -35,3 +35,5 @@ databaseChangeLog:
       file: db/changelog/017-add-deleted-at-to-food-item.yaml
   - include:
       file: db/changelog/018-archive-shopping-item-table.yaml
+  - include:
+      file: db/changelog/019-create-model-pricing-table.yaml

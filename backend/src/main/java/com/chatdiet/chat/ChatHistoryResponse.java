@@ -12,7 +12,8 @@ import java.util.List;
  * won't show them. That's deliberate - they're derived views the user can regenerate by asking
  * again, and the assistant's prose reply already echoes any numbers it logged.
  */
-public record ChatHistoryResponse(LocalDate metabolicDate, List<ChatHistoryMessage> messages) {
+public record ChatHistoryResponse(LocalDate metabolicDate, List<ChatHistoryMessage> messages,
+                                   double haikuCostUsd, double opusCostUsd) {
 
     /** One message, shaped for display rather than mirroring the stored row. */
     public record ChatHistoryMessage(String role, String text, LocalDateTime at) {

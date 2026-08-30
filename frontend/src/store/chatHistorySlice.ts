@@ -10,6 +10,8 @@ interface ChatHistoryState {
   date: string
   items: ChatHistoryMessage[]
   status: 'idle' | 'loading' | 'error'
+  haikuCostUsd: number
+  opusCostUsd: number
 }
 
 function todayIso(): string {
@@ -21,11 +23,15 @@ const initialState: ChatHistoryState = {
   date: todayIso(),
   items: [],
   status: 'idle',
+  haikuCostUsd: 0,
+  opusCostUsd: 0,
 }
 
 interface HistoryApiResponse {
   metabolicDate: string
   messages: ChatHistoryMessage[]
+  haikuCostUsd: number
+  opusCostUsd: number
 }
 
 // A separate read path from chat/loadHistory: this is a date-scoped lookup for the review page, not
@@ -33,8 +39,7 @@ interface HistoryApiResponse {
 export const loadChatHistoryForDate = createAsyncThunk('chatHistory/load', async (date: string) => {
   const response = await fetch(`/api/chat/history?date=${date}`)
   if (!response.ok) throw new Error(`Chat history request failed: ${response.status}`)
-  const data: HistoryApiResponse = await response.json()
-  return data.messages
+  return (await response.json()) as HistoryApiResponse
 })
 
 const chatHistorySlice = createSlice({
@@ -52,7 +57,9 @@ const chatHistorySlice = createSlice({
       })
       .addCase(loadChatHistoryForDate.fulfilled, (state, action) => {
         state.status = 'idle'
-        state.items = action.payload
+        state.items = action.payload.messages
+        state.haikuCostUsd = action.payload.haikuCostUsd
+        state.opusCostUsd = action.payload.opusCostUsd
       })
       .addCase(loadChatHistoryForDate.rejected, (state) => {
         state.status = 'error'

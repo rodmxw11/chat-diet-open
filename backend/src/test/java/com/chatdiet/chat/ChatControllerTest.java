@@ -52,8 +52,11 @@ class ChatControllerTest {
         when(sqlResultContext.answer()).thenReturn(Optional.empty());
         when(chatService.reply(any(), any(), anyString())).thenReturn("ok");
 
+        var chatCostCalculator = mock(ChatCostCalculator.class);
+        when(chatCostCalculator.costFor(any())).thenReturn(new ChatCostCalculator.DailyCost(0.0, 0.0));
+
         var controller = new ChatController(chatService, historyStore, dayBoundaryService,
-                chartResultContext, sqlResultContext);
+                chartResultContext, sqlResultContext, chatCostCalculator);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 

@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: 019-create-model-pricing-table
+      author: chat-diet
+      changes:
+        - createTable:
+            tableName: model_pricing
+            columns:
+              - column:
+                  name: id
+                  type: INTEGER
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model
+                  type: VARCHAR(16)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: input_cost_per_million_usd
+                  type: DOUBLE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: output_cost_per_million_usd
+                  type: DOUBLE
+                  constraints:
+                    nullable: false
+        - insert:
+            tableName: model_pricing
+            columns:
+              - column:
+                  name: model
+                  value: HAIKU
+              - column:
+                  name: input_cost_per_million_usd
+                  valueNumeric: 1.0
+              - column:
+                  name: output_cost_per_million_usd
+                  valueNumeric: 5.0
+        - insert:
+            tableName: model_pricing
+            columns:
+              - column:
+                  name: model
+                  value: OPUS
+              - column:
+                  name: input_cost_per_million_usd
+                  valueNumeric: 5.0
+              - column:
+                  name: output_cost_per_million_usd
+                  valueNumeric: 25.0

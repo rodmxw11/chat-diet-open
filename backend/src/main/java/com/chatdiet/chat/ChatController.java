@@ -32,15 +32,18 @@ public class ChatController {
     private final DayBoundaryService dayBoundaryService;
     private final ChartResultContext chartResultContext;
     private final SqlResultContext sqlResultContext;
+    private final ChatCostCalculator chatCostCalculator;
 
     public ChatController(ChatService chatService, ConversationHistoryStore historyStore,
                            DayBoundaryService dayBoundaryService,
-                           ChartResultContext chartResultContext, SqlResultContext sqlResultContext) {
+                           ChartResultContext chartResultContext, SqlResultContext sqlResultContext,
+                           ChatCostCalculator chatCostCalculator) {
         this.chatService = chatService;
         this.historyStore = historyStore;
         this.dayBoundaryService = dayBoundaryService;
         this.chartResultContext = chartResultContext;
         this.sqlResultContext = sqlResultContext;
+        this.chatCostCalculator = chatCostCalculator;
     }
 
     /**
@@ -62,11 +65,13 @@ public class ChatController {
     @GetMapping("/api/chat/history")
     public ChatHistoryResponse history(@RequestParam(required = false) LocalDate date) {
         var day = date != null ? date : dayBoundaryService.today();
-        var messages = historyStore.messagesFor(day).stream()
+        var storedMessages = historyStore.messagesFor(day);
+        var messages = storedMessages.stream()
                 .map(message -> new ChatHistoryResponse.ChatHistoryMessage(
                         message.role(), message.content(), message.createdAt()))
                 .toList();
-        return new ChatHistoryResponse(day, messages);
+        var cost = chatCostCalculator.costFor(storedMessages);
+        return new ChatHistoryResponse(day, messages, cost.haikuCostUsd(), cost.opusCostUsd());
     }
 
     /**

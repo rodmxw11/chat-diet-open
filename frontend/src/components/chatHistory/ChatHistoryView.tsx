@@ -25,6 +25,8 @@ export default function ChatHistoryView() {
   const date = useAppSelector((state) => state.chatHistory.date)
   const items = useAppSelector((state) => state.chatHistory.items)
   const status = useAppSelector((state) => state.chatHistory.status)
+  const haikuCostUsd = useAppSelector((state) => state.chatHistory.haikuCostUsd)
+  const opusCostUsd = useAppSelector((state) => state.chatHistory.opusCostUsd)
   const metabolicDate = useAppSelector((state) => state.summary.data?.metabolicDate)
 
   // Corrects the initial date to the server's current metabolic day (accounts for the
@@ -64,6 +66,9 @@ export default function ChatHistoryView() {
           <div className="shop-header-text">
             <span className="shop-title">Chat History</span>
             <span className="shop-progress">{items.length} messages</span>
+            <span className="shop-progress">
+              Haiku ${haikuCostUsd.toFixed(2)} · Opus ${opusCostUsd.toFixed(2)}
+            </span>
           </div>
         </div>
         <div className="foods-date-row">
