@@ -11,6 +11,7 @@ import DailyFoodsView from '../foods/DailyFoodsView'
 import ChatHistoryView from '../chatHistory/ChatHistoryView'
 import MicronutrientsView from '../micronutrients/MicronutrientsView'
 import FoodItemsView from '../foodItems/FoodItemsView'
+import SchemaView from '../schema/SchemaView'
 import Sidebar from './Sidebar'
 import ChartSheets from '../charts/ChartSheets'
 import OfflineQueuePanel from '../OfflineQueuePanel'
@@ -60,6 +61,7 @@ export default function AppShell() {
         {screen === 'chatHistory' && <ChatHistoryView />}
         {screen === 'micronutrients' && <MicronutrientsView />}
         {screen === 'foodItems' && <FoodItemsView />}
+        {screen === 'schema' && <SchemaView />}
       </div>
       <Sidebar />
       <ChartSheets />

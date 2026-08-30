@@ -887,6 +887,10 @@ input {
   margin: -4px 0 8px;
 }
 
+.schema-table-card {
+  margin-bottom: 12px;
+}
+
 .range-toggle {
   display: flex;
   background: var(--surface-tint);

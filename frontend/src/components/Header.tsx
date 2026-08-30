@@ -144,6 +144,9 @@ export default function Header() {
             <button type="button" role="menuitem" onClick={() => dispatch(setScreen('micronutrients'))}>
               <span>Micronutrients</span>
             </button>
+            <button type="button" role="menuitem" onClick={() => dispatch(setScreen('schema'))}>
+              <span>Database schema</span>
+            </button>
             <button type="button" role="menuitem" onClick={() => dispatch(openOverlay('queue'))}>
               <span>Waiting to send</span>
               <span className="menu-hint">{queueCount}</span>

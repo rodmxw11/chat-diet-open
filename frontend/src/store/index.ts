@@ -6,6 +6,7 @@ import dashboardReducer from './dashboardSlice'
 import foodEntriesReducer from './foodEntriesSlice'
 import foodItemsReducer from './foodItemsSlice'
 import notesReducer from './notesSlice'
+import schemaReducer from './schemaSlice'
 import summaryReducer from './summarySlice'
 import uiReducer from './uiSlice'
 
@@ -18,6 +19,7 @@ export const store = configureStore({
     foodEntries: foodEntriesReducer,
     foodItems: foodItemsReducer,
     notes: notesReducer,
+    schema: schemaReducer,
     summary: summaryReducer,
     ui: uiReducer,
   },
