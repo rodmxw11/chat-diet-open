@@ -261,22 +261,38 @@ write.
 
 ### B4. Voice channel
 
-`ChatService` builds **one** `ChatClient` at startup from
-`PromptAssembler.assemble()` (`ChatService.java:23-29`), so prompt and tools
-are fixed for the app's lifetime. Minimal-diff fix: build two.
+`ChatService` builds **one** `ChatClient` field at construction
+(`ChatService.java:59` field, `:66-77` constructor) via
+`promptAssembler.tools()` passed to `.defaultTools(...)`, so tools are fixed
+for the app's lifetime. The system prompt is rebuilt fresh on every call via
+`promptAssembler.systemPrompt()` (no-arg, `PromptAssembler.java:63-72`).
+There is no `PromptAssembler.assemble()` method — that was never built, and
+this section corrects the reference accordingly. Minimal-diff fix: build two
+`ChatClient`s and add exclusion-aware overloads to the two existing methods.
 
-1. `ChatRequest` (`ChatRequest.java:13`) — add `String channel` (nullable;
-   only `"voice"` changes behavior).
-2. `PromptAssembler.assemble()` → `assemble(boolean voiceChannel)`. When
-   true: exclude the `show_chart` and `run_sql` intents by name before
-   building fragments and tool names, and append a voice instruction — no
-   screen, speak full numbers aloud, never mention charts or tables, 1–3
-   sentences. Keep a no-arg `assemble()` delegating to `assemble(false)`.
+1. `ChatRequest` (`ChatRequest.java:17`,
+   `record ChatRequest(String text, String clientSentAt)`) — add `String
+   channel` (nullable; only `"voice"` changes behavior).
+2. Add `PromptAssembler.tools(Set<String> excludedIntents)` and
+   `.systemPrompt(Set<String> excludedIntents)` overloads (existing no-arg
+   versions at `:79-85` and `:63-72` delegate to `Set.of()`). When called
+   with the voice exclusion set: exclude the `show_chart` and `run_sql`
+   intents by name before building fragments and tool names, and append a
+   voice instruction — no screen, speak full numbers aloud, never mention
+   charts or tables, 1–3 sentences. **Do not exclude `log_food`** — its
+   prompt fragment carries the alias-resolution/clarification-list
+   instructions voice needs just as much as web does (see §C, which this
+   section's corrections replace).
 3. `ChatService` — build `webChatClient` and `voiceChatClient` at
-   construction; add `boolean voiceChannel` to `reply(...)` with the existing
-   overload delegating `false`.
-4. The Alexa controller passes `true`. `ChatController` is unchanged; the
-   multipart photo endpoint is untouched (Alexa can't send photos).
+   construction; add `boolean voiceChannel` to the full
+   `reply(LocalDate, LocalDateTime, String)` overload (`:92-135`) with the
+   shorter `reply(String)` overload (`:80-83`) delegating `false`. Verify at
+   implementation time whether the injected `ChatClient.Builder` can safely
+   produce two independent clients from two `.defaultTools(...)` calls, or
+   whether a fresh builder instance is needed per client.
+4. The Alexa controller passes `true`. `ChatController` is unchanged; it has
+   no multipart/photo endpoint to worry about — it only ever exposed
+   `POST /api/chat` and `GET /api/chat/history`.
 
 Excluding those two intents also drops their tools from the voice tool
 definitions, which shortens the prompt and cuts per-turn cost.
@@ -311,59 +327,89 @@ Progressive Response can speak filler while working. As far as I know it does
 
 ---
 
-## C. Transcription risk
+## C. Transcription risk — superseded by the alias-resolver rework
 
-This is the part most likely to cause silent damage, and it compounds an
-existing weakness.
+This section originally argued that a bidirectional-substring matcher shared
+by `FoodItemRepository` and `FdcClient` needed hardening before Alexa could
+safely feed it shorter, qualifier-stripped ASR output ("cheddar" instead of
+"sharp cheddar" silently matching a wrong cached item). That matcher no
+longer exists: `docs/fixing-substring-problem-spec.md` replaced it with an
+exact `FOOD_ALIAS` lookup plus a `FoodResolver` clarification protocol
+(`backend/src/main/java/com/chatdiet/food/resolve/FoodResolver.java`) that
+never auto-selects on a fuzzy or partial match — a miss always produces a
+numbered candidate list for a human to pick from, not a silent guess. This
+is a stronger fix than hardening the old matcher would have been, since it
+applies regardless of how short or qualifier-stripped the query is.
 
-ASR degrades queries in a specific direction: **it strips qualifiers**. "sharp
-cheddar" arrives as "cheddar", "extra virgin olive oil" as "olive oil", "Clif
-bar" as "cliff bar". Numbers render inconsistently ("142" usually, "one forty
-two" sometimes) — Haiku absorbs that fine.
+**What ASR shortening now does instead of silently mismatching**: a
+qualifier-stripped query ("cheddar" instead of "sharp cheddar") is more
+likely to miss the exact `FOOD_ALIAS` table and fall into `FoodResolver`'s
+`Ambiguous`/`Unknown` clarification path more often on voice than on web.
+That's the correct, honest failure mode — an extra spoken clarification
+turn — not a silent wrong number. The remaining open question is whether
+that clarification round-trip works cleanly over voice, which it does
+without new logging-side code:
 
-The qualifier stripping is the problem. SPEC §6 documents that
-`FoodItemRepository`'s cache lookup and `FdcClient` share a
-bidirectional-substring test: query contains candidate, or candidate contains
-query. Short queries are substrings of many longer names. "rice" matches a
-cached "fried rice"; "egg" matches "egg mcmuffin". The match is accepted, the
-per-100g values are scaled, and the row is tagged with the cached item's
-`lookup_source` — so a wrong number acquires an `FDC` or `OFF` provenance
-label and looks *more* trustworthy than an honest estimate. Nothing in the
-echoed response indicates a problem.
+`ChatService.reply(LocalDate, LocalDateTime, String)` fetches history as
+`historyStore.get(metabolicDate)` — keyed purely by metabolic day, not by
+channel, session, or device. An Alexa turn and a web turn on the same day
+share the same conversation the model sees, so a clarification list emitted
+mid-Alexa-session stays in context for the very next turn, spoken or typed.
+`log_food`'s clarification list embeds hidden `[ref:item:N]`/`[ref:fdc:N]`/
+`[ref:estimate]` markers that the model is instructed (in the tool
+description and `intents.yaml`) to strip before relaying to the user and to
+echo back structurally (`resolvedFoodItemId`/`resolvedFdcId`/`useEstimate`,
+plus `attachToGroupId` for a partial multi-item batch) once the user picks
+one — this instruction-following happens at the model layer regardless of
+which channel is speaking, so no Alexa-specific stripping/parsing code is
+needed.
 
-Voice makes queries shorter, so it makes this worse.
+Two session-layer details do need building into the Alexa controller
+(§D step 8, §B4):
 
-Note that SPEC §6 already identifies this exact failure for `PORTION_UNIT`
-matching — it only accepts a bidirectional-substring match on unit names when
-unambiguous, because "cup, sliced" and "cup, mashed" differ by 75g and
-picking one would be a silent guess. The same reasoning has not been applied
-to the item-name lookup.
+- Set `shouldEndSession: false` with a reprompt after **every**
+  `AteIntent`/`NoteIntent`/`WeightIntent` turn, unconditionally — not only
+  when the reply looks like a question. `ChatService.reply()` returns a
+  bare `String` with no structural flag distinguishing "done" from "needs
+  one more answer," and sniffing the text for a trailing "?" is fragile
+  once SSML/number formatting is involved.
+- The three-intent design prepends a fixed carrier phrase per intent
+  (`"I ate "`, `"Note that "`, `"Weight "`); a short clarification answer
+  like "the honey wheat one" has no strong signal steering Alexa's NLU to
+  the intent that asked the question, so it could land in any of the three
+  (or Fallback), prepending the wrong verb framing. The model, with the
+  full conversation in context including its own clarifying question, will
+  very likely resolve correctly regardless — don't pre-build
+  carrier-phrase-stripping logic; test it for real (§E) and only mitigate
+  if it actually misroutes.
 
-**Fix the matcher before wiring `ChatService` to Alexa**, not after. Tracked
-separately; not in scope here.
-
-Also out of scope: UPC by voice. Twelve digits read aloud is near-100% error.
+Still out of scope: UPC by voice. Twelve digits read aloud is near-100%
+error.
 
 ---
 
 ## D. Build order
 
-1. Fix the cache substring matcher (separate work item, but it gates step 7).
-2. Drain offline queues on every device.
-3. Move app to 8443; verify from tailnet; re-install PWA everywhere.
-4. Second connector on `127.0.0.1:8081`, stub `/alexa` returning a hardcoded
+1. Drain offline queues on every device. (The cache-substring-matcher step
+   that used to gate this build order is gone — see §C; there's no matcher
+   left to fix, and the clarification protocol that replaced it needs no
+   Alexa-specific prep work.)
+2. Move app to 8443; verify from tailnet; re-install PWA everywhere.
+3. Second connector on `127.0.0.1:8081`, stub `/alexa` returning a hardcoded
    Alexa response envelope. No `ChatService`, no DB. Verify with local curl.
-5. Signature verification filter. Get it rejecting the local curl *before*
+4. Signature verification filter. Get it rejecting the local curl *before*
    anything is public.
-6. Funnel 443 (`TAILSCALE-ALEXA-CONFIG.md`). Verify from off the tailnet —
+5. Funnel 443 (`TAILSCALE-ALEXA-CONFIG.md`). Verify from off the tailnet —
    phone on cellular, not home wifi. On-tailnet requests resolve directly and
    never touch the relay, so success there proves nothing. A 400 from the
    verification filter is the correct result.
-7. Point the ASK console at the endpoint; test the stub from the simulator.
-8. Wire the three intents to `ChatService` with `voiceChannel=true`.
-9. Templated confirmations (B5) once the round trip works.
+6. Point the ASK console at the endpoint; test the stub from the simulator.
+7. Wire the three intents to `ChatService` with `voiceChannel=true`, setting
+   `shouldEndSession: false` with a reprompt on every logging-intent turn
+   (§C, §B4).
+8. Templated confirmations (B5) once the round trip works.
 
-Steps 4–6 are each independently verifiable. Don't collapse them.
+Steps 3–5 are each independently verifiable. Don't collapse them.
 
 ---
 
@@ -387,6 +433,14 @@ account's devices, no publishing:
 - Fallback: say something nonsensical. Should get "Sorry?" and write nothing.
 - Rollover: log after midnight but before the configured rollover hour;
   confirm it files under the prior metabolic day.
+- Clarification: trigger a genuinely ambiguous food log (e.g. two
+  similarly-named cached items), confirm Alexa asks a spoken clarifying
+  question and keeps the session open (`shouldEndSession: false`), answer
+  it in the same session, confirm it resolves to the right item and logs
+  (§C). Note whether the answering utterance landed in `AteIntent` or a
+  different intent (check the ASK console's request log) and whether
+  resolution still succeeded regardless — only build a carrier-phrase
+  mitigation if it actually fails.
 
 **Log every Alexa request's intent name and slot value** before
 reconstructing the utterance. The first week tells you which samples are dead
