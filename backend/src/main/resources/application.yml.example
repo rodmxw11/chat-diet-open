@@ -1,14 +1,16 @@
-# Optional: serve HTTPS directly on 443 using a Tailscale-issued cert, so the app is
-# reachable from other tailnet devices (e.g. a phone) at https://<machine>.<tailnet>.ts.net
+# Optional: serve HTTPS directly on 8443 using a Tailscale-issued cert, so the app is
+# reachable from other tailnet devices (e.g. a phone) at https://<machine>.<tailnet>.ts.net:8443
 # with no reverse proxy. Requires "HTTPS Certificates" enabled in the Tailscale admin
 # console (DNS tab), then run from backend/:
 #   tailscale cert --cert-file certs/<machine>.<tailnet>.ts.net.crt \
 #                   --key-file certs/<machine>.<tailnet>.ts.net.key \
 #                   <machine>.<tailnet>.ts.net
 # certs/ is gitignored - regenerate locally, never commit the private key.
+# Port 8443, not 443: Tailscale Funnel owns 443 exclusively to expose /alexa publicly
+# (a port can't be both Funnel and Serve at once) - see scripts/TAILSCALE-ALEXA-CONFIG.md.
 # Omit this whole `server:` block to fall back to plain HTTP on the default port (8080).
 server:
-  port: 443
+  port: 8443
   ssl:
     certificate: file:certs/<machine>.<tailnet>.ts.net.crt
     certificate-private-key: file:certs/<machine>.<tailnet>.ts.net.key
