@@ -891,6 +891,18 @@ input {
   margin-bottom: 12px;
 }
 
+/* Overrides .foods-table's 4-column (Daily Foods) width rules, which otherwise squeeze this
+   table's 2 columns down to their 18%/44% split, leaving "Column" too narrow for longer names. */
+.schema-table-card .foods-table th:nth-child(1),
+.schema-table-card .foods-table td:nth-child(1) {
+  width: 60%;
+}
+
+.schema-table-card .foods-table th:nth-child(2),
+.schema-table-card .foods-table td:nth-child(2) {
+  width: 40%;
+}
+
 .range-toggle {
   display: flex;
   background: var(--surface-tint);
