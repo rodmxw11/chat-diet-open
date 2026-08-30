@@ -1,6 +1,8 @@
 package com.chatdiet.dashboard;
 
 import com.chatdiet.day.DayBoundaryService;
+import com.chatdiet.tdee.AdaptiveTdeeService;
+import com.chatdiet.tdee.TdeeResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,12 +16,14 @@ public class DashboardController {
     private final MacroChartService macroChartService;
     private final WeightTrendService weightTrendService;
     private final DayBoundaryService dayBoundaryService;
+    private final AdaptiveTdeeService adaptiveTdeeService;
 
     public DashboardController(MacroChartService macroChartService, WeightTrendService weightTrendService,
-                                DayBoundaryService dayBoundaryService) {
+                                DayBoundaryService dayBoundaryService, AdaptiveTdeeService adaptiveTdeeService) {
         this.macroChartService = macroChartService;
         this.weightTrendService = weightTrendService;
         this.dayBoundaryService = dayBoundaryService;
+        this.adaptiveTdeeService = adaptiveTdeeService;
     }
 
     /** Per-day macro breakdown for the last {@code days} (7 or 30) metabolic days, oldest first. */
@@ -34,5 +38,20 @@ public class DashboardController {
     @GetMapping("/api/dashboard/weight-trend")
     public WeightTrendResponse weightTrend() {
         return weightTrendService.trend30Day();
+    }
+
+    /** Flat DTO wrapping {@link TdeeResult} so the frontend has one predictable response shape. */
+    public record TdeeStatusResponse(Integer estimatedCalories, Integer windowDays, Integer loggedDays,
+                                      Double weightChangeLbs, String unavailableReason) {
+    }
+
+    /** The adaptive TDEE estimate for the weight trend chart's stat line. */
+    @GetMapping("/api/dashboard/tdee")
+    public TdeeStatusResponse tdee() {
+        return switch (adaptiveTdeeService.estimate()) {
+            case TdeeResult.Estimate e -> new TdeeStatusResponse(
+                    e.estimatedCalories(), e.windowDays(), e.loggedDays(), e.weightChangeLbs(), null);
+            case TdeeResult.Unavailable u -> new TdeeStatusResponse(null, null, null, null, u.reason());
+        };
     }
 }

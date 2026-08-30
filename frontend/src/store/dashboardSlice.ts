@@ -30,6 +30,14 @@ export interface WeightTrendResponse {
   goal: GoalLine | null
 }
 
+export interface TdeeStatus {
+  estimatedCalories: number | null
+  windowDays: number | null
+  loggedDays: number | null
+  weightChangeLbs: number | null
+  unavailableReason: string | null
+}
+
 export type MacroRange = 7 | 30
 
 interface DashboardState {
@@ -38,6 +46,8 @@ interface DashboardState {
   macrosStatus: 'idle' | 'loading' | 'error'
   weightTrend: WeightTrendResponse | null
   weightTrendStatus: 'idle' | 'loading' | 'error'
+  tdee: TdeeStatus | null
+  tdeeStatus: 'idle' | 'loading' | 'error'
 }
 
 const initialState: DashboardState = {
@@ -46,6 +56,8 @@ const initialState: DashboardState = {
   macrosStatus: 'idle',
   weightTrend: null,
   weightTrendStatus: 'idle',
+  tdee: null,
+  tdeeStatus: 'idle',
 }
 
 export const loadMacros = createAsyncThunk('dashboard/loadMacros', async (days: MacroRange) => {
@@ -58,6 +70,12 @@ export const loadWeightTrend = createAsyncThunk('dashboard/loadWeightTrend', asy
   const response = await fetch('/api/dashboard/weight-trend')
   if (!response.ok) throw new Error(`Weight trend request failed: ${response.status}`)
   return (await response.json()) as WeightTrendResponse
+})
+
+export const loadTdeeEstimate = createAsyncThunk('dashboard/loadTdeeEstimate', async () => {
+  const response = await fetch('/api/dashboard/tdee')
+  if (!response.ok) throw new Error(`TDEE request failed: ${response.status}`)
+  return (await response.json()) as TdeeStatus
 })
 
 const dashboardSlice = createSlice({
@@ -89,6 +107,16 @@ const dashboardSlice = createSlice({
       })
       .addCase(loadWeightTrend.rejected, (state) => {
         state.weightTrendStatus = 'error'
+      })
+      .addCase(loadTdeeEstimate.pending, (state) => {
+        state.tdeeStatus = 'loading'
+      })
+      .addCase(loadTdeeEstimate.fulfilled, (state, action) => {
+        state.tdeeStatus = 'idle'
+        state.tdee = action.payload
+      })
+      .addCase(loadTdeeEstimate.rejected, (state) => {
+        state.tdeeStatus = 'error'
       })
   },
 })

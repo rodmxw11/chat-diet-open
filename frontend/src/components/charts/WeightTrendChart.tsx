@@ -46,6 +46,7 @@ function buildSeries(
 // rather than the backend materializing every point of a straight line.
 export default function WeightTrendChart() {
   const trend = useAppSelector((state) => state.dashboard.weightTrend)
+  const tdee = useAppSelector((state) => state.dashboard.tdee)
 
   if (!trend) return null
 
@@ -57,6 +58,13 @@ export default function WeightTrendChart() {
         <span className="dash-card-title">Weight trend</span>
         <span className="dash-card-subtitle">30 days</span>
       </div>
+      {tdee && (
+        <div className="dash-card-stat">
+          {tdee.estimatedCalories !== null
+            ? `Est. TDEE (${tdee.windowDays}-day): ${tdee.estimatedCalories.toLocaleString()} cal/day`
+            : `TDEE estimate: ${tdee.unavailableReason}`}
+        </div>
+      )}
       <ResponsiveContainer width="100%" height={220}>
         <ComposedChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--dash-grid)" />

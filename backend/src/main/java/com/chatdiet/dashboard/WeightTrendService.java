@@ -45,6 +45,20 @@ public class WeightTrendService {
         this.dayBoundaryService = dayBoundaryService;
     }
 
+    /**
+     * The full smoothed trend line (Hacker's Diet EWMA) across all weigh-in history, keyed by
+     * date - shared by the 30-day chart and anything else (e.g. adaptive TDEE) that needs the
+     * underlying trend rather than just the display window. Empty map if there's no weigh-in
+     * history at all.
+     */
+    public Map<LocalDate, Double> smoothedTrendByDate() {
+        var byDay = earliestWeighInByDay(weightEntryRepository.findAll());
+        if (byDay.isEmpty()) {
+            return Map.of();
+        }
+        return smooth(interpolateGaps(byDay));
+    }
+
     public WeightTrendResponse trend30Day() {
         var to = dayBoundaryService.today();
         var from = to.minusDays(WINDOW_DAYS - 1);
@@ -54,8 +68,7 @@ public class WeightTrendService {
             return new WeightTrendResponse(List.of(), List.of(), null);
         }
 
-        var dense = interpolateGaps(byDay);
-        var trendByDate = smooth(dense);
+        var trendByDate = smoothedTrendByDate();
 
         var actual = new ArrayList<WeighIn>();
         for (var date = from; !date.isAfter(to); date = date.plusDays(1)) {

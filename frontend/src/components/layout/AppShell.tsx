@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { loadHistory, loadQueue } from '../../store/chatSlice'
 import { loadNotes } from '../../store/notesSlice'
-import { loadMacros, loadWeightTrend } from '../../store/dashboardSlice'
+import { loadMacros, loadTdeeEstimate, loadWeightTrend } from '../../store/dashboardSlice'
 import Header from '../Header'
 import ChatWindow from '../ChatWindow'
 import MessageInput from '../MessageInput'
@@ -37,6 +37,7 @@ export default function AppShell() {
     dispatch(loadHistory())
     dispatch(loadQueue())
     dispatch(loadWeightTrend())
+    dispatch(loadTdeeEstimate())
     dispatch(loadNotes())
   }, [dispatch])
 

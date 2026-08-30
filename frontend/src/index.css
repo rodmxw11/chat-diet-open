@@ -880,6 +880,13 @@ input {
   color: var(--text-muted);
 }
 
+.dash-card-stat {
+  font-family: var(--font-mono);
+  font-size: calc(11px * var(--font-scale));
+  color: var(--text-muted);
+  margin: -4px 0 8px;
+}
+
 .range-toggle {
   display: flex;
   background: var(--surface-tint);

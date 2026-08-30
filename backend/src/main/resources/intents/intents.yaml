@@ -95,11 +95,12 @@
   enabled: true
 
 - name: query_data
-  description: Calorie target, fasting duration, weight projections, and food logged on a day
+  description: Calorie target, fasting duration, weight projections, adaptive TDEE, and food logged on a day
   toolNames:
     - get_daily_target
     - get_fasting_status
     - get_weight_projection
+    - get_tdee
     - list_food_entries
   promptFragment: >
     Use get_daily_target for questions about today's calorie target or how
@@ -107,7 +108,10 @@
     ate" style questions. Use get_weight_projection for goal-date or
     future-weight questions, passing either a goal weight or a goal date, not
     both. Report projected calorie surpluses/deficits in pounds alongside
-    calories, never as a bare calorie number. Use list_food_entries for any
+    calories, never as a bare calorie number. Use get_tdee for questions about
+    estimated calorie burn, maintenance calories, or TDEE - this is
+    back-calculated from logged intake and the weight trend, not a generic BMR
+    formula, so don't also estimate a BMR yourself. Use list_food_entries for any
     "what did I eat" style question about a single day (today, yesterday, a
     named date) - resolve the day to a date yourself and pass it. Always call
     it fresh for this; never answer from memory or an earlier turn in this
