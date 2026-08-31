@@ -18,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -77,7 +78,10 @@ public class AlexaSignatureFilter extends OncePerRequestFilter {
         var certChainUrl = cachedRequest.getHeader(CERT_CHAIN_URL_HEADER);
 
         if (signature == null || certChainUrl == null) {
-            log.warn("Alexa request missing signature headers");
+            var headerNames = Collections.list(cachedRequest.getHeaderNames());
+            log.warn("Alexa request missing signature headers (signature={}, certChainUrl={}); "
+                            + "headers actually present: {}",
+                    signature != null, certChainUrl != null, headerNames);
             response.sendError(HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
