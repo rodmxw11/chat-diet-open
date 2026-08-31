@@ -164,7 +164,11 @@ touching anything else. Confirm the stub from step 3 now returns 400
 without valid Alexa headers.
 
 **5. Enable Tailscale Funnel** per `scripts/TAILSCALE-ALEXA-CONFIG.md`
-(`tailscale funnel --https=443 --set-path=/alexa http://localhost:8081`).
+(`tailscale funnel --https=443 --set-path=/alexa http://localhost:8081/alexa`
+— the target must include `/alexa`, not just the bare host:port; `--set-path`
+strips the mount-point prefix before forwarding, so a bare target makes the
+backend see requests at `/` instead, which neither `AlexaController` nor
+`AlexaPathIsolationFilter` recognize. Confirmed by testing.).
 Verify from **off the tailnet** (cellular, not home wifi) — a 400 from the
 signature filter is the correct, expected result and proves both routing and
 verification are live.

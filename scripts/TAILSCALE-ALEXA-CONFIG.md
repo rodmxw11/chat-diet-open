@@ -151,9 +151,17 @@ not after. See §7.
 ## 6. Enabling Funnel
 
 ```bash
-sudo tailscale funnel --https=443 --set-path=/alexa http://localhost:8081
+sudo tailscale funnel --https=443 --set-path=/alexa http://localhost:8081/alexa
 tailscale funnel status
 ```
+
+**The target must include `/alexa`, not just `http://localhost:8081`.**
+`--set-path` strips the mount-point prefix before forwarding by default — a
+public request to `/alexa` arrives at a bare `http://localhost:8081` target
+as a request for `/` (confirmed by testing: it produced a 404, since neither
+`AlexaController` nor `AlexaPathIsolationFilter` recognize a bare `/`).
+Including `/alexa` on the target side re-attaches the path so the backend
+sees exactly what it's mapped to handle.
 
 Teardown:
 
@@ -254,3 +262,20 @@ Two mitigations belong in the endpoint, not the network layer:
 Add an Appendix row recording that public exposure was adopted deliberately,
 constrained to one path, and why Lambda was rejected. Without it, the "no
 auth" note in §1 reads as a much larger hole than it is.
+
+## Starting the Funnel service
+
+```
+C:\Windows\System32>tailscale funnel --bg --https=443 --set-path=/alexa http://localhost:8081/alexa
+Available on the internet:
+
+https://<machine>.<tailnet>.ts.net/alexa
+|-- proxy http://localhost:8081/alexa
+
+Funnel started and running in the background.
+To disable the proxy, run: tailscale funnel --https=443 off
+```
+
+(An earlier run of this command used a bare `http://localhost:8081` target,
+which produced a 404 for every request - see §6 above for why the target
+needs `/alexa` included.)
