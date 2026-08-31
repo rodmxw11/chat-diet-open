@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -24,8 +25,12 @@ import java.util.concurrent.TimeUnit;
  * it - the {@code Signature}/{@code SignatureCertChainUrl} headers against the raw request body
  * ({@link SkillRequestSignatureVerifier}, which validates the cert chain against Amazon's root CA
  * and caches the downloaded certificate itself) and the request timestamp against a tolerance
- * ({@link SkillRequestTimestampVerifier}, replay-attack protection). Any failure is a 400, before
- * the request reaches {@link AlexaController} or anything backed by real data.
+ * ({@link SkillRequestTimestampVerifier}, replay-attack protection), and the request envelope's
+ * {@code applicationId} against this skill's own id ({@code chat-diet.alexa.skill-id}) - a
+ * correctly-signed request is only proof it came from Alexa, not proof it came from *this* skill;
+ * without this check, a legitimately-signed request built for a different skill would still pass.
+ * Any failure is a 400, before the request reaches {@link AlexaController} or anything backed by
+ * real data.
  *
  * <p>Reads the body once via {@link CachedBodyHttpServletRequestWrapper} and passes the cached
  * wrapper downstream, since the signature is computed over the raw bytes but the controller still
@@ -53,6 +58,11 @@ public class AlexaSignatureFilter extends OncePerRequestFilter {
     private final SkillRequestTimestampVerifier timestampVerifier =
             new SkillRequestTimestampVerifier(TIMESTAMP_TOLERANCE, TimeUnit.SECONDS);
     private final JacksonSerializer serializer = new JacksonSerializer();
+    private final String skillId;
+
+    public AlexaSignatureFilter(@Value("${chat-diet.alexa.skill-id}") String skillId) {
+        this.skillId = skillId;
+    }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -76,6 +86,14 @@ public class AlexaSignatureFilter extends OncePerRequestFilter {
             var alexaRequest = new CachedAlexaHttpRequest(cachedRequest.getCachedBody(), signature, certChainUrl);
             signatureVerifier.verify(alexaRequest);
             timestampVerifier.verify(alexaRequest);
+
+            var requestSkillId = alexaRequest.getDeserializedRequestEnvelope()
+                    .getContext().getSystem().getApplication().getApplicationId();
+            if (!skillId.equals(requestSkillId)) {
+                log.warn("Alexa request's applicationId ({}) does not match this skill's id", requestSkillId);
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST);
+                return;
+            }
         } catch (RuntimeException e) {
             log.warn("Alexa request failed signature/timestamp verification: {}", e.getMessage());
             response.sendError(HttpServletResponse.SC_BAD_REQUEST);

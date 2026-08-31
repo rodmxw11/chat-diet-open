@@ -43,6 +43,11 @@ chat-diet:
   # through Funnel or from the box itself. See scripts/TAILSCALE-ALEXA-CONFIG.md.
   alexa:
     port: 8081
+    # Your skill's application ID, from the ASK developer console (Endpoint tab, or the skill's
+    # overview page) - looks like "amzn1.ask.skill.xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx". Required:
+    # a correctly-signed Alexa request only proves it came from Alexa, not that it came from *this*
+    # skill, so AlexaSignatureFilter rejects any request whose envelope doesn't match this value.
+    skill-id: your-skill-application-id-here
 
   chat:
     # How many of the current day's messages are replayed to the model each turn. The DB is the
