@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -17,8 +18,13 @@ import java.io.IOException;
  * {@code /alexa} is servable on the tailnet-facing HTTPS connector. Even if Funnel's path
  * restriction were ever misconfigured, this still confines the public surface to exactly one
  * path on exactly one connector.
+ *
+ * <p>Runs before {@link AlexaSignatureFilter} ({@code @Order} 1 vs. 2), so a request on the wrong
+ * connector/path is already rejected before signature verification would fail for the less
+ * specific reason of missing headers on traffic that was never going to be Alexa's.
  */
 @Component
+@Order(1)
 public class AlexaPathIsolationFilter extends OncePerRequestFilter {
 
     private static final String ALEXA_PATH = "/alexa";

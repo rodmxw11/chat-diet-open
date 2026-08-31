@@ -34,6 +34,14 @@ dependencies {
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0'
 	implementation 'org.xerial:sqlite-jdbc:3.47.1.0'
 	implementation 'org.apache.commons:commons-text:1.13.0'
+	// Alexa skill request signature/timestamp verification (backend/src/main/java/com/chatdiet/alexa).
+	// Note the groupId is com.amazon.alexa, not com.amazon.ask - the Java package name (com.amazon.ask.*)
+	// doesn't match the Maven coordinates. ask-sdk-servlet-support's ServletRequest convenience class
+	// depends on javax.servlet-api (provided scope, Jakarta-incompatible) - deliberately unused here;
+	// AlexaSignatureFilter implements the SDK's AlexaHttpRequest interface directly instead, which has
+	// no servlet-api dependency of its own.
+	implementation 'com.amazon.alexa:ask-sdk-core:2.86.0'
+	implementation 'com.amazon.alexa:ask-sdk-servlet-support:2.86.0'
 	testImplementation 'org.springframework.boot:spring-boot-starter-liquibase-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
