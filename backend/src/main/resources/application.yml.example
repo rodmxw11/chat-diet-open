@@ -38,6 +38,12 @@ spring:
 chat-diet:
   day-rollover-hour: 4
 
+  # Loopback-only plaintext HTTP connector for the Alexa skill endpoint (/alexa) - Tailscale
+  # Funnel terminates TLS on the public side and reverse-proxies here. Not reachable except
+  # through Funnel or from the box itself. See scripts/TAILSCALE-ALEXA-CONFIG.md.
+  alexa:
+    port: 8081
+
   chat:
     # How many of the current day's messages are replayed to the model each turn. The DB is the
     # real memory - the model recalls earlier facts through its data-reading tools, not from a
