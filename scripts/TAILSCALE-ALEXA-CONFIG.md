@@ -274,8 +274,12 @@ https://<machine>.<tailnet>.ts.net/alexa
 
 Funnel started and running in the background.
 To disable the proxy, run: tailscale funnel --https=443 off
+
+tailscale funnel status
 ```
 
 (An earlier run of this command used a bare `http://localhost:8081` target,
 which produced a 404 for every request - see §6 above for why the target
 needs `/alexa` included.)
+
+`https://developer.amazon.com/alexa/console/ask/build/custom/amzn1.ask.skill.<your-skill-id>/development/en_US/endpoint`
