@@ -12,6 +12,13 @@ import java.util.Map;
  * connector/path-isolation plumbing ({@link AlexaConnectorConfig},
  * {@link AlexaPathIsolationFilter}) and the Tailscale Funnel routing can be verified end to end
  * before anything that touches real data is wired in.
+ *
+ * <p>{@code tailscale funnel --set-path=/alexa} strips the mount-point prefix by default, so the
+ * Funnel command must target {@code http://localhost:8081/alexa} (path included), not bare
+ * {@code http://localhost:8081} - otherwise the backend receives requests at {@code /}, which
+ * collides with Spring's static-resource handling for the PWA's own {@code GET /} (confirmed:
+ * mapping a controller at {@code /} breaks the PWA homepage with a 405). Keeping the endpoint at
+ * {@code /alexa} on both sides avoids that collision entirely.
  */
 @RestController
 public class AlexaController {

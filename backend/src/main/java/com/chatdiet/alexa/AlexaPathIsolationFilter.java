@@ -15,9 +15,11 @@ import java.io.IOException;
  * Defense in depth alongside Tailscale Funnel's own {@code --set-path=/alexa} restriction
  * (see {@code scripts/TAILSCALE-ALEXA-CONFIG.md}): the {@code /alexa} path is servable only on
  * the loopback-only Alexa connector ({@link AlexaConnectorConfig}), and nothing under
- * {@code /alexa} is servable on the tailnet-facing HTTPS connector. Even if Funnel's path
- * restriction were ever misconfigured, this still confines the public surface to exactly one
- * path on exactly one connector.
+ * {@code /alexa} is servable on the tailnet-facing HTTPS connector. This is not optional
+ * hardening - every controller in the app is registered in one Spring context shared by both
+ * connectors, so without this filter the *entire* API (food items, chat, everything) would also
+ * be reachable through the loopback connector, and thus through Funnel, if a request ever landed
+ * on a path this filter didn't recognize as Alexa's.
  *
  * <p>Runs before {@link AlexaSignatureFilter} ({@code @Order} 1 vs. 2), so a request on the wrong
  * connector/path is already rejected before signature verification would fail for the less
