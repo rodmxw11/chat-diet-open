@@ -63,4 +63,42 @@ class FoodLogClaimDetectorTest {
                 .as("only one macro word mentioned alongside calories - not distinctive enough on its own")
                 .isFalse();
     }
+
+    @Test
+    void flagsATerseEstimateStyleConfirmationWithNoMacros() {
+        assertThat(looksLikeFoodLogClaim("Logged: applesauce, 100 cal (estimate)."))
+                .as("real observed miss - terse food-log echoes skip macros entirely")
+                .isTrue();
+    }
+
+    @Test
+    void flagsATerseConfirmationEvenWithoutTheEstimateTag() {
+        assertThat(looksLikeFoodLogClaim("Logged: tuna in vegetable oil, 1 can, 260 cal."))
+                .isTrue();
+    }
+
+    @Test
+    void stillDoesNotFlagAnExerciseLogWithTheTerseHeuristic() {
+        assertThat(looksLikeFoodLogClaim("Logged exercise: running, 30 min, 300 kcal burned."))
+                .isFalse();
+    }
+
+    @Test
+    void doesNotFlagADailyTargetReportThatHappensToSayLogged() {
+        assertThat(looksLikeFoodLogClaim("You've logged 1200 kcal today, 800 remaining toward your target."))
+                .isFalse();
+    }
+
+    @Test
+    void doesNotFlagATdeeReport() {
+        assertThat(looksLikeFoodLogClaim(
+                "Your estimated TDEE over the last 14 days is about 2,400 cal/day."))
+                .isFalse();
+    }
+
+    @Test
+    void doesNotFlagACalorieGoalConfirmation() {
+        assertThat(looksLikeFoodLogClaim("Logged your new calorie goal of 2000 kcal/day."))
+                .isFalse();
+    }
 }
