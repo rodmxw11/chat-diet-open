@@ -18,6 +18,13 @@ function localIsoDate(): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
+// Same local-time parsing as shiftDate, to avoid the day-off-by-one trap from parsing "YYYY-MM-DD"
+// as UTC midnight.
+function weekdayLabel(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, { weekday: 'short' })
+}
+
 // The "Core 6" the user chose to track (skipping vitamins/minerals - already covered by a daily
 // multivitamin). DV = FDA adult daily value, 2000-kcal reference; sugar has no official %DV on
 // the nutrition label, so 50g (the added-sugar guideline) is used as the closest common reference.
@@ -98,6 +105,7 @@ export default function MicronutrientsView() {
             value={date}
             onChange={(event) => changeDate(event.target.value)}
           />
+          <span className="date-weekday">{weekdayLabel(date)}</span>
           <button
             type="button"
             className="date-nav-button"

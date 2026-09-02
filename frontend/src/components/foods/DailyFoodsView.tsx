@@ -33,6 +33,13 @@ function localIsoDate(): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
+// Same local-time parsing as shiftDate, to avoid the day-off-by-one trap from parsing "YYYY-MM-DD"
+// as UTC midnight.
+function weekdayLabel(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, { weekday: 'short' })
+}
+
 // Full-page view that replaces the chat screen entirely, same pattern as NotesView. Read-only:
 // this is just for browsing what was logged on a given day, one at a time.
 export default function DailyFoodsView() {
@@ -119,6 +126,7 @@ export default function DailyFoodsView() {
             value={date}
             onChange={(event) => changeDate(event.target.value)}
           />
+          <span className="date-weekday">{weekdayLabel(date)}</span>
           <button
             type="button"
             className="date-nav-button"
