@@ -79,6 +79,7 @@ export default function ChatHistoryView() {
           </div>
         </div>
         <div className="foods-date-row">
+          <span className="date-weekday">{weekdayLabel(date)}</span>
           <button
             type="button"
             className="date-nav-button"
@@ -93,7 +94,6 @@ export default function ChatHistoryView() {
             value={date}
             onChange={(event) => changeDate(event.target.value)}
           />
-          <span className="date-weekday">{weekdayLabel(date)}</span>
           <button
             type="button"
             className="date-nav-button"
