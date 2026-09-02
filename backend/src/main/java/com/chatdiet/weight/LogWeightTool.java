@@ -17,15 +17,19 @@ import java.util.function.Function;
 public class LogWeightTool implements Function<LogWeightRequest, ToolResult> {
 
     private final WeightEntryRepository weightEntryRepository;
+    private final WeightLogVerificationContext weightLogVerificationContext;
 
-    public LogWeightTool(WeightEntryRepository weightEntryRepository) {
+    public LogWeightTool(WeightEntryRepository weightEntryRepository,
+                          WeightLogVerificationContext weightLogVerificationContext) {
         this.weightEntryRepository = weightEntryRepository;
+        this.weightLogVerificationContext = weightLogVerificationContext;
     }
 
     @Override
     public ToolResult apply(LogWeightRequest request) {
         var entry = new WeightEntry(LocalDateTime.now(), request.weightLbs());
         weightEntryRepository.save(entry);
+        weightLogVerificationContext.markLogged();
         return new ToolResult.Success("Logged weight: %.1f lbs.".formatted(entry.weightLbs()), entry);
     }
 }

@@ -5,6 +5,8 @@ import com.chatdiet.food.FoodLogClaimDetector;
 import com.chatdiet.food.FoodLogVerificationContext;
 import com.chatdiet.intent.PromptAssembler;
 import com.chatdiet.sql.SqlUsageContext;
+import com.chatdiet.weight.WeightLogClaimDetector;
+import com.chatdiet.weight.WeightLogVerificationContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -16,6 +18,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 /**
  * The main chat loop: builds a single {@link ChatClient} at startup with the tool set
@@ -26,34 +31,45 @@ import java.util.ArrayList;
  * along with this turn's token usage (and the SQL-composer subchat's, if {@code run_sql} ran) for
  * later cost reporting.
  *
- * <p>Also verifies food-logging claims: if the reply looks like it confirms a new food log (see
- * {@link FoodLogClaimDetector}) but {@link FoodLogVerificationContext} shows no logging tool
- * actually ran, it sends one corrective follow-up turn asking the model to either really log it or
- * admit nothing was saved, rather than silently persisting a hallucinated confirmation. If the
- * retry's reply still looks like the same kind of unverified claim, the model isn't trusted to
- * self-report the failure either - the reply sent to the user is replaced with a plain, honest,
- * code-generated message instead of whatever the model said, since by that point it's already
- * shown it isn't reliably reporting its own tool-call outcome.
+ * <p>Also verifies logging claims (food and weight, via {@link #LOG_VERIFIERS}): if the reply looks
+ * like it confirms a new log (see {@link FoodLogClaimDetector}/{@link WeightLogClaimDetector}) but
+ * the matching verification context shows no logging tool actually ran, it sends one corrective
+ * follow-up turn asking the model to either really log it or admit nothing was saved, rather than
+ * silently persisting a hallucinated confirmation. If the retry's reply still looks like the same
+ * kind of unverified claim, the model isn't trusted to self-report the failure either - the reply
+ * sent to the user is replaced with a plain, honest, code-generated message instead of whatever the
+ * model said, since by that point it's already shown it isn't reliably reporting its own tool-call
+ * outcome.
  */
 @Service
 public class ChatService {
 
     private static final Logger log = LoggerFactory.getLogger(ChatService.class);
 
-    private static final String UNVERIFIED_LOG_NUDGE = """
+    /** One kind of "did the model actually save what it just claimed to save" check. */
+    private record LogVerifier(String kind, Predicate<String> looksLikeClaim, Supplier<Boolean> wasLogged,
+                                String nudge, String stillUnverifiedMessage) {
+    }
+
+    private static final String FOOD_NUDGE = """
             [System check: that reply described logging food, but no logging tool call actually \
             went through, so nothing was saved. If food was genuinely described, call log_food, \
             log_food_by_upc, or log_cached_food now with your best estimate before replying again. \
             If nothing should have been logged (e.g. you were reporting past data, not a new \
             entry), say so plainly instead.]""";
 
-    /**
-     * Shown verbatim to the user (and persisted to history) in place of whatever the model said,
-     * when even the corrective retry still looks unverified - a plain, honest, code-generated
-     * message rather than trusting the model's self-report a second time.
-     */
-    private static final String STILL_UNVERIFIED_MESSAGE =
+    private static final String FOOD_STILL_UNVERIFIED_MESSAGE =
             "That didn't actually save - I tried twice and the food log still didn't go through. "
+                    + "Please resend it and I'll try again.";
+
+    private static final String WEIGHT_NUDGE = """
+            [System check: that reply described logging a weight entry, but log_weight never \
+            actually ran, so nothing was saved. If a weight reading was genuinely given, call \
+            log_weight now before replying again. If nothing should have been logged (e.g. you were \
+            reporting a past or projected weight, not a new entry), say so plainly instead.]""";
+
+    private static final String WEIGHT_STILL_UNVERIFIED_MESSAGE =
+            "That didn't actually save - I tried twice and the weight log still didn't go through. "
                     + "Please resend it and I'll try again.";
 
     private final ChatClient chatClient;
@@ -61,11 +77,12 @@ public class ChatService {
     private final ConversationHistoryStore historyStore;
     private final DayBoundaryService dayBoundaryService;
     private final SqlUsageContext sqlUsageContext;
-    private final FoodLogVerificationContext foodLogVerificationContext;
+    private final List<LogVerifier> logVerifiers;
 
     public ChatService(ChatClient.Builder chatClientBuilder, PromptAssembler promptAssembler,
                         ConversationHistoryStore historyStore, DayBoundaryService dayBoundaryService,
-                        SqlUsageContext sqlUsageContext, FoodLogVerificationContext foodLogVerificationContext) {
+                        SqlUsageContext sqlUsageContext, FoodLogVerificationContext foodLogVerificationContext,
+                        WeightLogVerificationContext weightLogVerificationContext) {
         this.chatClient = chatClientBuilder
                 .defaultTools(promptAssembler.tools().toArray())
                 .build();
@@ -73,7 +90,11 @@ public class ChatService {
         this.historyStore = historyStore;
         this.dayBoundaryService = dayBoundaryService;
         this.sqlUsageContext = sqlUsageContext;
-        this.foodLogVerificationContext = foodLogVerificationContext;
+        this.logVerifiers = List.of(
+                new LogVerifier("food", FoodLogClaimDetector::looksLikeFoodLogClaim,
+                        foodLogVerificationContext::wasLogged, FOOD_NUDGE, FOOD_STILL_UNVERIFIED_MESSAGE),
+                new LogVerifier("weight", WeightLogClaimDetector::looksLikeWeightLogClaim,
+                        weightLogVerificationContext::wasLogged, WEIGHT_NUDGE, WEIGHT_STILL_UNVERIFIED_MESSAGE));
     }
 
     /** Replies as of now, within the current metabolic day. See {@link #reply}. */
@@ -101,14 +122,20 @@ public class ChatService {
         var content = chatResponse.getResult().getOutput().getText();
         var chatUsage = TokenUsage.from(chatResponse.getMetadata().getUsage());
 
-        if (FoodLogClaimDetector.looksLikeFoodLogClaim(content) && !foodLogVerificationContext.wasLogged()) {
-            log.warn("Reply looked like a food-log confirmation but no logging tool ran; retrying with a "
-                    + "corrective nudge. Unverified reply: {}", content);
+        // At most one corrective retry per turn - the first unverified claim found (food checked
+        // before weight) gets the nudge; a turn narrating two different kinds of unverified claims
+        // at once hasn't been observed in practice.
+        for (var verifier : logVerifiers) {
+            if (!verifier.looksLikeClaim().test(content) || verifier.wasLogged().get()) {
+                continue;
+            }
+            log.warn("Reply looked like a {}-log confirmation but no logging tool ran; retrying with a "
+                    + "corrective nudge. Unverified reply: {}", verifier.kind(), content);
 
             var retryMessages = new ArrayList<Message>(history);
             retryMessages.add(new UserMessage(userText));
             retryMessages.add(new AssistantMessage(content));
-            retryMessages.add(new UserMessage(UNVERIFIED_LOG_NUDGE));
+            retryMessages.add(new UserMessage(verifier.nudge()));
 
             var retryResponse = chatClient.prompt()
                     .system(promptAssembler.systemPrompt())
@@ -120,14 +147,15 @@ public class ChatService {
             chatUsage = chatUsage.plus(TokenUsage.from(retryResponse.getMetadata().getUsage()));
 
             log.warn("Corrective retry {}. New reply: {}",
-                    foodLogVerificationContext.wasLogged() ? "logged the food" : "still did not log anything",
+                    verifier.wasLogged().get() ? "logged the " + verifier.kind() : "still did not log anything",
                     content);
 
-            if (FoodLogClaimDetector.looksLikeFoodLogClaim(content) && !foodLogVerificationContext.wasLogged()) {
+            if (verifier.looksLikeClaim().test(content) && !verifier.wasLogged().get()) {
                 log.warn("Retry still looked unverified after the nudge - not trusting the model's self-report; "
                         + "telling the user directly instead. Model's retry reply was: {}", content);
-                content = STILL_UNVERIFIED_MESSAGE;
+                content = verifier.stillUnverifiedMessage();
             }
+            break;
         }
 
         historyStore.append(metabolicDate, occurredAt, userText, content, chatUsage, sqlUsageContext.usage().orElse(null));
