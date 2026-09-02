@@ -101,4 +101,12 @@ class FoodLogClaimDetectorTest {
         assertThat(looksLikeFoodLogClaim("Logged your new calorie goal of 2000 kcal/day."))
                 .isFalse();
     }
+
+    @Test
+    void flagsABatchEchoThatEndsInTheWordTotal() {
+        assertThat(looksLikeFoodLogClaim("Logged: 2 hotdog buns, 100 cal total."))
+                .as("real observed miss - the bare exclusion word \"total\" also matched this genuine "
+                        + "batch echo, since it wasn't anchored to the listing tool's \"Total: \" report line")
+                .isTrue();
+    }
 }

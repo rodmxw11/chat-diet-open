@@ -26,7 +26,7 @@ public final class FoodLogClaimDetector {
     private static final Pattern CALORIE_MENTION = Pattern.compile("(?i)\\bk?cal(orie)?s?\\b");
     private static final String[] MACRO_WORDS = {"protein", "carb", "fat"};
     private static final String[] NON_FOOD_LOG_MARKERS = {
-            "burned", "total", "consumed", "remaining", "tdee", "kcal/day"
+            "burned", "total:", "consumed", "remaining", "tdee", "kcal/day"
     };
 
     private FoodLogClaimDetector() {
