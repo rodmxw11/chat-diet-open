@@ -1,4 +1,4 @@
-import { CartesianGrid, ComposedChart, Line, ResponsiveContainer, Scatter, XAxis, YAxis } from 'recharts'
+import { CartesianGrid, ComposedChart, ErrorBar, Line, ResponsiveContainer, Scatter, XAxis, YAxis } from 'recharts'
 import { useAppSelector } from '../../store/hooks'
 import type { GoalLine } from '../../store/dashboardSlice'
 
@@ -12,6 +12,15 @@ interface MergedPoint {
 function formatDate(iso: string): string {
   const date = new Date(`${iso}T00:00:00`)
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+// Asymmetric ErrorBar range is [value - low, value + high]; with value = actual, this spans
+// exactly [min(actual, trend), max(actual, trend)] regardless of which one is bigger, so it draws
+// as a line from the marker straight to the trend line rather than a symmetric whisker around it.
+function pull(row: MergedPoint): [number, number] {
+  if (row.actual === null || row.trend === null) return [0, 0]
+  const diff = row.trend - row.actual
+  return diff >= 0 ? [0, diff] : [-diff, 0]
 }
 
 function goalValueOn(goal: GoalLine, date: string): number {
@@ -102,7 +111,11 @@ export default function WeightTrendChart() {
             isAnimationActive={false}
             connectNulls
           />
-          <Scatter dataKey="actual" fill="var(--text-primary)" shape="diamond" isAnimationActive={false} />
+          <Scatter dataKey="actual" fill="var(--text-primary)" shape="diamond" isAnimationActive={false}>
+            {/* Thin vertical line from each weigh-in marker to the trend line, showing how much
+                that point pulled the smoothed trend up or down. */}
+            <ErrorBar dataKey={pull} direction="y" width={0} strokeWidth={1} stroke="var(--status-offline)" />
+          </Scatter>
         </ComposedChart>
       </ResponsiveContainer>
       <div className="weight-chart-legend">
@@ -131,6 +144,7 @@ export default function WeightTrendChart() {
           <tbody>
             {data
               .filter((row) => row.actual !== null)
+              .reverse()
               .map((row) => {
                 const variance = row.actual !== null && row.trend !== null ? row.actual - row.trend : null
                 return (
