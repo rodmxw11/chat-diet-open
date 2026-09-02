@@ -1,6 +1,8 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit'
 import { enqueue, listQueued, removeQueued, type QueuedRequest } from '../lib/offlineQueue'
+import { loadMacros, loadTdeeEstimate, loadWeightTrend } from './dashboardSlice'
 import { loadSummary } from './summarySlice'
+import type { RootState } from './index'
 
 export interface SeriesPoint {
   at: string
@@ -107,7 +109,7 @@ export const sendMessage = createAsyncThunk<ChatApiResponse, string, { rejectVal
 
 // Replays every queued request in order, stopping at the first failure so the rest stay queued -
 // order matters because ChatController.replyAt depends on clientSentAt ordering.
-export const drainQueue = createAsyncThunk('chat/drainQueue', async (_, { dispatch }) => {
+export const drainQueue = createAsyncThunk('chat/drainQueue', async (_, { dispatch, getState }) => {
   const items = await listQueued()
   let sentAny = false
   for (const item of items) {
@@ -120,9 +122,14 @@ export const drainQueue = createAsyncThunk('chat/drainQueue', async (_, { dispat
       break
     }
   }
-  // Replayed turns can log food same as any other - refresh the header rather than leaving it
-  // stuck at whatever it showed before reconnecting.
-  if (sentAny) dispatch(loadSummary())
+  // Replayed turns can log food or weight same as any other - refresh the header and dashboard
+  // charts rather than leaving them stuck at whatever they showed before reconnecting.
+  if (sentAny) {
+    dispatch(loadSummary())
+    dispatch(loadWeightTrend())
+    dispatch(loadTdeeEstimate())
+    dispatch(loadMacros((getState() as RootState).dashboard.range))
+  }
 })
 
 // Hydrates queued-but-unsent messages back into the chat window on app boot, since redux state

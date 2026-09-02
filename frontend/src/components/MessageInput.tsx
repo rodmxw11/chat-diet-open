@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { clearPendingCursorStart, sendMessage, setDraftText } from '../store/chatSlice'
+import { loadMacros, loadTdeeEstimate, loadWeightTrend } from '../store/dashboardSlice'
 import { loadSummary } from '../store/summarySlice'
 
 export default function MessageInput() {
@@ -8,6 +9,7 @@ export default function MessageInput() {
   const text = useAppSelector((state) => state.chat.draftText)
   const status = useAppSelector((state) => state.chat.status)
   const pendingCursorStart = useAppSelector((state) => state.chat.pendingCursorStart)
+  const macroRange = useAppSelector((state) => state.dashboard.range)
   const inputRef = useRef<HTMLInputElement>(null)
   const wasLoading = useRef(false)
 
@@ -37,10 +39,16 @@ export default function MessageInput() {
     event.preventDefault()
     const trimmed = text.trim()
     if (!trimmed || status === 'loading') return
-    // The header's calorie/entry counts are polled independently on a minute-long interval, which
-    // reads as "stuck" right after logging something - refresh it the moment this turn settles
-    // instead of waiting for the next poll tick.
-    dispatch(sendMessage(trimmed)).finally(() => dispatch(loadSummary()))
+    // The header's calorie/entry counts and the dashboard charts (weight trend, TDEE, macros) are
+    // all loaded once on mount and otherwise sit stale, which reads as "stuck" right after logging
+    // something (a weigh-in that never appears on the trend line, food that never appears on the
+    // macro chart) - refresh them all the moment this turn settles instead of waiting for a reload.
+    dispatch(sendMessage(trimmed)).finally(() => {
+      dispatch(loadSummary())
+      dispatch(loadWeightTrend())
+      dispatch(loadTdeeEstimate())
+      dispatch(loadMacros(macroRange))
+    })
     dispatch(setDraftText(''))
   }
 
