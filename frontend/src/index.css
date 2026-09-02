@@ -41,7 +41,7 @@
 
   --font-sans: 'IBM Plex Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
-  --font-scale: 1.15;
+  --font-scale: 1.38;
 
   font: calc(15px * var(--font-scale))/1.5 var(--font-sans);
   color-scheme: light dark;
