@@ -99,7 +99,14 @@ public class AlexaSignatureFilter extends OncePerRequestFilter {
                 return;
             }
         } catch (RuntimeException e) {
-            log.warn("Alexa request failed signature/timestamp verification: {}", e.getMessage());
+            // SkillRequestSignatureVerifier throws the same generic SecurityException message for
+            // two very different failures: a genuine crypto mismatch (no cause), or a wrapped
+            // GeneralSecurityException/IOException from fetching or validating the cert chain at
+            // SignatureCertChainUrl (cause present, e.g. "can't reach s3.amazonaws.com" or "cert
+            // chain untrusted") - e.getMessage() alone can't tell them apart, so log the full cause
+            // chain and the cert URL that was in play.
+            log.warn("Alexa request failed signature/timestamp verification: {} (certChainUrl={})",
+                    e.getMessage(), certChainUrl, e);
             response.sendError(HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
