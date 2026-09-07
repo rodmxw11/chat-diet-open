@@ -29,9 +29,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 /**
- * Exercises log_food's identity/quantity resolution split: an alias hit resolves silently, a miss
- * produces a numbered clarification (never an auto-guess), and a selection on a follow-up call
- * writes an alias only when the original phrase was genuinely new, not ambiguous.
+ * Exercises log_food's identity/quantity resolution split: an alias hit resolves silently, a
+ * single strong fuzzy match auto-logs (echoed as auto-matched, pinned with an AUTO alias), a
+ * genuinely contested miss produces a numbered clarification, and every selection on a follow-up
+ * call is learned as an alias so the same question never repeats.
  */
 @SpringBootTest
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
@@ -113,7 +114,7 @@ class LogFoodToolTest {
     }
 
     @Test
-    void pickingACandidateFromAnAmbiguousListDoesNotWriteAnAlias() {
+    void pickingACandidateFromAnAmbiguousListLearnsAnAliasSoItNeverAsksAgain() {
         var honey = foodItemRepository.save(new FoodItem("Honey Wheat Bread", null,
                 250.0, 8.0, 45.0, 3.0, 2.0, 5.0, 300.0, 0.5, 0.0, 100.0, null, "MANUAL"));
         foodItemRepository.save(new FoodItem("Whole Wheat Bread", null,
@@ -124,7 +125,13 @@ class LogFoodToolTest {
         var result = logFoodTool.apply(new LogFoodRequest(List.of(selection), null, null));
 
         assertThat(result).isInstanceOf(ToolResult.Success.class);
-        assertThat(foodAliasRepository.findByAliasNormalized("wheat bread")).isEmpty();
+        var alias = foodAliasRepository.findByAliasNormalized("wheat bread").orElseThrow();
+        assertThat(alias.foodItemId()).isEqualTo(honey.id());
+        assertThat(alias.source()).isEqualTo("USER");
+
+        // Re-sending the same phrase now resolves silently instead of re-asking.
+        var second = logFoodTool.apply(new LogFoodRequest(List.of(item("wheat bread", "100g", 999)), null, null));
+        assertThat(second).isInstanceOf(ToolResult.Success.class);
     }
 
     @Test
@@ -175,6 +182,26 @@ class LogFoodToolTest {
         assertThat(entry.totalCalories()).isEqualTo(450);
         assertThat(entry.foodItemId()).isNotNull();
         assertThat(foodAliasRepository.findByAliasNormalized("homemade chili")).isPresent();
+    }
+
+    @Test
+    void aSoleStrongFuzzyMatchAutoLogsWritesAnAutoAliasAndSaysSo() {
+        var bread = foodItemRepository.save(new FoodItem("Whole Wheat Bread", null,
+                240.0, 9.0, 44.0, 3.5, 3.0, 4.0, 280.0, 0.6, 0.0, 100.0, null, "MANUAL"));
+
+        var result = logFoodTool.apply(new LogFoodRequest(List.of(item("wheat bread", "85g", 200)), null, null));
+
+        assertThat(result).isInstanceOf(ToolResult.Success.class);
+        var success = (ToolResult.Success) result;
+        assertThat(success.message()).contains("auto-matched");
+        assertThat(((FoodEntry) success.payload()).foodItemId()).isEqualTo(bread.id());
+        var alias = foodAliasRepository.findByAliasNormalized("wheat bread").orElseThrow();
+        assertThat(alias.source()).isEqualTo("AUTO");
+        assertThat(alias.foodItemId()).isEqualTo(bread.id());
+
+        // The phrase is pinned now: the next mention resolves via the alias, not the fuzzy tier.
+        var second = logFoodTool.apply(new LogFoodRequest(List.of(item("wheat bread", "50g", 999)), null, null));
+        assertThat(second).isInstanceOf(ToolResult.Success.class);
     }
 
     @Test

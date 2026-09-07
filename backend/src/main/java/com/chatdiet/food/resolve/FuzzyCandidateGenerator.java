@@ -11,10 +11,12 @@ import java.util.Set;
 
 /**
  * Scores cached {@link FoodItem}s against a normalized query for {@link FoodResolver}'s candidate
- * generation - never an auto-selector, purely a ranked, inclusion-thresholded list a human picks
- * from. Combines substring containment, Levenshtein edit-distance similarity, a naive
- * singular/plural flip, and token overlap; no stemming or other meaning-changing normalization
- * (that's {@link FoodAliasNormalizer}'s job, and deliberately narrower there too).
+ * generation - a pure scorer whose consumer decides whether the top match clears the auto-accept
+ * bar or the list goes to the user (see the threshold constants on {@code FoodResolver}). Score
+ * tiers: name-exact 1.0, naive singular/plural flip 0.95, bidirectional substring 0.8, else
+ * max(Levenshtein edit similarity, token overlap); inclusion floor {@link #MIN_SIMILARITY}. No
+ * stemming or other meaning-changing normalization (that's {@link FoodAliasNormalizer}'s job, and
+ * deliberately narrower there too).
  *
  * <p>Deliberately not Jaro-Winkler: it scores short, letter-sharing but otherwise unrelated words
  * (e.g. "banana"/"lasagna") too highly to be a useful inclusion signal here.
@@ -26,15 +28,16 @@ public class FuzzyCandidateGenerator {
 
     private final LevenshteinDistance levenshtein = LevenshteinDistance.getDefaultInstance();
 
+    /** An active item plausibly matching the query, with the score tier it matched at. */
+    public record ScoredMatch(FoodItem item, double score) {
+    }
+
     /** Returns active items plausibly matching the query, ranked most-similar first. */
-    public List<FoodItem> matchCachedItems(String normalizedQuery, List<FoodItem> activeItems) {
-        record Scored(FoodItem item, double score) {
-        }
+    public List<ScoredMatch> scoreCachedItems(String normalizedQuery, List<FoodItem> activeItems) {
         return activeItems.stream()
-                .map(item -> new Scored(item, score(normalizedQuery, FoodAliasNormalizer.normalize(item.name()))))
+                .map(item -> new ScoredMatch(item, score(normalizedQuery, FoodAliasNormalizer.normalize(item.name()))))
                 .filter(scored -> scored.score() >= MIN_SIMILARITY)
-                .sorted(Comparator.comparingDouble(Scored::score).reversed())
-                .map(Scored::item)
+                .sorted(Comparator.comparingDouble(ScoredMatch::score).reversed())
                 .toList();
     }
 

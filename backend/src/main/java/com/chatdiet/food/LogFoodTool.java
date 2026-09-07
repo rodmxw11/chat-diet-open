@@ -104,14 +104,15 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
                 continue;
             }
 
-            var item = ((ItemOutcome.ResolvedTo) outcome).item();
+            var resolved = (ItemOutcome.ResolvedTo) outcome;
+            var item = resolved.item();
             var qty = quantityResolver.resolve(item, itemReq.amountText());
             if (!(qty instanceof QuantityResolution.Grams grams)) {
                 clarifications.add("\"" + itemReq.foodRef() + "\": how many grams (or what count/unit)?");
                 continue;
             }
 
-            var logged = logResolvedItem(item, itemReq, grams, groupId, request.loggedAt());
+            var logged = logResolvedItem(item, itemReq, grams, groupId, request.loggedAt(), resolved.autoMatched());
             groupId = logged.entry().entryGroupId();
             echoes.add(logged.echo());
             lastEntry = logged.entry();
@@ -129,7 +130,10 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
     }
 
     private sealed interface ItemOutcome {
-        record ResolvedTo(FoodItem item) implements ItemOutcome {
+        record ResolvedTo(FoodItem item, boolean autoMatched) implements ItemOutcome {
+            ResolvedTo(FoodItem item) {
+                this(item, false);
+            }
         }
 
         record UseEstimate() implements ItemOutcome {
@@ -160,8 +164,7 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
                 return new ItemOutcome.Clarify(
                         "That cached item for \"" + itemReq.foodRef() + "\" is gone now - try again.");
             }
-            var wasAmbiguous = foodResolver.resolve(itemReq.foodRef()) instanceof FoodResolution.Ambiguous;
-            foodResolver.confirmSelection(itemReq.foodRef(), item.get().id(), wasAmbiguous);
+            foodResolver.learnAlias(itemReq.foodRef(), item.get().id(), "USER");
             return new ItemOutcome.ResolvedTo(item.get());
         }
 
@@ -172,15 +175,21 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
                         "Couldn't fetch nutrition for that FDC match for \"" + itemReq.foodRef() + "\" - try again.");
             }
             var item = cacheFdcItem(detail.get());
-            foodResolver.confirmSelection(itemReq.foodRef(), item.id(), false);
+            foodResolver.learnAlias(itemReq.foodRef(), item.id(), "USER");
             return new ItemOutcome.ResolvedTo(item);
         }
 
         var resolution = foodResolver.resolve(itemReq.foodRef());
         return switch (resolution) {
             case FoodResolution.Resolved r -> new ItemOutcome.ResolvedTo(r.item());
-            case FoodResolution.Ambiguous a ->
-                    new ItemOutcome.Clarify(renderCandidates(itemReq.foodRef(), a.candidates(), true));
+            case FoodResolution.AutoResolved a -> {
+                // Pin the phrase so it resolves exactly next time; AUTO-source keeps a wrong
+                // auto-match identifiable and deletable in the alias UI.
+                foodResolver.learnAlias(itemReq.foodRef(), a.item().id(), "AUTO");
+                yield new ItemOutcome.ResolvedTo(a.item(), true);
+            }
+            case FoodResolution.Ambiguous am ->
+                    new ItemOutcome.Clarify(renderCandidates(itemReq.foodRef(), am.candidates(), true));
             case FoodResolution.Unknown u ->
                     new ItemOutcome.Clarify(renderCandidates(itemReq.foodRef(), u.candidates(), false));
         };
@@ -204,7 +213,7 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
 
     /** Logs a resolved item, assigning it to {@code groupId} or starting a new self-referential group. */
     private Logged logResolvedItem(FoodItem item, LogFoodItemRequest itemReq, QuantityResolution.Grams grams,
-                                    Long groupId, LocalDateTime loggedAt) {
+                                    Long groupId, LocalDateTime loggedAt, boolean autoMatched) {
         var scaled = item.scaledTo(grams.grams());
         var entry = new FoodEntry(LoggedAtResolver.resolve(loggedAt), itemReq.foodRef(), scaled.calories(),
                 scaled.proteinG(), scaled.carbsG(), scaled.fatG(), scaled.fiberG(), scaled.sugarG(),
@@ -221,7 +230,8 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
         foodLogVerificationContext.markLogged();
 
         var echo = "%s (%.0fg) → %s (%s) — %d cal"
-                .formatted(itemReq.foodRef(), grams.grams(), item.name(), tierTag(item.lookupSource()),
+                .formatted(itemReq.foodRef(), grams.grams(), item.name(),
+                        tierTag(item.lookupSource()) + (autoMatched ? ", auto-matched" : ""),
                         scaled.calories());
         return new Logged(entry, echo);
     }
@@ -244,7 +254,7 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
                     scale(itemReq.cholesterolMg(), factor), scale(itemReq.potassiumMg(), factor),
                     null, "MODEL_ESTIMATE"));
             newFoodItemId = item.id();
-            foodResolver.confirmSelection(itemReq.foodRef(), item.id(), false);
+            foodResolver.learnAlias(itemReq.foodRef(), item.id(), "USER");
             if (explicit.teachUnitName() != null && explicit.teachUnitCount() != null) {
                 portionUnitService.learnFromWeighedEntry(item.id(), explicit.teachUnitName(),
                         explicit.teachUnitCount(), explicit.grams());
