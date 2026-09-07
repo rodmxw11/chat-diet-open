@@ -36,7 +36,7 @@ public class UpcResolutionService {
     public UpcResolveResult resolve(String upc) {
         var cached = foodItemRepository.findByUpc(upc);
         if (cached.isPresent()) {
-            return new UpcResolveResult(cached.get().name(), false);
+            return new UpcResolveResult(cached.get().name(), false, false);
         }
 
         var off = openFoodFactsClient.lookup(upc);
@@ -46,7 +46,7 @@ public class UpcResolutionService {
                     product.carbsPer100g(), product.fatPer100g(), product.fiberPer100g(), product.sugarPer100g(),
                     product.sodiumMgPer100g(), product.saturatedFatPer100g(), product.cholesterolMgPer100g(),
                     product.potassiumMgPer100g(), product.typicalServingG(), "OFF");
-            return new UpcResolveResult(item.name(), false);
+            return new UpcResolveResult(item.name(), false, true);
         }
 
         var branded = fdcClient.lookupBrandedByUpc(upc);
@@ -56,10 +56,10 @@ public class UpcResolutionService {
                     product.carbsPer100g(), product.fatPer100g(), product.fiberPer100g(), product.sugarPer100g(),
                     product.sodiumMgPer100g(), product.saturatedFatPer100g(), product.cholesterolMgPer100g(),
                     product.potassiumMgPer100g(), product.typicalServingG(), "FDC");
-            return new UpcResolveResult(item.name(), false);
+            return new UpcResolveResult(item.name(), false, true);
         }
 
-        return new UpcResolveResult(null, true);
+        return new UpcResolveResult(null, true, false);
     }
 
     private FoodItem upsertAndAlias(String name, String upc, Double calories, Double protein, Double carbs,

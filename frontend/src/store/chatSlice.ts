@@ -187,6 +187,14 @@ const chatSlice = createSlice({
     appendDraftText: (state, action: PayloadAction<string>) => {
       state.draftText = state.draftText ? `${state.draftText} ${action.payload}` : action.payload
     },
+    // Logs a barcode scan as a local-only turn (not sent through /api/chat or persisted server-
+    // side, so it won't survive a reload or show up on the separate Chat History page) so the live
+    // chat window shows what got scanned, same as if it had been typed - without spending a model
+    // turn on something that's already fully resolved client-side.
+    logScanResult: (state, action: PayloadAction<{ upc: string; reply: string }>) => {
+      state.messages.push({ id: crypto.randomUUID(), role: 'user', text: `Snapped UPC ${action.payload.upc}` })
+      state.messages.push({ id: crypto.randomUUID(), role: 'assistant', text: action.payload.reply })
+    },
     queueItemSent: (state, action: PayloadAction<{ id: string; response: ChatApiResponse }>) => {
       state.queue = state.queue.filter((item) => item.id !== action.payload.id)
       const message = state.messages.find((m) => m.id === action.payload.id)
@@ -273,6 +281,7 @@ export const {
   setDraftTextWithCursorStart,
   clearPendingCursorStart,
   appendDraftText,
+  logScanResult,
   queueItemSent,
 } = chatSlice.actions
 export default chatSlice.reducer

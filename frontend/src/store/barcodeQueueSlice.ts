@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import { enqueueScan, listQueuedScans, removeQueuedScan, type QueuedScan } from '../lib/offlineQueue'
-import { setDraftTextWithCursorStart } from './chatSlice'
+import { logScanResult, setDraftTextWithCursorStart } from './chatSlice'
 import { openUpcPrebind } from './foodItemsSlice'
 import { setScreen } from './uiSlice'
 
@@ -8,6 +8,7 @@ interface ResolveResponse {
   upc: string
   resolvedName: string | null
   needsManualEntry: boolean
+  wasNew: boolean
 }
 
 interface BarcodeQueueState {
@@ -25,6 +26,9 @@ export const applyUpcResolution = createAsyncThunk(
   'barcodeQueue/applyResolution',
   async (response: ResolveResponse, { dispatch }) => {
     if (response.needsManualEntry || !response.resolvedName) {
+      dispatch(
+        logScanResult({ upc: response.upc, reply: `Couldn't recognize UPC ${response.upc} - enter it manually.` }),
+      )
       // Nothing resolved anywhere - the manual-entry modal on the Food Items page is the
       // terminus, prebound with this UPC so the label can be typed in directly.
       dispatch(openUpcPrebind(response.upc))
@@ -32,6 +36,12 @@ export const applyUpcResolution = createAsyncThunk(
       return
     }
 
+    dispatch(
+      logScanResult({
+        upc: response.upc,
+        reply: `${response.wasNew ? 'Recognized NEW' : 'Recognized'}: ${response.resolvedName}`,
+      }),
+    )
     // Identity resolved server-side and is guaranteed an exact alias hit - prefill the amount
     // field with the resolved name, cursor at the start, instead of round-tripping the raw UPC
     // digits through a chat turn.

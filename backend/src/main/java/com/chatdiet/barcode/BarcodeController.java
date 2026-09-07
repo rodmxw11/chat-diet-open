@@ -49,8 +49,8 @@ public class BarcodeController {
         return barcodeDecodeService.decode(bytes)
                 .map(upc -> {
                     var resolved = upcResolutionService.resolve(upc);
-                    return ResponseEntity.ok(
-                            new BarcodeDecodeResponse(upc, resolved.resolvedName(), resolved.needsManualEntry()));
+                    return ResponseEntity.ok(new BarcodeDecodeResponse(
+                            upc, resolved.resolvedName(), resolved.needsManualEntry(), resolved.wasNew()));
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
@@ -66,6 +66,7 @@ public class BarcodeController {
     @GetMapping("/resolve")
     public ResponseEntity<BarcodeDecodeResponse> resolve(@RequestParam("upc") String upc) {
         var resolved = upcResolutionService.resolve(upc);
-        return ResponseEntity.ok(new BarcodeDecodeResponse(upc, resolved.resolvedName(), resolved.needsManualEntry()));
+        return ResponseEntity.ok(new BarcodeDecodeResponse(
+                upc, resolved.resolvedName(), resolved.needsManualEntry(), resolved.wasNew()));
     }
 }
