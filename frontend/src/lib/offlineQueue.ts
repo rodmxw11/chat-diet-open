@@ -4,9 +4,10 @@
 // Workbox's queue can't do.
 
 const DB_NAME = 'chat-diet-queue'
-const DB_VERSION = 2
+const DB_VERSION = 3
 const MESSAGE_STORE = 'queued-requests'
 const SCAN_STORE = 'queued-scans'
+const ENTRY_STORE = 'queued-entries'
 
 export interface QueuedRequest {
   id: string
@@ -21,6 +22,17 @@ export interface QueuedScan {
   createdAt: string
 }
 
+/** A quantity-prompt submit made offline - logs by food_item id once the connection returns. */
+export interface QueuedEntry {
+  id: string
+  foodItemId: number
+  name: string
+  amount: number
+  unit: 'g' | 'cal' | 'servings'
+  clientSentAt: string
+  createdAt: string
+}
+
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
@@ -31,6 +43,9 @@ function openDb(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(SCAN_STORE)) {
         db.createObjectStore(SCAN_STORE, { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains(ENTRY_STORE)) {
+        db.createObjectStore(ENTRY_STORE, { keyPath: 'id' })
       }
     }
     request.onsuccess = () => resolve(request.result)
@@ -98,4 +113,23 @@ export async function listQueuedScans(): Promise<QueuedScan[]> {
 
 export async function removeQueuedScan(id: string): Promise<void> {
   await withStore(SCAN_STORE, 'readwrite', (store) => store.delete(id))
+}
+
+export async function enqueueEntry(entry: Omit<QueuedEntry, 'id' | 'createdAt'>): Promise<QueuedEntry> {
+  const record: QueuedEntry = {
+    ...entry,
+    id: crypto.randomUUID(),
+    createdAt: new Date().toISOString(),
+  }
+  await withStore(ENTRY_STORE, 'readwrite', (store) => store.add(record))
+  return record
+}
+
+export async function listQueuedEntries(): Promise<QueuedEntry[]> {
+  const items = await withStore<QueuedEntry[]>(ENTRY_STORE, 'readonly', (store) => store.getAll())
+  return items.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+}
+
+export async function removeQueuedEntry(id: string): Promise<void> {
+  await withStore(ENTRY_STORE, 'readwrite', (store) => store.delete(id))
 }

@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import { enqueueScan, listQueuedScans, removeQueuedScan, type QueuedScan } from '../lib/offlineQueue'
-import { logScanResult, setDraftTextWithCursorStart } from './chatSlice'
+import { logScanResult, openQuantityPrompt } from './chatSlice'
 import { openUpcPrebind } from './foodItemsSlice'
 import { setScreen } from './uiSlice'
 
@@ -9,6 +9,8 @@ interface ResolveResponse {
   resolvedName: string | null
   needsManualEntry: boolean
   wasNew: boolean
+  foodItemId: number | null
+  typicalServingG: number | null
 }
 
 interface BarcodeQueueState {
@@ -25,7 +27,7 @@ const initialState: BarcodeQueueState = {
 export const applyUpcResolution = createAsyncThunk(
   'barcodeQueue/applyResolution',
   async (response: ResolveResponse, { dispatch }) => {
-    if (response.needsManualEntry || !response.resolvedName) {
+    if (response.needsManualEntry || !response.resolvedName || response.foodItemId === null) {
       dispatch(
         logScanResult({ upc: response.upc, reply: `Couldn't recognize UPC ${response.upc} - enter it manually.` }),
       )
@@ -42,10 +44,15 @@ export const applyUpcResolution = createAsyncThunk(
         reply: `${response.wasNew ? 'Recognized NEW' : 'Recognized'}: ${response.resolvedName}`,
       }),
     )
-    // Identity resolved server-side and is guaranteed an exact alias hit - prefill the amount
-    // field with the resolved name, cursor at the start, instead of round-tripping the raw UPC
-    // digits through a chat turn.
-    dispatch(setDraftTextWithCursorStart(`g ${response.resolvedName}`))
+    // Identity resolved server-side - open the quantity prompt to log directly by item id, no
+    // chat draft to finish and no round-tripping the raw UPC digits through a model turn.
+    dispatch(
+      openQuantityPrompt({
+        foodItemId: response.foodItemId,
+        name: response.resolvedName,
+        typicalServingG: response.typicalServingG,
+      }),
+    )
   },
 )
 
@@ -79,9 +86,8 @@ export const resolveUpc = createAsyncThunk<void, string, { rejectValue: QueuedRe
 )
 
 // Replays every queued scan in order, stopping at the first failure so the rest stay queued - the
-// last one to resolve is the one left sitting in the chat draft, same as scanning it live just now
-// would; any earlier ones in the batch still got upserted into food_item along the way, just not
-// left in the (single) draft box.
+// last one to resolve is the one that owns the (single) quantity prompt, same as scanning it live
+// just now would; any earlier ones in the batch still got upserted into food_item along the way.
 export const drainScanQueue = createAsyncThunk('barcodeQueue/drainQueue', async (_, { dispatch }) => {
   const items = await listQueuedScans()
   for (const item of items) {

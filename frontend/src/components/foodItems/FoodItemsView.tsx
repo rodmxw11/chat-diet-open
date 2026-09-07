@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
-import { setDraftTextWithCursorStart } from '../../store/chatSlice'
+import { openQuantityPrompt } from '../../store/chatSlice'
 import { setScreen } from '../../store/uiSlice'
 import {
   addFoodAlias,
@@ -192,9 +192,15 @@ export default function FoodItemsView() {
     setModalOpen(false)
 
     if (wasPrebind) {
-      // Don't strand the user here mid-sandwich - hand back to chat with the amount prefilled,
-      // same as a normal scan resolution.
-      dispatch(setDraftTextWithCursorStart(`g ${savedItem.name}`))
+      // Don't strand the user here mid-sandwich - hand back to chat with the quantity prompt
+      // open for the just-saved item, same as a normal scan resolution.
+      dispatch(
+        openQuantityPrompt({
+          foodItemId: savedItem.id,
+          name: savedItem.name,
+          typicalServingG: savedItem.typicalServingG,
+        }),
+      )
       dispatch(setScreen('chat'))
     }
   }

@@ -44,14 +44,16 @@ public class UpcResolutionService {
     public UpcResolveResult resolve(String upc) {
         var cached = foodItemRepository.findByUpc(upc);
         if (cached.isPresent()) {
-            return new UpcResolveResult(cached.get().name(), false, false);
+            var item = cached.get();
+            return new UpcResolveResult(item.name(), false, false, item.id(), item.typicalServingG());
         }
 
         var fetched = fetchExternal(upc);
         if (fetched.isPresent()) {
-            return new UpcResolveResult(fetched.get().name(), false, true);
+            var item = fetched.get();
+            return new UpcResolveResult(item.name(), false, true, item.id(), item.typicalServingG());
         }
-        return new UpcResolveResult(null, true, false);
+        return new UpcResolveResult(null, true, false, null, null);
     }
 
     /**
