@@ -30,20 +30,22 @@ public class FoodItemController {
     private final FoodItemRepository foodItemRepository;
     private final FoodAliasRepository foodAliasRepository;
     private final PortionUnitService portionUnitService;
+    private final PortionUnitRepository portionUnitRepository;
     private final FdcClient fdcClient;
     private final OpenFoodFactsClient openFoodFactsClient;
 
     public FoodItemController(FoodItemRepository foodItemRepository, FoodAliasRepository foodAliasRepository,
-                               PortionUnitService portionUnitService, FdcClient fdcClient,
-                               OpenFoodFactsClient openFoodFactsClient) {
+                               PortionUnitService portionUnitService, PortionUnitRepository portionUnitRepository,
+                               FdcClient fdcClient, OpenFoodFactsClient openFoodFactsClient) {
         this.foodItemRepository = foodItemRepository;
         this.foodAliasRepository = foodAliasRepository;
         this.portionUnitService = portionUnitService;
+        this.portionUnitRepository = portionUnitRepository;
         this.fdcClient = fdcClient;
         this.openFoodFactsClient = openFoodFactsClient;
     }
 
-    /** Searches cached food items by name substring (blank matches everything). */
+    /** Searches cached food items by name or alias substring (blank matches everything). */
     @GetMapping("/api/food-items")
     public List<FoodItem> search(@RequestParam(required = false, defaultValue = "") String q,
                                   @RequestParam(required = false, defaultValue = "false") boolean includeDeleted) {
@@ -72,15 +74,27 @@ public class FoodItemController {
         return foodAliasRepository.findByFoodItemId(id);
     }
 
-    /** Adds a manually-entered alias for a food item. */
+    /**
+     * Adds a manually-entered alias for a food item. Re-adding an alias the item already owns is
+     * an idempotent 200; a key owned by a <em>different</em> item is a 409 naming the owner - not
+     * a silent success that leaves the phrase resolving somewhere unexpected.
+     */
     @PostMapping("/api/food-items/{id}/aliases")
-    public FoodAlias addAlias(@PathVariable long id, @RequestBody AliasRequest request) {
+    public ResponseEntity<?> addAlias(@PathVariable long id, @RequestBody AliasRequest request) {
         var normalized = FoodAliasNormalizer.normalize(request.alias());
         var existing = foodAliasRepository.findByAliasNormalized(normalized);
         if (existing.isPresent()) {
-            return existing.get();
+            if (existing.get().foodItemId() == id) {
+                return ResponseEntity.ok(existing.get());
+            }
+            var owningItemId = existing.get().foodItemId();
+            var owningItemName = foodItemRepository.findById(owningItemId)
+                    .map(FoodItem::name)
+                    .orElse("item #" + owningItemId);
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new AliasConflictResponse(normalized, owningItemId, owningItemName));
         }
-        return foodAliasRepository.save(new FoodAlias(normalized, id, "USER"));
+        return ResponseEntity.ok(foodAliasRepository.save(new FoodAlias(normalized, id, "USER")));
     }
 
     /** Removes an alias - a clarification that turns out annoying is fixable in seconds. */
@@ -93,10 +107,27 @@ public class FoodItemController {
     public record AliasRequest(String alias) {
     }
 
+    /** 409 body for {@link #addAlias}: who already owns the normalized key. */
+    public record AliasConflictResponse(String alias, Long owningItemId, String owningItemName) {
+    }
+
+    /** Lists an item's household measures, for the portion-unit management UI. */
+    @GetMapping("/api/food-items/{id}/portion-units")
+    public List<PortionUnit> portionUnits(@PathVariable long id) {
+        return portionUnitRepository.findByFoodItemId(id);
+    }
+
     /** Records a household measure ("slice" -> 43g) entered directly on the Food Items page. */
     @PostMapping("/api/food-items/{id}/portion-units")
     public ResponseEntity<Void> addPortionUnit(@PathVariable long id, @RequestBody PortionUnitRequest request) {
         portionUnitService.recordManualPortion(id, request.unitName(), request.grams());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Removes a household measure whose gram weight turned out wrong or unwanted. */
+    @DeleteMapping("/api/food-items/portion-units/{portionUnitId}")
+    public ResponseEntity<Void> removePortionUnit(@PathVariable long portionUnitId) {
+        portionUnitRepository.deleteById(portionUnitId);
         return ResponseEntity.noContent().build();
     }
 

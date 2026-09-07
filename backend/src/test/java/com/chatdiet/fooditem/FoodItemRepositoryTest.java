@@ -28,9 +28,41 @@ class FoodItemRepositoryTest {
     @Autowired
     private FoodItemRepository foodItemRepository;
 
+    @Autowired
+    private FoodAliasRepository foodAliasRepository;
+
     @BeforeEach
     void clearAll() {
+        foodAliasRepository.deleteAll();
         foodItemRepository.deleteAll();
+    }
+
+    @Test
+    void searchMatchesAliasSubstringsAsWellAsNames() {
+        var mayo = foodItemRepository.save(new FoodItem("Hellmann's Real Mayonnaise", null,
+                680.0, 1.0, 0.0, 75.0, 0.0, 0.0, 600.0, 11.0, 40.0, 20.0, null, "OFF"));
+        foodAliasRepository.save(new FoodAlias("helmans mayonaise", mayo.id(), "USER"));
+        foodItemRepository.save(new FoodItem("orange juice", null,
+                45.0, 0.7, 10.4, 0.2, 0.2, 8.4, 1.0, 0.0, 0.0, 200.0, null, "FDC"));
+
+        // The user's typo alias finds the item even though the name doesn't contain it.
+        assertThat(foodItemRepository.search("helmans", false)).extracting(FoodItem::name)
+                .containsExactly("Hellmann's Real Mayonnaise");
+        // Name matching still works, and a blank query still matches everything.
+        assertThat(foodItemRepository.search("juice", false)).extracting(FoodItem::name)
+                .containsExactly("orange juice");
+        assertThat(foodItemRepository.search("", false)).hasSize(2);
+    }
+
+    @Test
+    void searchExcludesDeletedItemsEvenOnAnAliasMatch() {
+        var mayo = foodItemRepository.save(new FoodItem("Hellmann's Real Mayonnaise", null,
+                680.0, 1.0, 0.0, 75.0, 0.0, 0.0, 600.0, 11.0, 40.0, 20.0, null, "OFF"));
+        foodAliasRepository.save(new FoodAlias("helmans mayonaise", mayo.id(), "USER"));
+        foodItemRepository.save(mayo.withDeleted());
+
+        assertThat(foodItemRepository.search("helmans", false)).isEmpty();
+        assertThat(foodItemRepository.search("helmans", true)).hasSize(1);
     }
 
     @Test
