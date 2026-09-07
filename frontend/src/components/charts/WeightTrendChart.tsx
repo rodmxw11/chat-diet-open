@@ -1,4 +1,15 @@
-import { CartesianGrid, ComposedChart, ErrorBar, Line, ResponsiveContainer, Scatter, XAxis, YAxis } from 'recharts'
+import {
+  CartesianGrid,
+  ComposedChart,
+  ErrorBar,
+  Line,
+  ResponsiveContainer,
+  Scatter,
+  Tooltip,
+  XAxis,
+  YAxis,
+  type TooltipContentProps,
+} from 'recharts'
 import { useAppSelector } from '../../store/hooks'
 import type { GoalLine } from '../../store/dashboardSlice'
 
@@ -21,6 +32,19 @@ function pull(row: MergedPoint): [number, number] {
   if (row.actual === null || row.trend === null) return [0, 0]
   const diff = row.trend - row.actual
   return diff >= 0 ? [0, diff] : [-diff, 0]
+}
+
+// Only the diamond markers (actual weigh-ins) get a tooltip - hovering elsewhere along the trend
+// line shows nothing, since there's no reading there to report.
+function WeightTooltip({ active, payload }: TooltipContentProps) {
+  const row = payload?.[0]?.payload as MergedPoint | undefined
+  if (!active || !row || row.actual === null) return null
+  return (
+    <div className="dash-tooltip">
+      <div className="dash-tooltip-date">{formatDate(row.date)}</div>
+      <div className="dash-tooltip-value">{row.actual.toFixed(1)} lbs</div>
+    </div>
+  )
 }
 
 function goalValueOn(goal: GoalLine, date: string): number {
@@ -49,10 +73,11 @@ function buildSeries(
   }))
 }
 
-// Non-interactive per the design handoff: no tooltip, no click handlers. Scatter for actual
-// weigh-ins, solid line for the smoothed Hacker's Diet trend, dashed line for the goal
-// trajectory - computed client-side from the GoalLine anchor point/slope the backend returns,
-// rather than the backend materializing every point of a straight line.
+// Non-interactive per the design handoff except for a hover tooltip on the weigh-in markers (see
+// WeightTooltip): no click handlers. Scatter for actual weigh-ins, solid line for the smoothed
+// Hacker's Diet trend, dashed line for the goal trajectory - computed client-side from the
+// GoalLine anchor point/slope the backend returns, rather than the backend materializing every
+// point of a straight line.
 export default function WeightTrendChart() {
   const trend = useAppSelector((state) => state.dashboard.weightTrend)
   const tdee = useAppSelector((state) => state.dashboard.tdee)
@@ -92,6 +117,7 @@ export default function WeightTrendChart() {
             minTickGap={24}
           />
           <YAxis stroke="var(--dash-text-tertiary)" fontSize={9} fontFamily="var(--font-mono)" domain={['auto', 'auto']} />
+          <Tooltip content={WeightTooltip} cursor={{ stroke: 'var(--dash-grid)' }} />
           {trend.goal && (
             <Line
               dataKey="goal"

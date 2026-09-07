@@ -892,6 +892,25 @@ input {
   color: var(--status-retrying);
 }
 
+.dash-tooltip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 9px;
+  font-family: var(--font-mono);
+  font-size: calc(11px * var(--font-scale));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.dash-tooltip-date {
+  color: var(--text-muted);
+}
+
+.dash-tooltip-value {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 .schema-table-card {
   margin-bottom: 12px;
 }
