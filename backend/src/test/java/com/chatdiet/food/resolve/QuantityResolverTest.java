@@ -75,16 +75,40 @@ class QuantityResolverTest {
     }
 
     @Test
+    void parsesExplicitCaloriesIntoGramsViaThePer100gFigure() {
+        // banana is 89 cal/100g, so 178 cal = 200 g.
+        assertThat(quantityResolver.resolve(banana, "178 cal")).isEqualTo(new QuantityResolution.Grams(200.0));
+        assertThat(quantityResolver.resolve(banana, "178 calories")).isEqualTo(new QuantityResolution.Grams(200.0));
+        assertThat(quantityResolver.resolve(banana, "178 kcal")).isEqualTo(new QuantityResolution.Grams(200.0));
+        assertThat(quantityResolver.resolve(banana, "about 178 cal")).isEqualTo(new QuantityResolution.Grams(200.0));
+    }
+
+    @Test
+    void caloriesAgainstAnItemWithNoCalorieDataAreUnresolvable() {
+        var noData = new FoodItem(5L, "mystery tea", null, null, null, null, null, null, null, null, null,
+                null, null, null, "MANUAL", 0, null, null);
+        assertThat(quantityResolver.resolve(noData, "50 cal")).isInstanceOf(QuantityResolution.Unresolvable.class);
+
+        var zeroCal = new FoodItem(6L, "water", null, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                null, "MANUAL", 0, null, null);
+        assertThat(quantityResolver.resolve(zeroCal, "50 cal")).isInstanceOf(QuantityResolution.Unresolvable.class);
+    }
+
+    @Test
     void emptyOrUnknownUnitIsUnresolvable() {
         assertThat(quantityResolver.resolve(banana, "")).isInstanceOf(QuantityResolution.Unresolvable.class);
         assertThat(quantityResolver.resolve(banana, "a handful")).isInstanceOf(QuantityResolution.Unresolvable.class);
     }
 
     @Test
-    void explicitGramsOrServingsPairResolvesForUpcFlow() {
+    void explicitGramsKcalOrServingsResolvesForStructuredCallers() {
         var item = new FoodItem(4L, "clif bar", null, 380.0, 10.0, 65.0, 7.0, 5.0, 21.0, 210.0, 2.0, 0.0, 200.0,
                 68.0, "UPC", 0, null, null);
-        assertThat(quantityResolver.resolve(item, 150.0, null)).isEqualTo(new QuantityResolution.Grams(150.0));
-        assertThat(quantityResolver.resolve(item, null, 2.0)).isEqualTo(new QuantityResolution.Grams(136.0));
+        assertThat(quantityResolver.resolve(item, 150.0, null, null)).isEqualTo(new QuantityResolution.Grams(150.0));
+        assertThat(quantityResolver.resolve(item, null, 2.0, null)).isEqualTo(new QuantityResolution.Grams(136.0));
+        // 380 cal/100g, so 190 cal = 50 g.
+        assertThat(quantityResolver.resolve(item, null, null, 190.0)).isEqualTo(new QuantityResolution.Grams(50.0));
+        assertThat(quantityResolver.resolve(item, null, null, null))
+                .isInstanceOf(QuantityResolution.Unresolvable.class);
     }
 }

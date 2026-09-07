@@ -8,8 +8,9 @@ import java.util.regex.Pattern;
 
 /**
  * Resolves how much of a {@link FoodItem} was eaten, in grams, from an amount phrase or an
- * explicit grams/servings pair. Tiers: an explicit gram amount, optionally with a leading
- * count+unit alongside it for teaching ("2 eggs, 100g"); a bare serving count scaled by the item's
+ * explicit grams/kcal/servings value. Tiers: an explicit gram amount, optionally with a leading
+ * count+unit alongside it for teaching ("2 eggs, 100g"); an explicit calorie amount ("250 cal")
+ * inverted through the item's per-100g calories; a bare serving count scaled by the item's
  * {@code typical_serving_g}; a count plus a natural unit resolved against {@code PORTION_UNIT}
  * ("2 medium", "a bowl"). Unparseable or empty input is {@link QuantityResolution.Unresolvable} -
  * never a guess.
@@ -19,6 +20,8 @@ public class QuantityResolver {
 
     private static final Pattern TRAILING_GRAMS =
             Pattern.compile("(?i)^(.*?)\\s*,?\\s*(?:about\\s+)?([0-9]*\\.?[0-9]+)\\s*g(?:rams?)?$");
+    private static final Pattern EXPLICIT_KCAL =
+            Pattern.compile("(?i)^(?:about\\s+)?([0-9]*\\.?[0-9]+)\\s*k?cal(?:orie)?s?$");
     private static final Pattern PURE_NUMBER = Pattern.compile("^[0-9]*\\.?[0-9]+$");
     private static final Pattern COUNT_AND_UNIT = Pattern.compile("^([0-9]*\\.?[0-9]+)?\\s*(.*)$");
     private static final Pattern LEADING_ARTICLE = Pattern.compile("(?i)^(a|an|the)\\s+");
@@ -41,6 +44,11 @@ public class QuantityResolver {
             return explicit;
         }
 
+        var kcalMatcher = EXPLICIT_KCAL.matcher(trimmed);
+        if (kcalMatcher.matches()) {
+            return kcalToGrams(item, Double.parseDouble(kcalMatcher.group(1)));
+        }
+
         if (PURE_NUMBER.matcher(trimmed).matches()) {
             return resolveServings(item, Double.parseDouble(trimmed));
         }
@@ -56,10 +64,17 @@ public class QuantityResolver {
         return new QuantityResolution.Unresolvable();
     }
 
-    /** For typed/spoken UPCs, which carry an explicit grams-or-servings pair rather than a phrase. */
-    public QuantityResolution resolve(FoodItem item, Double quantityG, Double quantityServings) {
+    /**
+     * For structured callers (typed/spoken UPCs, the scan quantity prompt), which carry exactly
+     * one explicit grams/kcal/servings value rather than a phrase.
+     */
+    public QuantityResolution resolve(FoodItem item, Double quantityG, Double quantityServings,
+                                       Double quantityKcal) {
         if (quantityG != null && quantityG > 0) {
             return new QuantityResolution.Grams(quantityG);
+        }
+        if (quantityKcal != null && quantityKcal > 0) {
+            return kcalToGrams(item, quantityKcal);
         }
         if (quantityServings != null && quantityServings > 0) {
             return resolveServings(item, quantityServings);
@@ -70,6 +85,17 @@ public class QuantityResolver {
     private QuantityResolution resolveServings(FoodItem item, double servings) {
         var typical = item.typicalServingG() != null ? item.typicalServingG() : 100.0;
         return new QuantityResolution.Grams(servings * typical);
+    }
+
+    /**
+     * Inverts a stated calorie amount into grams via the item's per-100g calories. Unresolvable
+     * for an item with no usable calorie figure - the caller's grams question is the safe out.
+     */
+    private static QuantityResolution kcalToGrams(FoodItem item, double kcal) {
+        if (item.per100gCalories() == null || item.per100gCalories() <= 0) {
+            return new QuantityResolution.Unresolvable();
+        }
+        return new QuantityResolution.Grams(kcal / item.per100gCalories() * 100.0);
     }
 
     /**

@@ -43,6 +43,10 @@ public class PromptAssembler {
                always a new entry, never an inferred correction.
             5. Sub-10-calorie items (black tea, water) are not logged - a brief
                acknowledgement is enough, no row written.
+            6. When estimating calories or macros yourself (nothing cached or
+               found in a database), err a few percent high, never low - the
+               user prefers mild overestimation; underestimation quietly
+               undermines their weight-loss goal.
             """;
 
     private final IntentRegistry intentRegistry;

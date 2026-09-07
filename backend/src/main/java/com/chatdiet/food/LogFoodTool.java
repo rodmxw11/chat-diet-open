@@ -39,8 +39,8 @@ import java.util.function.Function;
         name = "log_food",
         intents = {"log_food"},
         description = "Log one or more named foods from a single utterance. For each item, provide foodRef " +
-                "(the food name as spoken) and amountText (the amount phrase verbatim, e.g. \"142g\", \"2\", " +
-                "\"a bowl\", or \"\" if unstated) - never invent a gram number yourself, there is no amountGrams " +
+                "(the food name as spoken) and amountText (the amount phrase verbatim, e.g. \"142g\", " +
+                "\"250 cal\", \"2\", \"a bowl\", or \"\" if unstated) - never invent a gram number yourself, there is no amountGrams " +
                 "field; the app resolves the phrase against its own cache and USDA FoodData Central. Always " +
                 "still provide your own best-effort estimate of calories/macros/micronutrients on each item as " +
                 "a fallback. If the tool's reply is a numbered clarification list (each option tagged with a " +

@@ -20,7 +20,7 @@ import java.util.function.Function;
 @IntentTool(
         name = "log_food_by_upc",
         intents = {"log_food"},
-        description = "Log a packaged food identified by UPC barcode. Looks up nutrition from Open Food Facts (caching it for reuse) and scales it by the amount eaten. Provide quantityServings (multiples of the product's typical serving) or quantityG (grams), not both."
+        description = "Log a packaged food identified by UPC barcode. Looks up nutrition from Open Food Facts (caching it for reuse) and scales it by the amount eaten. Provide exactly one of quantityG (grams), quantityKcal (calories eaten), or quantityServings (multiples of the product's typical serving)."
 )
 public class LogFoodByUpcTool implements Function<LogFoodByUpcRequest, ToolResult> {
 
@@ -50,7 +50,8 @@ public class LogFoodByUpcTool implements Function<LogFoodByUpcRequest, ToolResul
             return new ToolResult.NotFound("a product for UPC " + request.upc());
         }
 
-        var qty = quantityResolver.resolve(item, request.quantityG(), request.quantityServings());
+        var qty = quantityResolver.resolve(item, request.quantityG(), request.quantityServings(),
+                request.quantityKcal());
         if (!(qty instanceof QuantityResolution.Grams grams)) {
             return new ToolResult.NeedsClarification(
                     "How many servings (or how many grams) did you have of " + item.name() + "?", item.name());
