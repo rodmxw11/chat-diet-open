@@ -2,6 +2,7 @@ import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { closeOverlay } from '../store/uiSlice'
 import { checkConnectivity } from '../store/connectivitySlice'
 import { deleteQueuedMessage } from '../store/chatSlice'
+import { deleteQueuedScan } from '../store/barcodeQueueSlice'
 import Modal from './modal/Modal'
 
 function relativeMinutesAgo(iso: string): string {
@@ -15,6 +16,7 @@ export default function OfflineQueuePanel() {
   const dispatch = useAppDispatch()
   const open = useAppSelector((state) => state.ui.overlay === 'queue')
   const queue = useAppSelector((state) => state.chat.queue)
+  const scanQueue = useAppSelector((state) => state.barcodeQueue.queue)
   const status = useAppSelector((state) => state.connectivity.status)
 
   return (
@@ -33,26 +35,54 @@ export default function OfflineQueuePanel() {
         </button>
       }
     >
-      {queue.length === 0 ? (
+      {queue.length === 0 && scanQueue.length === 0 ? (
         <p className="queue-empty">Nothing queued.</p>
       ) : (
-        <ul className="queue-list">
-          {queue.map((item) => (
-            <li key={item.id} className="queue-row">
-              <div className="queue-row-text">
-                <p>{item.text}</p>
-                <span className="queue-row-caption">{relativeMinutesAgo(item.createdAt)}</span>
-              </div>
-              <button
-                type="button"
-                className="queue-delete-button"
-                onClick={() => dispatch(deleteQueuedMessage(item.id))}
-              >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
+        <>
+          {queue.length > 0 && (
+            <ul className="queue-list">
+              {queue.map((item) => (
+                <li key={item.id} className="queue-row">
+                  <div className="queue-row-text">
+                    <p>{item.text}</p>
+                    <span className="queue-row-caption">{relativeMinutesAgo(item.createdAt)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="queue-delete-button"
+                    onClick={() => dispatch(deleteQueuedMessage(item.id))}
+                  >
+                    Delete
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {scanQueue.length > 0 && (
+            <>
+              <h3 className="queue-section-title">Scanned barcodes</h3>
+              <ul className="queue-list">
+                {scanQueue.map((item) => (
+                  <li key={item.id} className="queue-row">
+                    <div className="queue-row-text">
+                      <p>{item.upc}</p>
+                      <span className="queue-row-caption">
+                        {relativeMinutesAgo(item.createdAt)} · will look it up once you're back online
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="queue-delete-button"
+                      onClick={() => dispatch(deleteQueuedScan(item.id))}
+                    >
+                      Delete
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </>
       )}
     </Modal>
   )

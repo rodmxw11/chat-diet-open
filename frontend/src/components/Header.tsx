@@ -14,7 +14,7 @@ export default function Header() {
   const summary = useAppSelector((state) => state.summary.data)
   const menuOpen = useAppSelector((state) => state.ui.menu)
   const range = useAppSelector((state) => state.dashboard.range)
-  const queueCount = useAppSelector((state) => state.chat.queue.length)
+  const queueCount = useAppSelector((state) => state.chat.queue.length + state.barcodeQueue.queue.length)
   const notesCount = useAppSelector((state) => state.notes.items.length)
   const theme = useAppSelector((state) => state.ui.theme)
   const recognitionRef = useRef<SpeechRecognition | null>(null)

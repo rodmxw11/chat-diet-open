@@ -1,10 +1,12 @@
-// App-level offline write queue for chat messages, backed by IndexedDB. Replaces the old Workbox
-// backgroundSync queue, which was opaque (couldn't be listed or deleted from) - the offline queue
-// panel needs to show and remove individual queued items, which Workbox's queue can't do.
+// App-level offline write queue for chat messages and barcode scans, backed by IndexedDB.
+// Replaces the old Workbox backgroundSync queue, which was opaque (couldn't be listed or deleted
+// from) - the offline queue panel needs to show and remove individual queued items, which
+// Workbox's queue can't do.
 
 const DB_NAME = 'chat-diet-queue'
-const DB_VERSION = 1
-const STORE_NAME = 'queued-requests'
+const DB_VERSION = 2
+const MESSAGE_STORE = 'queued-requests'
+const SCAN_STORE = 'queued-scans'
 
 export interface QueuedRequest {
   id: string
@@ -13,13 +15,22 @@ export interface QueuedRequest {
   createdAt: string
 }
 
+export interface QueuedScan {
+  id: string
+  upc: string
+  createdAt: string
+}
+
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
     request.onupgradeneeded = () => {
       const db = request.result
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' })
+      if (!db.objectStoreNames.contains(MESSAGE_STORE)) {
+        db.createObjectStore(MESSAGE_STORE, { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains(SCAN_STORE)) {
+        db.createObjectStore(SCAN_STORE, { keyPath: 'id' })
       }
     }
     request.onsuccess = () => resolve(request.result)
@@ -27,12 +38,16 @@ function openDb(): Promise<IDBDatabase> {
   })
 }
 
-async function withStore<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+async function withStore<T>(
+  storeName: string,
+  mode: IDBTransactionMode,
+  fn: (store: IDBObjectStore) => IDBRequest<T>,
+): Promise<T> {
   const db = await openDb()
   try {
     return await new Promise<T>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, mode)
-      const store = tx.objectStore(STORE_NAME)
+      const tx = db.transaction(storeName, mode)
+      const store = tx.objectStore(storeName)
       const request = fn(store)
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)
@@ -49,19 +64,38 @@ export async function enqueue(text: string, clientSentAt: string): Promise<Queue
     clientSentAt,
     createdAt: new Date().toISOString(),
   }
-  await withStore('readwrite', (store) => store.add(record))
+  await withStore(MESSAGE_STORE, 'readwrite', (store) => store.add(record))
   return record
 }
 
 export async function listQueued(): Promise<QueuedRequest[]> {
-  const items = await withStore<QueuedRequest[]>('readonly', (store) => store.getAll())
+  const items = await withStore<QueuedRequest[]>(MESSAGE_STORE, 'readonly', (store) => store.getAll())
   return items.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
 }
 
 export async function removeQueued(id: string): Promise<void> {
-  await withStore('readwrite', (store) => store.delete(id))
+  await withStore(MESSAGE_STORE, 'readwrite', (store) => store.delete(id))
 }
 
 export async function clearQueued(): Promise<void> {
-  await withStore('readwrite', (store) => store.clear())
+  await withStore(MESSAGE_STORE, 'readwrite', (store) => store.clear())
+}
+
+export async function enqueueScan(upc: string): Promise<QueuedScan> {
+  const record: QueuedScan = {
+    id: crypto.randomUUID(),
+    upc,
+    createdAt: new Date().toISOString(),
+  }
+  await withStore(SCAN_STORE, 'readwrite', (store) => store.add(record))
+  return record
+}
+
+export async function listQueuedScans(): Promise<QueuedScan[]> {
+  const items = await withStore<QueuedScan[]>(SCAN_STORE, 'readonly', (store) => store.getAll())
+  return items.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+}
+
+export async function removeQueuedScan(id: string): Promise<void> {
+  await withStore(SCAN_STORE, 'readwrite', (store) => store.delete(id))
 }

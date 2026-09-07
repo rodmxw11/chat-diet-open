@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
+import { loadScanQueue } from '../../store/barcodeQueueSlice'
 import { loadHistory, loadQueue } from '../../store/chatSlice'
 import { loadNotes } from '../../store/notesSlice'
 import { loadMacros, loadTdeeEstimate, loadWeightTrend } from '../../store/dashboardSlice'
@@ -37,6 +38,7 @@ export default function AppShell() {
   useEffect(() => {
     dispatch(loadHistory())
     dispatch(loadQueue())
+    dispatch(loadScanQueue())
     dispatch(loadWeightTrend())
     dispatch(loadTdeeEstimate())
     dispatch(loadNotes())

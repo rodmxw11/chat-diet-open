@@ -1,4 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit'
+import barcodeQueueReducer from './barcodeQueueSlice'
 import chatReducer from './chatSlice'
 import chatHistoryReducer from './chatHistorySlice'
 import connectivityReducer from './connectivitySlice'
@@ -12,6 +13,7 @@ import uiReducer from './uiSlice'
 
 export const store = configureStore({
   reducer: {
+    barcodeQueue: barcodeQueueReducer,
     chat: chatReducer,
     chatHistory: chatHistoryReducer,
     connectivity: connectivityReducer,
