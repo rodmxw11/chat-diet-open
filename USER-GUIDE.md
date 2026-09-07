@@ -4,6 +4,21 @@ chat-diet is conversational - there's no form to fill out, just type (or say) wh
 plain English in the chat box. The model routes your message to one of the intents below and
 calls the matching tool(s) automatically.
 
+> Parts of this guide predate the 2026-09 food-entry overhaul (recipes, shopping list, and photo
+> logging have been removed). The quickest current ways to log food:
+>
+> - **Instant entries** - "142g cheerios", "100 cal apple sauce", "3 slices honey wheat bread",
+>   with or without a leading "I ate": when the food is a known alias, these log immediately with
+>   no model round trip.
+> - **Calories as an amount** - "250 cal of hot dog buns" works anywhere an amount does; the app
+>   converts calories to grams from the item's per-100g data.
+> - **Fewer questions** - a single strong match auto-logs (echoed as *auto-matched*) instead of
+>   asking, and every pick from a clarification list is remembered as an alias, so the same
+>   question never repeats. Manage aliases (including auto-learned ones) on the Food Items page.
+> - **Barcode scans** - after a scan resolves, a "How much of ...?" bar appears: type a number,
+>   tap g / cal / servings, done. An unrecognized barcode opens the new-item form with the UPC
+>   filled in, then returns to the same prompt.
+
 <!-- TOC -->
 * [chat-diet User Guide](#chat-diet-user-guide)
   * [Logging things](#logging-things)
