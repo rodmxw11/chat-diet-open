@@ -39,8 +39,13 @@ export default function ChartRenderer({ series }: { series: ChartSeries[] }) {
       <ResponsiveContainer width="100%" height={220}>
         <LineChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-          <XAxis dataKey="at" tickFormatter={formatTick} stroke="var(--text-muted)" fontSize={12} />
-          <YAxis stroke="var(--text-muted)" fontSize={12} />
+          <XAxis
+            dataKey="at"
+            tickFormatter={formatTick}
+            stroke="var(--text-muted)"
+            fontSize="calc(12px * var(--font-scale))"
+          />
+          <YAxis stroke="var(--text-muted)" fontSize="calc(12px * var(--font-scale))" />
           <Tooltip
             labelFormatter={(value) => new Date(value as string).toLocaleString()}
             contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}

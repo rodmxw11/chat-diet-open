@@ -142,7 +142,7 @@ export default function MacroBarChart() {
             dataKey="date"
             tickFormatter={formatDayLabel}
             stroke="var(--dash-text-tertiary)"
-            fontSize={9}
+            fontSize="calc(9px * var(--font-scale))"
             fontFamily="var(--font-mono)"
             interval={range === 30 ? 3 : 0}
           />

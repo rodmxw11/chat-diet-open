@@ -112,11 +112,16 @@ export default function WeightTrendChart() {
             dataKey="date"
             tickFormatter={formatDate}
             stroke="var(--dash-text-tertiary)"
-            fontSize={9}
+            fontSize="calc(9px * var(--font-scale))"
             fontFamily="var(--font-mono)"
             minTickGap={24}
           />
-          <YAxis stroke="var(--dash-text-tertiary)" fontSize={9} fontFamily="var(--font-mono)" domain={['auto', 'auto']} />
+          <YAxis
+            stroke="var(--dash-text-tertiary)"
+            fontSize="calc(9px * var(--font-scale))"
+            fontFamily="var(--font-mono)"
+            domain={['auto', 'auto']}
+          />
           <Tooltip content={WeightTooltip} cursor={{ stroke: 'var(--dash-grid)' }} />
           {trend.goal && (
             <Line
