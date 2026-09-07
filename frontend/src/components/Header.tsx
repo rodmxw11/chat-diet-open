@@ -56,89 +56,93 @@ export default function Header() {
       : 'say "set my goal to 1800"'
 
   return (
-    <header className="app-header">
-      <span className="app-title">chatdiet</span>
+    <header className="app-header app-header--stacked">
+      <div className="app-header-top-row">
+        <span className="app-title">chatdiet</span>
+        <div className="app-header-icons">
+          <StatusLight />
+          <div className="app-header-menu-wrap">
+            <button
+              type="button"
+              className="menu-button"
+              onClick={() => dispatch(toggleMenu())}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-label="Menu"
+            >
+              ≡
+            </button>
+            {menuOpen && (
+              <div className="menu-dropdown" role="menu">
+                <button type="button" role="menuitem" onClick={() => dispatch(openOverlay('chartsMacros'))}>
+                  <span>Calories & macros</span>
+                  <span className="menu-hint">{range}d</span>
+                </button>
+                <button type="button" role="menuitem" onClick={() => dispatch(openOverlay('chartsWeight'))}>
+                  <span>Weight trend</span>
+                  <span className="menu-hint">30d</span>
+                </button>
+                <button type="button" role="menuitem" onClick={() => dispatch(setScreen('foodItems'))}>
+                  <span>Manage food items</span>
+                </button>
+                <button type="button" role="menuitem" onClick={() => dispatch(setScreen('notes'))}>
+                  <span>View notes</span>
+                  <span className="menu-hint">{notesCount}</span>
+                </button>
+                <button type="button" role="menuitem" onClick={() => dispatch(setScreen('foods'))}>
+                  <span>Daily foods</span>
+                </button>
+                <button type="button" role="menuitem" onClick={() => dispatch(setScreen('chatHistory'))}>
+                  <span>Chat history</span>
+                </button>
+                <button type="button" role="menuitem" onClick={() => dispatch(setScreen('micronutrients'))}>
+                  <span>Micronutrients</span>
+                </button>
+                <button type="button" role="menuitem" onClick={() => dispatch(setScreen('schema'))}>
+                  <span>Database schema</span>
+                </button>
+                <button type="button" role="menuitem" onClick={() => dispatch(openOverlay('queue'))}>
+                  <span>Waiting to send</span>
+                  <span className="menu-hint">{queueCount}</span>
+                </button>
+                <button type="button" role="menuitem" onClick={() => dispatch(toggleTheme())}>
+                  <span>Dark mode</span>
+                  <span className="menu-hint">{theme === 'dark' ? 'On' : 'Off'}</span>
+                </button>
+              </div>
+            )}
+            {menuOpen && <div className="menu-backdrop" onClick={() => dispatch(closeMenu())} />}
+          </div>
+          <div className="app-header-actions">
+            {SpeechRecognitionCtor && (
+              <button
+                type="button"
+                className={`icon-toggle ${listening ? 'active' : ''}`}
+                onClick={toggleListening}
+                disabled={status === 'loading'}
+                aria-pressed={listening}
+                title={listening ? 'Listening... tap to stop' : 'Speak a message'}
+                aria-label={listening ? 'Listening... tap to stop' : 'Speak a message'}
+              >
+                {listening ? '🔴' : '🎤'}
+              </button>
+            )}
+            <BarcodeScanButton />
+            <button
+              type="button"
+              className={`icon-toggle ${ttsEnabled ? 'active' : ''}`}
+              onClick={() => dispatch(toggleTts())}
+              aria-pressed={ttsEnabled}
+              title={ttsEnabled ? 'Voice replies on' : 'Voice replies off'}
+            >
+              {ttsEnabled ? '🔊' : '🔇'}
+            </button>
+          </div>
+        </div>
+      </div>
       <div className="app-header-summary">
         <span className="goal-headline">{goalHeadline}</span>
         <span className="goal-sub">{goalSub}</span>
-      </div>
-      <StatusLight />
-      <div className="app-header-menu-wrap">
-        <button
-          type="button"
-          className="menu-button"
-          onClick={() => dispatch(toggleMenu())}
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          aria-label="Menu"
-        >
-          ≡
-        </button>
-        {menuOpen && (
-          <div className="menu-dropdown" role="menu">
-            <button type="button" role="menuitem" onClick={() => dispatch(openOverlay('chartsMacros'))}>
-              <span>Calories & macros</span>
-              <span className="menu-hint">{range}d</span>
-            </button>
-            <button type="button" role="menuitem" onClick={() => dispatch(openOverlay('chartsWeight'))}>
-              <span>Weight trend</span>
-              <span className="menu-hint">30d</span>
-            </button>
-            <button type="button" role="menuitem" onClick={() => dispatch(setScreen('foodItems'))}>
-              <span>Manage food items</span>
-            </button>
-            <button type="button" role="menuitem" onClick={() => dispatch(setScreen('notes'))}>
-              <span>View notes</span>
-              <span className="menu-hint">{notesCount}</span>
-            </button>
-            <button type="button" role="menuitem" onClick={() => dispatch(setScreen('foods'))}>
-              <span>Daily foods</span>
-            </button>
-            <button type="button" role="menuitem" onClick={() => dispatch(setScreen('chatHistory'))}>
-              <span>Chat history</span>
-            </button>
-            <button type="button" role="menuitem" onClick={() => dispatch(setScreen('micronutrients'))}>
-              <span>Micronutrients</span>
-            </button>
-            <button type="button" role="menuitem" onClick={() => dispatch(setScreen('schema'))}>
-              <span>Database schema</span>
-            </button>
-            <button type="button" role="menuitem" onClick={() => dispatch(openOverlay('queue'))}>
-              <span>Waiting to send</span>
-              <span className="menu-hint">{queueCount}</span>
-            </button>
-            <button type="button" role="menuitem" onClick={() => dispatch(toggleTheme())}>
-              <span>Dark mode</span>
-              <span className="menu-hint">{theme === 'dark' ? 'On' : 'Off'}</span>
-            </button>
-          </div>
-        )}
-        {menuOpen && <div className="menu-backdrop" onClick={() => dispatch(closeMenu())} />}
-      </div>
-      <div className="app-header-actions">
-        {SpeechRecognitionCtor && (
-          <button
-            type="button"
-            className={`icon-toggle ${listening ? 'active' : ''}`}
-            onClick={toggleListening}
-            disabled={status === 'loading'}
-            aria-pressed={listening}
-            title={listening ? 'Listening... tap to stop' : 'Speak a message'}
-            aria-label={listening ? 'Listening... tap to stop' : 'Speak a message'}
-          >
-            {listening ? '🔴' : '🎤'}
-          </button>
-        )}
-        <BarcodeScanButton />
-        <button
-          type="button"
-          className={`icon-toggle ${ttsEnabled ? 'active' : ''}`}
-          onClick={() => dispatch(toggleTts())}
-          aria-pressed={ttsEnabled}
-          title={ttsEnabled ? 'Voice replies on' : 'Voice replies off'}
-        >
-          {ttsEnabled ? '🔊' : '🔇'}
-        </button>
       </div>
     </header>
   )

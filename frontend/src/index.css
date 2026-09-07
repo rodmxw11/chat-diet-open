@@ -184,6 +184,13 @@ input {
 .app-header-top-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.app-header-icons {
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
 
@@ -199,9 +206,6 @@ input {
 .app-header-summary {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
 }
 
 .goal-headline {
