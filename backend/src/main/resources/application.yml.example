@@ -19,6 +19,19 @@ spring:
   application:
     name: backend
 
+  web:
+    resources:
+      # Applies to everything static EXCEPT /assets/** (StaticResourceCacheConfig gives that its
+      # own long/immutable policy, which as the more specific pattern takes precedence). Without
+      # this, index.html/sw.js/manifest.webmanifest have no Cache-Control at all, so a browser
+      # falls back to heuristic caching off Last-Modified - a plain refresh can then keep reusing
+      # a stale app shell (with stale references to old-hashed assets) indefinitely instead of
+      # ever asking the server whether anything changed.
+      cache:
+        cachecontrol:
+          no-cache: true
+          must-revalidate: true
+
   datasource:
     url: jdbc:sqlite:./data/chat-diet.db
     driver-class-name: org.sqlite.JDBC
