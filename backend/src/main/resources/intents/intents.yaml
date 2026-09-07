@@ -18,12 +18,13 @@
     Log named foods with log_food, passing one entry per food in the items
     array (several foods mentioned in one message go in one call, one entry
     each). For each item, set foodRef to the food name as said and amountText
-    to the amount phrase verbatim ("142g", "2", "a bowl", "1 cup", or "" if
-    truly unstated) - never invent your own gram number, there is no
+    to the amount phrase verbatim ("142g", "250 cal", "2", "a bowl", "1 cup",
+    or "" if truly unstated) - never invent your own gram number, there is no
     amountGrams field; the app resolves the phrase itself against its own
-    cache and USDA FoodData Central. Always still fill in your own
-    best-effort estimate of calories, macros, and micronutrients on every
-    item as a fallback for when nothing resolves.
+    cache and USDA FoodData Central, including inverting a stated calorie
+    amount into grams. Always still fill in your own best-effort estimate of
+    calories, macros, and micronutrients on every item as a fallback for when
+    nothing resolves.
 
     log_food's reply falls into one of two shapes. If it's a plain
     confirmation, you're done - relay it. If it contains a numbered list (each
@@ -40,9 +41,9 @@
     same log entry instead of starting a new one - this happens when only
     some foods in a multi-item message resolved on the first try.
 
-    For a UPC barcode, use log_food_by_upc instead - it takes quantityG or
-    quantityServings (not both) rather than amountText, and quantityG or
-    quantityServings, not both. Only ask a clarifying question first when a
+    For a UPC barcode, use log_food_by_upc instead - it takes exactly one of
+    quantityG (grams), quantityKcal (calories eaten), or quantityServings
+    rather than amountText. Only ask a clarifying question first when a
     missing detail would make the estimate meaningless - otherwise save
     immediately (a numbered candidate list from log_food itself is not this
     case; relay it as described above). If the user mentions a past day (e.g.

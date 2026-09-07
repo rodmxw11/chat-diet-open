@@ -675,3 +675,33 @@ step 0 confirms accretion, not harvested from the 39 existing rows.
 - **Unit assertion behavior on `servingSizeUnit: ml`** (§5.6 rule 4) — reject
   the portion outright, or store with a unit marker? Affects `typical_serving_g`
   and the `PORTION_UNIT` row for every liquid.
+
+---
+
+## Amendments (2026-09)
+
+Two rules above are deliberately overridden, per the user's stated philosophy
+(2026-09-07): capture speed and consistency beat calorie precision — when in
+doubt, overestimate a few percent rather than interrupt. See
+`docs/FABLE-food-entry-recommendations.md` for the full review that led here.
+
+1. **§4.2 "candidate generation never auto-selects" no longer holds.**
+   `FoodResolver` now auto-accepts a single clear fuzzy winner
+   (`FoodResolution.AutoResolved`): a sole candidate scoring ≥ 0.95, or a sole
+   candidate scoring ≥ 0.8 (substring / strong-typo tier) that is at most one
+   word longer than the query — the word guard resurrected from the retired
+   `findBestMatchByName`, so "wheat bread" may become "Whole Wheat Bread" but a
+   bare "chicken" still never becomes "chicken salad sandwich". With multiple
+   candidates the top auto-accepts only when the runner-up scores < 0.8; an
+   equal-score tie at ≥ 0.95 resolves toward the higher-calorie candidate
+   (overestimate, don't ask). Every auto-accept is echoed as `auto-matched` and
+   pinned with an `AUTO`-source alias so a wrong match is visible immediately,
+   deletable in the alias UI, and never re-fuzzed.
+
+2. **§4.3 "Ambiguous picks never learn" no longer holds.** Every
+   clarification-turn pick — ambiguous or unknown — writes a `USER` alias
+   (`FoodResolver.learnAlias`). The original concern (the alias makes the other
+   candidate unreachable by that phrase) is accepted as the cheaper failure:
+   the alias UI can delete a bad mapping, whereas re-asking the same question
+   forever was the number-one source of logging friction in the real
+   `chat_message` corpus.

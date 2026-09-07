@@ -2,6 +2,7 @@ package com.chatdiet.chat;
 
 import com.chatdiet.chart.ChartResultContext;
 import com.chatdiet.day.DayBoundaryService;
+import com.chatdiet.food.FastFoodLogService;
 import com.chatdiet.sql.SqlResultContext;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,17 +29,20 @@ public class ChatController {
     private static final Duration NOTEWORTHY_DELAY = Duration.ofMinutes(2);
 
     private final ChatService chatService;
+    private final FastFoodLogService fastFoodLogService;
     private final ConversationHistoryStore historyStore;
     private final DayBoundaryService dayBoundaryService;
     private final ChartResultContext chartResultContext;
     private final SqlResultContext sqlResultContext;
     private final ChatCostCalculator chatCostCalculator;
 
-    public ChatController(ChatService chatService, ConversationHistoryStore historyStore,
+    public ChatController(ChatService chatService, FastFoodLogService fastFoodLogService,
+                           ConversationHistoryStore historyStore,
                            DayBoundaryService dayBoundaryService,
                            ChartResultContext chartResultContext, SqlResultContext sqlResultContext,
                            ChatCostCalculator chatCostCalculator) {
         this.chatService = chatService;
+        this.fastFoodLogService = fastFoodLogService;
         this.historyStore = historyStore;
         this.dayBoundaryService = dayBoundaryService;
         this.chartResultContext = chartResultContext;
@@ -77,10 +81,18 @@ public class ChatController {
     /**
      * Runs a turn against the metabolic day the message was composed on, rather than the day it
      * arrived - so a message queued offline before midnight stays with the day it belongs to.
+     *
+     * <p>The deterministic fast path gets first crack, on the raw text - before the timing note,
+     * which would break its strict grammar; it backdates through {@code occurredAt} instead. Only
+     * unrecognized messages pay the model round trip.
      */
     private String replyAt(String clientSentAt, String text) {
         var occurredAt = dayBoundaryService.occurredAt(clientSentAt);
         var metabolicDate = dayBoundaryService.metabolicDateOf(occurredAt);
+        var fast = fastFoodLogService.tryHandle(metabolicDate, occurredAt, text);
+        if (fast.isPresent()) {
+            return fast.get();
+        }
         return chatService.reply(metabolicDate, occurredAt, withClientTimingNote(text, occurredAt));
     }
 

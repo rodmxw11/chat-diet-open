@@ -14,8 +14,10 @@ import java.time.LocalDateTime;
  * @param aliasNormalized the normalized lookup key ({@link FoodAliasNormalizer#normalize}), unique
  *                         across the table - two different foods can never share one
  * @param foodItemId      the {@link FoodItem} this alias resolves to
- * @param source           where this alias came from: {@code USER} (a clarification turn),
- *                         {@code OFF}, {@code FDC}, or {@code MANUAL} (a Food Items save)
+ * @param source           where this alias came from: {@code USER} (a clarification-turn pick),
+ *                         {@code AUTO} (a fuzzy auto-accept - distinct so a wrong auto-match is
+ *                         identifiable and deletable), {@code OFF}, {@code FDC}, or {@code MANUAL}
+ *                         (a Food Items save)
  */
 public record FoodAlias(
         @Id Long id,

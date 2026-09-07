@@ -2,6 +2,7 @@ package com.chatdiet.chat;
 
 import com.chatdiet.chart.ChartResultContext;
 import com.chatdiet.day.DayBoundaryService;
+import com.chatdiet.food.FastFoodLogService;
 import com.chatdiet.sql.SqlResultContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -35,12 +37,14 @@ class ChatControllerTest {
 
     private MockMvc mockMvc;
     private ChatService chatService;
+    private FastFoodLogService fastFoodLogService;
     private ConversationHistoryStore historyStore;
     private DayBoundaryService dayBoundaryService;
 
     @BeforeEach
     void standaloneController() {
         chatService = mock(ChatService.class);
+        fastFoodLogService = mock(FastFoodLogService.class);
         historyStore = mock(ConversationHistoryStore.class);
 
         dayBoundaryService = new DayBoundaryService();
@@ -51,11 +55,12 @@ class ChatControllerTest {
         when(chartResultContext.series()).thenReturn(Optional.empty());
         when(sqlResultContext.answer()).thenReturn(Optional.empty());
         when(chatService.reply(any(), any(), anyString())).thenReturn("ok");
+        when(fastFoodLogService.tryHandle(any(), any(), anyString())).thenReturn(Optional.empty());
 
         var chatCostCalculator = mock(ChatCostCalculator.class);
         when(chatCostCalculator.costFor(any())).thenReturn(new ChatCostCalculator.DailyCost(0.0, 0.0));
 
-        var controller = new ChatController(chatService, historyStore, dayBoundaryService,
+        var controller = new ChatController(chatService, fastFoodLogService, historyStore, dayBoundaryService,
                 chartResultContext, sqlResultContext, chatCostCalculator);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
@@ -102,6 +107,19 @@ class ChatControllerTest {
         postChat("{\"text\":\"hello\",\"sessionId\":\"abc-123\"}");
 
         assertThat(capturedDate()).isEqualTo(dayBoundaryService.today());
+    }
+
+    @Test
+    void aFastPathHitRepliesWithoutInvokingTheModel() throws Exception {
+        when(fastFoodLogService.tryHandle(any(), any(), anyString()))
+                .thenReturn(Optional.of("Logged \"cheerios\" (142g): 507 kcal."));
+
+        mockMvc.perform(post("/api/chat").contentType("application/json")
+                        .content("{\"text\":\"142g cheerios\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reply").value("Logged \"cheerios\" (142g): 507 kcal."));
+
+        verify(chatService, never()).reply(any(), any(), anyString());
     }
 
     @Test

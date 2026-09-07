@@ -16,14 +16,22 @@ public sealed interface FoodResolution {
     }
 
     /**
-     * Two or more plausible cached items match - genuinely ambiguous, not a phrase to write an
-     * alias for even once the user picks one (it would make the other candidate unreachable by
-     * this phrase forever).
+     * No alias hit, but fuzzy scoring found one clear winner (see the auto-accept thresholds on
+     * {@link FoodResolver}). Logged without asking, echoed as auto-matched so a wrong pick is
+     * visible immediately, and worth an {@code AUTO}-source alias so the phrase never re-fuzzes.
+     */
+    record AutoResolved(FoodItem item) implements FoodResolution {
+    }
+
+    /**
+     * Two or more plausible cached items match and no clear winner cleared the auto-accept bar -
+     * the user picks from a numbered list, and the pick is learned as an alias so this phrase
+     * never asks again ({@link FoodResolver#learnAlias}).
      */
     record Ambiguous(List<Candidate> candidates) implements FoodResolution {
     }
 
-    /** No alias hit and 0-1 cached candidates - a new phrase. Writing an alias on selection is safe here. */
+    /** No alias hit and 0-1 cached candidates - a new phrase. The selection is learned as an alias. */
     record Unknown(List<Candidate> candidates) implements FoodResolution {
     }
 }

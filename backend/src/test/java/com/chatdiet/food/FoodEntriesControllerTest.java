@@ -1,6 +1,11 @@
 package com.chatdiet.food;
 
+import com.chatdiet.chat.ChatMessageRepository;
+import com.chatdiet.chat.ConversationHistoryStore;
 import com.chatdiet.dashboard.DailyMacroCacheRepository;
+import com.chatdiet.day.DayBoundaryService;
+import com.chatdiet.fooditem.FoodItem;
+import com.chatdiet.fooditem.FoodItemRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -38,9 +43,24 @@ class FoodEntriesControllerTest {
     @Autowired
     private DailyMacroCacheRepository dailyMacroCacheRepository;
 
+    @Autowired
+    private FoodItemRepository foodItemRepository;
+
+    @Autowired
+    private ChatMessageRepository chatMessageRepository;
+
+    @Autowired
+    private ConversationHistoryStore historyStore;
+
+    @Autowired
+    private DayBoundaryService dayBoundaryService;
+
     @BeforeEach
     void clearAll() {
         foodEntryRepository.deleteAll();
+        chatMessageRepository.deleteAll();
+        foodItemRepository.deleteAll();
+        historyStore.clearAll();
     }
 
     @Test
@@ -96,5 +116,67 @@ class FoodEntriesControllerTest {
         assertThatThrownBy(() -> foodEntriesController.delete(999_999L))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("404");
+    }
+
+    private FoodItem savedJuice() {
+        return foodItemRepository.save(new FoodItem("orange juice", null,
+                45.0, 0.7, 10.4, 0.2, 0.2, 8.4, 1.0, 0.0, 0.0, 200.0, 240.0, "FDC"));
+    }
+
+    @Test
+    void createLogsByItemIdAndPersistsTheChatExchange() {
+        var juice = savedJuice();
+
+        var response = foodEntriesController.create(
+                new FoodEntryCreateRequest(juice.id(), 200.0, null, null, null));
+
+        assertThat(response.reply()).startsWith("Logged \"orange juice\" (200g): 90 kcal");
+        assertThat(response.entry().foodItemId()).isEqualTo(juice.id());
+        assertThat(response.entry().amountGrams()).isEqualTo(200.0);
+
+        var messages = historyStore.messagesFor(dayBoundaryService.today());
+        assertThat(messages).hasSize(2);
+        assertThat(messages.get(0).content()).isEqualTo("Scanned orange juice: 200g");
+        assertThat(messages.get(1).content()).isEqualTo(response.reply());
+    }
+
+    @Test
+    void createConvertsKcalAndServingsToGrams() {
+        var juice = savedJuice();
+
+        var byKcal = foodEntriesController.create(new FoodEntryCreateRequest(juice.id(), null, 90.0, null, null));
+        assertThat(byKcal.entry().amountGrams()).isEqualTo(200.0);
+
+        var byServings = foodEntriesController.create(new FoodEntryCreateRequest(juice.id(), null, null, 2.0, null));
+        assertThat(byServings.entry().amountGrams()).isEqualTo(480.0);
+    }
+
+    @Test
+    void createRejectsMissingOrConflictingQuantities() {
+        var juice = savedJuice();
+
+        assertThatThrownBy(() -> foodEntriesController.create(
+                new FoodEntryCreateRequest(juice.id(), null, null, null, null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("400");
+        assertThatThrownBy(() -> foodEntriesController.create(
+                new FoodEntryCreateRequest(juice.id(), 100.0, 90.0, null, null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("400");
+    }
+
+    @Test
+    void createRejectsUnknownOrDeletedItemsAndUnconvertibleKcal() {
+        assertThatThrownBy(() -> foodEntriesController.create(
+                new FoodEntryCreateRequest(999_999L, 100.0, null, null, null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("404");
+
+        var noCalories = foodItemRepository.save(new FoodItem("mystery tea", null,
+                null, null, null, null, null, null, null, null, null, null, null, "MANUAL"));
+        assertThatThrownBy(() -> foodEntriesController.create(
+                new FoodEntryCreateRequest(noCalories.id(), null, 50.0, null, null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("400");
     }
 }

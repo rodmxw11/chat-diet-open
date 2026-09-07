@@ -1,0 +1,32 @@
+databaseChangeLog:
+  # The estimate path used to mint a fresh MODEL_ESTIMATE food_item every time the model passed
+  # useEstimate for a name the cache already knew (fixed in code alongside this changeset). Fold
+  # the accumulated same-name MODEL_ESTIMATE duplicates into the lowest-id row: repoint entries,
+  # then soft-delete the extras. Entries keep their snapshotted totals either way; the lowest-id
+  # row is never deleted, so the correlated MIN() stays stable while the UPDATE runs.
+  - changeSet:
+      id: 024-dedupe-model-estimate-food-items
+      author: chat-diet
+      changes:
+        - sql:
+            sql: >
+              UPDATE food_entry SET food_item_id = (
+                SELECT MIN(canon.id) FROM food_item canon
+                WHERE LOWER(canon.name) = (SELECT LOWER(cur.name) FROM food_item cur
+                                           WHERE cur.id = food_entry.food_item_id)
+                  AND canon.lookup_source = 'MODEL_ESTIMATE' AND canon.deleted_at IS NULL
+              )
+              WHERE food_item_id IN (
+                SELECT dupe.id FROM food_item dupe
+                WHERE dupe.lookup_source = 'MODEL_ESTIMATE' AND dupe.deleted_at IS NULL
+                  AND dupe.id > (SELECT MIN(c2.id) FROM food_item c2
+                                 WHERE LOWER(c2.name) = LOWER(dupe.name)
+                                   AND c2.lookup_source = 'MODEL_ESTIMATE' AND c2.deleted_at IS NULL)
+              );
+        - sql:
+            sql: >
+              UPDATE food_item SET deleted_at = CURRENT_TIMESTAMP
+              WHERE lookup_source = 'MODEL_ESTIMATE' AND deleted_at IS NULL
+                AND id > (SELECT MIN(c2.id) FROM food_item c2
+                          WHERE LOWER(c2.name) = LOWER(food_item.name)
+                            AND c2.lookup_source = 'MODEL_ESTIMATE' AND c2.deleted_at IS NULL);

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
-import { clearPendingCursorStart, sendMessage, setDraftText } from '../store/chatSlice'
+import { sendMessage, setDraftText } from '../store/chatSlice'
 import { loadMacros, loadTdeeEstimate, loadWeightTrend } from '../store/dashboardSlice'
 import { loadSummary } from '../store/summarySlice'
 
@@ -8,20 +8,9 @@ export default function MessageInput() {
   const dispatch = useAppDispatch()
   const text = useAppSelector((state) => state.chat.draftText)
   const status = useAppSelector((state) => state.chat.status)
-  const pendingCursorStart = useAppSelector((state) => state.chat.pendingCursorStart)
   const macroRange = useAppSelector((state) => state.dashboard.range)
   const inputRef = useRef<HTMLInputElement>(null)
   const wasLoading = useRef(false)
-
-  // An external prefill (barcode scan) just set draftText - put the cursor at position 0 so the
-  // scale reading can be typed in front of the resolved name, then consume the one-shot flag.
-  useEffect(() => {
-    if (pendingCursorStart && inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.setSelectionRange(0, 0)
-      dispatch(clearPendingCursorStart())
-    }
-  }, [pendingCursorStart, dispatch])
 
   // The input is disabled while a request is in flight, which blurs it; once the reply lands and
   // it's re-enabled, focus doesn't come back on its own, so bring it back here - but only on

@@ -9,9 +9,9 @@ import org.springframework.web.context.annotation.RequestScope;
  * N kcal" - shaped reply) when no logging tool actually ran - a real, observed failure mode where
  * the model narrates a plausible-sounding confirmation without invoking the function behind it.
  *
- * <p>Deliberately only tracks *whether* a save happened, not which tool - {@code log_food},
- * {@code log_food_by_upc}, and {@code log_cached_food} (via {@link FoodItemLogger}) all mark it the
- * same way, since from the verification layer's perspective they're interchangeable evidence that
+ * <p>Deliberately only tracks *whether* a save happened, not which path - {@code log_food} and
+ * {@code log_food_by_upc} (via {@link com.chatdiet.fooditem.FoodItemLogger}) mark it the same
+ * way, since from the verification layer's perspective they're interchangeable evidence that
  * "yes, something was actually written to food_entry this turn."
  */
 @Component

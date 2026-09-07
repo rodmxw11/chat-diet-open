@@ -1,7 +1,7 @@
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { closeOverlay } from '../store/uiSlice'
 import { checkConnectivity } from '../store/connectivitySlice'
-import { deleteQueuedMessage } from '../store/chatSlice'
+import { deleteQueuedEntry, deleteQueuedMessage, scannedEntryText } from '../store/chatSlice'
 import { deleteQueuedScan } from '../store/barcodeQueueSlice'
 import Modal from './modal/Modal'
 
@@ -16,6 +16,7 @@ export default function OfflineQueuePanel() {
   const dispatch = useAppDispatch()
   const open = useAppSelector((state) => state.ui.overlay === 'queue')
   const queue = useAppSelector((state) => state.chat.queue)
+  const entryQueue = useAppSelector((state) => state.chat.entryQueue)
   const scanQueue = useAppSelector((state) => state.barcodeQueue.queue)
   const status = useAppSelector((state) => state.connectivity.status)
 
@@ -35,7 +36,7 @@ export default function OfflineQueuePanel() {
         </button>
       }
     >
-      {queue.length === 0 && scanQueue.length === 0 ? (
+      {queue.length === 0 && entryQueue.length === 0 && scanQueue.length === 0 ? (
         <p className="queue-empty">Nothing queued.</p>
       ) : (
         <>
@@ -57,6 +58,30 @@ export default function OfflineQueuePanel() {
                 </li>
               ))}
             </ul>
+          )}
+          {entryQueue.length > 0 && (
+            <>
+              <h3 className="queue-section-title">Scanned foods</h3>
+              <ul className="queue-list">
+                {entryQueue.map((item) => (
+                  <li key={item.id} className="queue-row">
+                    <div className="queue-row-text">
+                      <p>{scannedEntryText(item.name, item.amount, item.unit)}</p>
+                      <span className="queue-row-caption">
+                        {relativeMinutesAgo(item.createdAt)} · will log once you're back online
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="queue-delete-button"
+                      onClick={() => dispatch(deleteQueuedEntry(item.id))}
+                    >
+                      Delete
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
           {scanQueue.length > 0 && (
             <>

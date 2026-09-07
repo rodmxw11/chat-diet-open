@@ -43,3 +43,7 @@ databaseChangeLog:
       file: db/changelog/021-flatten-food-entry.yaml
   - include:
       file: db/changelog/022-create-food-alias-table.yaml
+  - include:
+      file: db/changelog/023-restore-food-item-upc-unique-index.yaml
+  - include:
+      file: db/changelog/024-dedupe-model-estimate-food-items.yaml

@@ -17,31 +17,35 @@ class FuzzyCandidateGeneratorTest {
 
     @Test
     void matchesOnCloseEditDistance() {
-        var matches = generator.matchCachedItems("banan", List.of(item("banana")));
-        assertThat(matches).extracting(FoodItem::name).contains("banana");
+        var matches = generator.scoreCachedItems("banan", List.of(item("banana")));
+        assertThat(matches).extracting(m -> m.item().name()).contains("banana");
     }
 
     @Test
     void matchesNaivePluralFlip() {
-        var matches = generator.matchCachedItems("oats", List.of(item("oat")));
-        assertThat(matches).extracting(FoodItem::name).contains("oat");
+        var matches = generator.scoreCachedItems("oats", List.of(item("oat")));
+        assertThat(matches).singleElement().satisfies(m -> {
+            assertThat(m.item().name()).isEqualTo("oat");
+            assertThat(m.score()).isEqualTo(0.95);
+        });
     }
 
     @Test
     void matchesOnTokenOverlap() {
-        var matches = generator.matchCachedItems("chicken breast grilled", List.of(item("grilled chicken breast")));
-        assertThat(matches).extracting(FoodItem::name).contains("grilled chicken breast");
+        var matches = generator.scoreCachedItems("chicken breast grilled", List.of(item("grilled chicken breast")));
+        assertThat(matches).extracting(m -> m.item().name()).contains("grilled chicken breast");
     }
 
     @Test
     void doesNotMatchUnrelatedFoods() {
-        var matches = generator.matchCachedItems("banana", List.of(item("lasagna")));
+        var matches = generator.scoreCachedItems("banana", List.of(item("lasagna")));
         assertThat(matches).isEmpty();
     }
 
     @Test
     void ranksExactMatchFirst() {
-        var matches = generator.matchCachedItems("banana", List.of(item("banana bread"), item("banana")));
-        assertThat(matches.get(0).name()).isEqualTo("banana");
+        var matches = generator.scoreCachedItems("banana", List.of(item("banana bread"), item("banana")));
+        assertThat(matches.get(0).item().name()).isEqualTo("banana");
+        assertThat(matches.get(0).score()).isEqualTo(1.0);
     }
 }

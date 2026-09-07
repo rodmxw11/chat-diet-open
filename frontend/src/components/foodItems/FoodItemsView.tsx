@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
-import { setDraftTextWithCursorStart } from '../../store/chatSlice'
+import { openQuantityPrompt } from '../../store/chatSlice'
 import { setScreen } from '../../store/uiSlice'
 import {
   addFoodAlias,
+  clearAliasError,
   clearUpcPrebind,
   createFoodItem,
   deleteFoodItem,
   loadFoodAliases,
   loadFoodItems,
+  loadPortionUnits,
   lookupFoodItemByUpc,
   lookupFoodItemNutrition,
   removeFoodAlias,
+  removePortionUnit,
   restoreFoodItem,
   setFoodItemsIncludeDeleted,
   setFoodItemsQuery,
@@ -102,6 +105,8 @@ export default function FoodItemsView() {
   const includeDeleted = useAppSelector((state) => state.foodItems.includeDeleted)
   const prebindUpc = useAppSelector((state) => state.foodItems.prebindUpc)
   const aliases = useAppSelector((state) => state.foodItems.aliases)
+  const portionUnits = useAppSelector((state) => state.foodItems.portionUnits)
+  const aliasError = useAppSelector((state) => state.foodItems.aliasError)
 
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState<FoodItemUpsert>(BLANK_FORM)
@@ -114,6 +119,8 @@ export default function FoodItemsView() {
   const [portionUnitName, setPortionUnitName] = useState('')
   const [portionUnitGrams, setPortionUnitGrams] = useState('')
   const [newAlias, setNewAlias] = useState('')
+  /** Aliases typed before Save; flushed to the server on Save, failures kept here and shown. */
+  const [pendingAliases, setPendingAliases] = useState<string[]>([])
 
   useEffect(() => {
     dispatch(loadFoodItems({ query, includeDeleted }))
@@ -132,6 +139,9 @@ export default function FoodItemsView() {
     setFromPrebind(true)
     setPortionUnitName('')
     setPortionUnitGrams('')
+    setNewAlias('')
+    setPendingAliases([])
+    dispatch(clearAliasError())
     setModalOpen(true)
     dispatch(clearUpcPrebind())
   }, [dispatch, prebindUpc])
@@ -150,6 +160,9 @@ export default function FoodItemsView() {
     setFromPrebind(false)
     setPortionUnitName('')
     setPortionUnitGrams('')
+    setNewAlias('')
+    setPendingAliases([])
+    dispatch(clearAliasError())
     setModalOpen(true)
   }
 
@@ -164,7 +177,10 @@ export default function FoodItemsView() {
     setPortionUnitName('')
     setPortionUnitGrams('')
     setNewAlias('')
+    setPendingAliases([])
+    dispatch(clearAliasError())
     dispatch(loadFoodAliases(item.id))
+    dispatch(loadPortionUnits(item.id))
     setModalOpen(true)
   }
 
@@ -187,21 +203,54 @@ export default function FoodItemsView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ unitName: portionUnitName.trim(), grams: unitGrams }),
       })
+      setPortionUnitName('')
+      setPortionUnitGrams('')
     }
+
+    // Flush queued aliases now that the item has an id. A collision (409) is a visible failure,
+    // not fake success: the item saved, the alias didn't - stay open in edit mode showing which.
+    const failed: string[] = []
+    for (const alias of pendingAliases) {
+      try {
+        await dispatch(addFoodAlias({ foodItemId: savedItem.id, alias })).unwrap()
+      } catch {
+        failed.push(alias)
+      }
+    }
+    if (failed.length > 0) {
+      setPendingAliases(failed)
+      setEditingId(savedItem.id)
+      dispatch(loadFoodAliases(savedItem.id))
+      dispatch(loadPortionUnits(savedItem.id))
+      return
+    }
+    setPendingAliases([])
 
     setModalOpen(false)
 
     if (wasPrebind) {
-      // Don't strand the user here mid-sandwich - hand back to chat with the amount prefilled,
-      // same as a normal scan resolution.
-      dispatch(setDraftTextWithCursorStart(`g ${savedItem.name}`))
+      // Don't strand the user here mid-sandwich - hand back to chat with the quantity prompt
+      // open for the just-saved item, same as a normal scan resolution.
+      dispatch(
+        openQuantityPrompt({
+          foodItemId: savedItem.id,
+          name: savedItem.name,
+          typicalServingG: savedItem.typicalServingG,
+        }),
+      )
       dispatch(setScreen('chat'))
     }
   }
 
+  // Aliases queue locally and are written on Save (a new item has no id to attach them to yet;
+  // queueing in both modes keeps one mental model).
   const handleAddAlias = () => {
-    if (editingId === null || !newAlias.trim()) return
-    dispatch(addFoodAlias({ foodItemId: editingId, alias: newAlias.trim() }))
+    const trimmed = newAlias.trim()
+    if (!trimmed) return
+    dispatch(clearAliasError())
+    if (!pendingAliases.includes(trimmed)) {
+      setPendingAliases([...pendingAliases, trimmed])
+    }
     setNewAlias('')
   }
 
@@ -298,7 +347,7 @@ export default function FoodItemsView() {
           <input
             type="search"
             className="date-input food-items-search"
-            placeholder="Search by name…"
+            placeholder="Search by name or alias…"
             value={query}
             onChange={(event) => dispatch(setFoodItemsQuery(event.target.value))}
           />
@@ -496,6 +545,27 @@ export default function FoodItemsView() {
           {numberField('per100gCholesterolMg', `Cholesterol (mg, per ${entryGrams}g)`)}
           {numberField('per100gPotassiumMg', `Potassium (mg, per ${entryGrams}g)`)}
 
+          {editingId !== null && portionUnits.length > 0 && (
+            <div className="food-item-field food-item-field--wide">
+              <span>Household measures</span>
+              <ul className="food-item-lookup-candidates">
+                {portionUnits.map((unit) => (
+                  <li key={unit.id}>
+                    {unit.unitName} = {unit.grams} g ({unit.source})
+                    <button
+                      type="button"
+                      className="foods-delete-button"
+                      onClick={() => dispatch(removePortionUnit(unit.id))}
+                      aria-label={`Remove measure ${unit.unitName}`}
+                      title="Remove this measure"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <label className="food-item-field food-item-field--wide">
             <span>Household measure (optional) - e.g. "slice"</span>
             <input
@@ -516,13 +586,13 @@ export default function FoodItemsView() {
             />
           </label>
 
-          {editingId !== null && (
-            <div className="food-item-field food-item-field--wide">
-              <span>Aliases</span>
-              <ul className="food-item-lookup-candidates">
-                {aliases.map((alias) => (
+          <div className="food-item-field food-item-field--wide">
+            <span>Aliases (other names this food resolves from)</span>
+            <ul className="food-item-lookup-candidates">
+              {editingId !== null &&
+                aliases.map((alias) => (
                   <li key={alias.id}>
-                    {alias.aliasNormalized}
+                    {alias.aliasNormalized} ({alias.source})
                     <button
                       type="button"
                       className="foods-delete-button"
@@ -534,21 +604,37 @@ export default function FoodItemsView() {
                     </button>
                   </li>
                 ))}
-                {aliases.length === 0 && <li>No aliases yet.</li>}
-              </ul>
-              <div className="food-item-lookup-row">
-                <input
-                  type="text"
-                  value={newAlias}
-                  onChange={(event) => setNewAlias(event.target.value)}
-                  placeholder="Add an alias…"
-                />
-                <button type="button" className="today-button" onClick={handleAddAlias} disabled={!newAlias.trim()}>
-                  Add
-                </button>
-              </div>
+              {pendingAliases.map((alias) => (
+                <li key={`pending-${alias}`}>
+                  {alias} <em>(saved with the item)</em>
+                  <button
+                    type="button"
+                    className="foods-delete-button"
+                    onClick={() => setPendingAliases(pendingAliases.filter((a) => a !== alias))}
+                    aria-label={`Remove pending alias ${alias}`}
+                    title="Remove this alias"
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+              {(editingId === null || aliases.length === 0) && pendingAliases.length === 0 && (
+                <li>No aliases yet.</li>
+              )}
+            </ul>
+            <div className="food-item-lookup-row">
+              <input
+                type="text"
+                value={newAlias}
+                onChange={(event) => setNewAlias(event.target.value)}
+                placeholder="Add an alias…"
+              />
+              <button type="button" className="today-button" onClick={handleAddAlias} disabled={!newAlias.trim()}>
+                Add
+              </button>
             </div>
-          )}
+            {aliasError && <span className="food-item-lookup-status">{aliasError}</span>}
+          </div>
         </div>
       </Modal>
     </div>

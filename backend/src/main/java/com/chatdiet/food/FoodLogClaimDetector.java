@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
  * Heuristic for "does this reply read like a food-logging confirmation" - used by
  * {@code ChatService} to decide whether to double-check that a logging tool actually ran, given a
  * real, observed failure mode where the model narrates a plausible "Logged: ..., N kcal" reply
- * without ever invoking {@code log_food}/{@code log_food_by_upc}/{@code log_cached_food}.
+ * without ever invoking {@code log_food}/{@code log_food_by_upc}.
  *
  * <p>Two ways to qualify. A calorie mention plus at least two of the three macros is always a
  * claim - every food-log reply that lists macros mentions all three, unlike weight/vitals/exercise/

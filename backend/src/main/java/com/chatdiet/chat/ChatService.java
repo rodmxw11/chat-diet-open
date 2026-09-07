@@ -53,8 +53,8 @@ public class ChatService {
 
     private static final String FOOD_NUDGE = """
             [System check: that reply described logging food, but no logging tool call actually \
-            went through, so nothing was saved. If food was genuinely described, call log_food, \
-            log_food_by_upc, or log_cached_food now with your best estimate before replying again. \
+            went through, so nothing was saved. If food was genuinely described, call log_food or \
+            log_food_by_upc now with your best estimate before replying again. \
             If nothing should have been logged (e.g. you were reporting past data, not a new \
             entry), say so plainly instead.]""";
 

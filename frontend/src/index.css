@@ -601,6 +601,56 @@ input {
   background: var(--header-bg);
 }
 
+.quantity-prompt-bar {
+  width: 100%;
+  max-width: 660px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-tint);
+}
+
+.quantity-prompt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.quantity-prompt-question {
+  font-size: calc(14px * var(--font-scale));
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.quantity-prompt-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quantity-prompt-pill {
+  flex: 0 1 130px;
+}
+
+.quantity-unit-active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.quantity-unit-active:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.quantity-prompt-hint {
+  font-size: calc(12px * var(--font-scale));
+  color: var(--text-muted);
+}
+
 .message-input-row {
   display: flex;
   align-items: center;

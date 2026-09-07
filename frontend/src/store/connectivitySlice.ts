@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import type { AppDispatch, RootState } from './index'
 import { drainScanQueue } from './barcodeQueueSlice'
-import { drainQueue } from './chatSlice'
+import { drainEntryQueue, drainQueue } from './chatSlice'
 
 export type ConnectionStatus = 'online' | 'retrying' | 'offline'
 
@@ -32,6 +32,7 @@ export const checkConnectivity = createAsyncThunk<void, void, { dispatch: AppDis
     const after = getState().connectivity.status
     if (after === 'online' && before !== 'online') {
       dispatch(drainQueue())
+      dispatch(drainEntryQueue())
       dispatch(drainScanQueue())
     }
   },
