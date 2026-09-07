@@ -9,9 +9,11 @@ import '@fontsource/ibm-plex-mono/500.css'
 import { store } from './store'
 import { startConnectivityMonitor } from './store/connectivitySlice'
 import { startSummaryPolling } from './store/summarySlice'
+import { registerServiceWorkerUpdates } from './lib/registerServiceWorker'
 import './index.css'
 import App from './App.tsx'
 
+registerServiceWorkerUpdates()
 startConnectivityMonitor(store.dispatch, store.getState)
 startSummaryPolling(store.dispatch)
 
