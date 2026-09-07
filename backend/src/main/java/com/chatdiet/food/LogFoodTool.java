@@ -13,6 +13,8 @@ import com.chatdiet.fooditem.FoodItemRepository;
 import com.chatdiet.fooditem.PortionUnitService;
 import com.chatdiet.intent.IntentTool;
 import com.chatdiet.intent.ToolResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -51,6 +53,8 @@ import java.util.function.Function;
                 "entry group instead of starting a new one. Named foods only - not for UPC-based entries."
 )
 public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
+
+    private static final Logger log = LoggerFactory.getLogger(LogFoodTool.class);
 
     private final FoodEntryRepository foodEntryRepository;
     private final FoodItemRepository foodItemRepository;
@@ -137,6 +141,15 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
 
     private ItemOutcome resolveItem(LogFoodItemRequest itemReq) {
         if (Boolean.TRUE.equals(itemReq.useEstimate())) {
+            // An exact alias hit trumps the estimate flag: the model sometimes passes
+            // useEstimate on a first call, and honoring it blindly minted a duplicate
+            // MODEL_ESTIMATE item for a food the cache already knew.
+            var exact = foodResolver.resolveExact(itemReq.foodRef());
+            if (exact.isPresent()) {
+                log.info("useEstimate for '{}' overridden by exact alias hit on food_item {}",
+                        itemReq.foodRef(), exact.get().id());
+                return new ItemOutcome.ResolvedTo(exact.get());
+            }
             return new ItemOutcome.UseEstimate();
         }
 

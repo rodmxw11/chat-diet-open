@@ -4,10 +4,12 @@ import com.chatdiet.fdc.FdcClient;
 import com.chatdiet.fooditem.FoodAlias;
 import com.chatdiet.fooditem.FoodAliasNormalizer;
 import com.chatdiet.fooditem.FoodAliasRepository;
+import com.chatdiet.fooditem.FoodItem;
 import com.chatdiet.fooditem.FoodItemRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Optional;
 
 /**
  * Resolves a spoken/typed food name to a cached {@link com.chatdiet.fooditem.FoodItem}. Two
@@ -38,15 +40,11 @@ public class FoodResolver {
     public FoodResolution resolve(String foodRef) {
         var normalized = FoodAliasNormalizer.normalize(foodRef);
 
-        var alias = foodAliasRepository.findByAliasNormalized(normalized);
-        if (alias.isPresent()) {
-            var item = foodItemRepository.findById(alias.get().foodItemId())
-                    .filter(i -> i.deletedAt() == null);
-            if (item.isPresent()) {
-                return new FoodResolution.Resolved(item.get());
-            }
-            // Alias points at a soft-deleted item - fall through to candidate generation below.
+        var exact = resolveExact(foodRef);
+        if (exact.isPresent()) {
+            return new FoodResolution.Resolved(exact.get());
         }
+        // No alias, or the alias points at a soft-deleted item - fall through to candidates.
 
         var activeItems = foodItemRepository.findAll().stream()
                 .filter(i -> i.deletedAt() == null)
@@ -67,6 +65,18 @@ public class FoodResolver {
         }
         candidates.add(Candidate.estimateOption());
         return new FoodResolution.Unknown(candidates);
+    }
+
+    /**
+     * Exact-alias lookup only - no fuzzy matching, no FDC network call. For callers that need
+     * the cheap deterministic answer and handle a miss themselves (the estimate-override guard,
+     * the fast log path).
+     */
+    public Optional<FoodItem> resolveExact(String foodRef) {
+        var normalized = FoodAliasNormalizer.normalize(foodRef);
+        return foodAliasRepository.findByAliasNormalized(normalized)
+                .flatMap(alias -> foodItemRepository.findById(alias.foodItemId()))
+                .filter(i -> i.deletedAt() == null);
     }
 
     /**

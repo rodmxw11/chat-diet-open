@@ -178,6 +178,24 @@ class LogFoodToolTest {
     }
 
     @Test
+    void useEstimateWithAnExistingExactAliasLogsTheCachedItemInsteadOfMintingADuplicate() {
+        var yogurt = foodItemRepository.save(new FoodItem("greek yogurt", null,
+                59.0, 10.0, 3.6, 0.4, 0.0, 3.2, 36.0, 0.1, 5.0, 141.0, null, "MODEL_ESTIMATE"));
+        foodAliasRepository.save(new FoodAlias("greek yogurt", yogurt.id(), "USER"));
+
+        var itemReq = new LogFoodItemRequest("greek yogurt", "200g", null, null, true,
+                999, 99.0, 99.0, 99.0, null, null, null, null, null, null);
+        var result = logFoodTool.apply(new LogFoodRequest(List.of(itemReq), null, null));
+
+        assertThat(result).isInstanceOf(ToolResult.Success.class);
+        var entry = (FoodEntry) ((ToolResult.Success) result).payload();
+        assertThat(entry.foodItemId()).isEqualTo(yogurt.id());
+        // Scaled from the cached per-100g row (59 * 2 = 118), not the model's 999 estimate.
+        assertThat(entry.totalCalories()).isEqualTo(118);
+        assertThat(foodItemRepository.findAll()).hasSize(1);
+    }
+
+    @Test
     void previouslySub10CalorieItemsNowLogNormally() {
         var itemReq = new LogFoodItemRequest("black tea", "", null, null, true,
                 2, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);

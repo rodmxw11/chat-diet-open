@@ -1,0 +1,32 @@
+databaseChangeLog:
+  # The original food_item DDL declared upc UNIQUE inline, but SQLite's table-recreate dance for
+  # later addColumn changesets silently dropped that constraint. Restore it as an explicit
+  # createIndex, which survives table recreation; SQLite unique indexes permit multiple NULLs, so
+  # scan-less items are unaffected.
+  - changeSet:
+      id: 023-restore-food-item-upc-unique-index
+      author: chat-diet
+      changes:
+        # Defensive: if any duplicate UPCs slipped in while the constraint was missing, keep the
+        # barcode on the oldest row only (a no-op on the live dev DB, verified 2026-09-07).
+        - sql:
+            sql: >
+              UPDATE food_item SET upc = NULL
+              WHERE upc IS NOT NULL
+                AND id NOT IN (SELECT MIN(id) FROM food_item WHERE upc IS NOT NULL GROUP BY upc);
+        - createIndex:
+            indexName: idx_food_item_upc
+            tableName: food_item
+            unique: true
+            columns:
+              - column:
+                  name: upc
+        # Same trap looms over food_alias: its uniqueness currently lives in an inline-constraint
+        # autoindex that a future addColumn would silently drop. Pin it with an explicit index now.
+        - createIndex:
+            indexName: idx_food_alias_normalized
+            tableName: food_alias
+            unique: true
+            columns:
+              - column:
+                  name: alias_normalized
