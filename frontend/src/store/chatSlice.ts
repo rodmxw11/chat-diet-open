@@ -42,12 +42,6 @@ interface ChatState {
   draftText: string
   /** Mirrors the IndexedDB offline queue for the queue panel; kept in sync by queue-touching thunks. */
   queue: QueuedRequest[]
-  /** True while the session's chat history is hidden from view (new replies still show). */
-  hidden: boolean
-  /** The last message's id at the moment hiding was turned on; only messages after it are shown
-      while hidden. Null while not hidden, or if the chat was empty at that moment (so everything
-      that follows counts as "new"). */
-  hiddenSinceMessageId: string | null
   /** True after an external prefill (e.g. a barcode scan resolving a product name) sets draftText -
       consumed once by MessageInput to put the cursor at position 0 instead of the end, so the
       scale reading can be typed in front of the resolved name. */
@@ -60,8 +54,6 @@ const initialState: ChatState = {
   ttsEnabled: false,
   draftText: '',
   queue: [],
-  hidden: false,
-  hiddenSinceMessageId: null,
   pendingCursorStart: false,
 }
 
@@ -173,14 +165,6 @@ export const loadHistory = createAsyncThunk('chat/loadHistory', async () => {
   }))
 })
 
-// Re-fetches the day's transcript and merges in anything the server knows about that this tab
-// doesn't - i.e. turns sent from another device while this one was showing a stale/hidden view.
-// Matches server messages against existing local ones by (role, text) so already-displayed
-// messages keep their rich attachments (charts, SQL tables) instead of being flattened to plain
-// text; genuinely new turns are inserted in the server's order, and local-only entries (queued or
-// failed sends the server doesn't know about yet) are kept, appended after the synced messages.
-export const refreshHistory = createAsyncThunk('chat/refreshHistory', async () => fetchHistoryMessages())
-
 const chatSlice = createSlice({
   name: 'chat',
   initialState,
@@ -202,15 +186,6 @@ const chatSlice = createSlice({
     },
     appendDraftText: (state, action: PayloadAction<string>) => {
       state.draftText = state.draftText ? `${state.draftText} ${action.payload}` : action.payload
-    },
-    hideChat: (state) => {
-      state.hidden = true
-      state.hiddenSinceMessageId =
-        state.messages.length > 0 ? state.messages[state.messages.length - 1].id : null
-    },
-    showChat: (state) => {
-      state.hidden = false
-      state.hiddenSinceMessageId = null
     },
     queueItemSent: (state, action: PayloadAction<{ id: string; response: ChatApiResponse }>) => {
       state.queue = state.queue.filter((item) => item.id !== action.payload.id)
@@ -235,33 +210,6 @@ const chatSlice = createSlice({
         if (state.messages.length === 0) {
           state.messages = action.payload
         }
-      })
-      .addCase(refreshHistory.fulfilled, (state, action) => {
-        // Claim each server message against the first unclaimed local message with the same
-        // role+text, preserving that local message's id/attachments; anything left unclaimed on
-        // the server side is new (from elsewhere) and gets inserted plainly, in server order.
-        // Anything left unclaimed on the local side (queued/failed sends) is kept and appended
-        // after, since the server doesn't know about it yet.
-        const claimed = new Set<number>()
-        const merged: ChatMessage[] = []
-        for (let serverIndex = 0; serverIndex < action.payload.length; serverIndex++) {
-          const serverMessage = action.payload[serverIndex]
-          const localIndex = state.messages.findIndex(
-            (m, i) => !claimed.has(i) && !m.queued && m.role === serverMessage.role && m.text === serverMessage.text,
-          )
-          if (localIndex !== -1) {
-            claimed.add(localIndex)
-            merged.push(state.messages[localIndex])
-          } else {
-            merged.push({
-              id: `remote-${serverMessage.at}-${serverIndex}`,
-              role: serverMessage.role,
-              text: serverMessage.text,
-            })
-          }
-        }
-        const leftover = state.messages.filter((_, i) => !claimed.has(i))
-        state.messages = [...merged, ...leftover]
       })
       // A failed history load is left silent on purpose - offline cold start should open an
       // empty chat, not an error.
@@ -325,8 +273,6 @@ export const {
   setDraftTextWithCursorStart,
   clearPendingCursorStart,
   appendDraftText,
-  hideChat,
-  showChat,
   queueItemSent,
 } = chatSlice.actions
 export default chatSlice.reducer

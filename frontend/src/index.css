@@ -430,14 +430,6 @@ input {
   color: var(--status-retrying);
 }
 
-.chat-hidden-notice {
-  margin: auto 0;
-  text-align: center;
-  font-family: var(--font-mono);
-  font-size: calc(12px * var(--font-scale));
-  color: var(--text-tertiary);
-}
-
 .chart-container {
   margin-top: 8px;
   width: min(100%, 480px);
