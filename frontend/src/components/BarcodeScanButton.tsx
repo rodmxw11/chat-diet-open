@@ -3,6 +3,7 @@ import { useAppDispatch } from '../store/hooks'
 import { setDraftTextWithCursorStart } from '../store/chatSlice'
 import { openUpcPrebind } from '../store/foodItemsSlice'
 import { setScreen } from '../store/uiSlice'
+import BarcodeIcon from './BarcodeIcon'
 import BarcodeScannerOverlay from './BarcodeScannerOverlay'
 
 interface ResolveResponse {
@@ -90,7 +91,7 @@ export default function BarcodeScanButton() {
         title={status === 'error' ? "Couldn't read a barcode from that photo - tap to try again" : 'Scan a barcode'}
         aria-label="Scan a barcode"
       >
-        {status === 'decoding' ? '⏳' : '📷'}
+        {status === 'decoding' ? '⏳' : <BarcodeIcon />}
       </button>
       <input
         ref={inputRef}
