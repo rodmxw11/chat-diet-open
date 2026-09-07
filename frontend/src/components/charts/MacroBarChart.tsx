@@ -1,6 +1,17 @@
-import { Bar, BarChart, LabelList, ResponsiveContainer, usePlotArea, XAxis, YAxis } from 'recharts'
+import {
+  Bar,
+  BarChart,
+  LabelList,
+  ResponsiveContainer,
+  usePlotArea,
+  XAxis,
+  YAxis,
+  type MouseHandlerDataParam,
+} from 'recharts'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { setRange, type MacroRange } from '../../store/dashboardSlice'
+import { setFoodEntriesDate } from '../../store/foodEntriesSlice'
+import { closeOverlay, setScreen } from '../../store/uiSlice'
 
 // Recharts' label-callback props type numeric fields loosely (string | number | boolean | ...),
 // so this accepts `unknown` for each and normalizes to numbers internally rather than fighting
@@ -24,8 +35,9 @@ function formatDayLabel(iso: string): string {
   return date.toLocaleDateString(undefined, { weekday: 'short' })
 }
 
-// Static, non-interactive stacked bar chart per the design handoff - no tooltip, legend, hover,
-// or click targets. The calorie badge (above the stack) and the in-bar gram+letter labels are
+// Stacked bar chart per the design handoff - no tooltip, legend, or hover state, but clicking a
+// bar opens that day on the Daily Foods page (see handleChartClick). The calorie badge (above the
+// stack) and the in-bar gram+letter labels are
 // both rendered as custom label content, attached via a LabelList with an explicit dataKey on
 // each Bar rather than that Bar's own `label` prop. Two independent Recharts quirks make that
 // necessary: (1) for a stacked series, the `value` a label callback receives is the cumulative
@@ -118,6 +130,20 @@ export default function MacroBarChart() {
   const average = averageCalories(macros)
   const maxCalories = Math.max(1, ...macros.map((day) => day.calories))
 
+  // Jumps to that day's food log. Wired on the chart container rather than the individual Bar
+  // segments: Recharts only attaches a segment's own onClick to a hover-swapped "active" layer,
+  // not the always-rendered one, so a per-Bar handler silently never fires on a plain click - the
+  // chart-level handler instead gets activeLabel from Recharts' own coordinate-to-category
+  // tracking, which works regardless of which stacked segment (or gap between them) was clicked.
+  // closeOverlay is a no-op when the chart isn't inside the mobile bottom sheet (desktop sidebar).
+  const handleChartClick = (state: MouseHandlerDataParam) => {
+    const date = state.activeLabel
+    if (typeof date !== 'string') return
+    dispatch(setFoodEntriesDate(date))
+    dispatch(setScreen('foods'))
+    dispatch(closeOverlay())
+  }
+
   return (
     <div className="dash-card macro-chart-card">
       <div className="dash-card-header">
@@ -137,7 +163,13 @@ export default function MacroBarChart() {
       </div>
       {average !== null && <div className="macro-chart-avg-caption">avg {Math.round(average)} cal</div>}
       <ResponsiveContainer width="100%" height={250}>
-        <BarChart data={macros} margin={{ top: 24, right: 4, left: -28, bottom: 0 }} barCategoryGap={range === 30 ? 2 : 8}>
+        <BarChart
+          data={macros}
+          margin={{ top: 24, right: 4, left: -28, bottom: 0 }}
+          barCategoryGap={range === 30 ? 2 : 8}
+          onClick={handleChartClick}
+          className="macro-chart-clickable"
+        >
           <XAxis
             dataKey="date"
             tickFormatter={formatDayLabel}

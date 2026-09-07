@@ -1123,6 +1123,10 @@ input {
   color: var(--accent-tint-text);
 }
 
+.macro-chart-clickable {
+  cursor: pointer;
+}
+
 .macro-chart-badge {
   background: var(--accent);
   color: #fff;

@@ -22,6 +22,9 @@ interface FoodEntriesState {
   date: string
   items: FoodEntry[]
   status: 'idle' | 'loading' | 'error'
+  /** Whether `date` has been deliberately set yet (by the metabolic-day correction, prev/next
+      nav, the date picker, or jumping in from a chart bar) - guards applyMetabolicDate below. */
+  dateInitialized: boolean
 }
 
 function todayIso(): string {
@@ -33,6 +36,7 @@ const initialState: FoodEntriesState = {
   date: todayIso(),
   items: [],
   status: 'idle',
+  dateInitialized: false,
 }
 
 export const loadFoodEntries = createAsyncThunk('foodEntries/load', async (date: string) => {
@@ -53,6 +57,17 @@ const foodEntriesSlice = createSlice({
   reducers: {
     setFoodEntriesDate: (state, action: PayloadAction<string>) => {
       state.date = action.payload
+      state.dateInitialized = true
+    },
+    // The Daily Foods screen unmounts/remounts every time you navigate away and back (AppShell
+    // conditionally renders it), so a component-local "have I corrected yet" ref resets on every
+    // visit and would clobber a date the caller deliberately set (e.g. a macro-chart bar click)
+    // right before switching screens. Tracking dateInitialized in the slice instead makes the
+    // metabolic-day correction a true one-time-per-session default, not a per-mount reset.
+    applyMetabolicDate: (state, action: PayloadAction<string>) => {
+      if (state.dateInitialized) return
+      state.date = action.payload
+      state.dateInitialized = true
     },
   },
   extraReducers: (builder) => {
@@ -73,5 +88,5 @@ const foodEntriesSlice = createSlice({
   },
 })
 
-export const { setFoodEntriesDate } = foodEntriesSlice.actions
+export const { setFoodEntriesDate, applyMetabolicDate } = foodEntriesSlice.actions
 export default foodEntriesSlice.reducer

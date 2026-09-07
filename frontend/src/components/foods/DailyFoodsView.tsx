@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { setScreen } from '../../store/uiSlice'
-import { deleteFoodEntry, loadFoodEntries, setFoodEntriesDate } from '../../store/foodEntriesSlice'
+import { applyMetabolicDate, deleteFoodEntry, loadFoodEntries, setFoodEntriesDate } from '../../store/foodEntriesSlice'
 import { loadMacros } from '../../store/dashboardSlice'
 import { loadSummary } from '../../store/summarySlice'
 
@@ -51,14 +51,14 @@ export default function DailyFoodsView() {
   const macroRange = useAppSelector((state) => state.dashboard.range)
 
   // Corrects the initial date to the server's current metabolic day (accounts for the
-  // day-rollover hour) instead of the browser's raw local date - but only once, on first load.
-  // A naive effect keyed on metabolicDate alone would snap back to "today" any time the summary
-  // refetches while the user is looking at a past date.
-  const hasAppliedMetabolicDate = useRef(false)
+  // day-rollover hour) instead of the browser's raw local date - but only once per session, via
+  // applyMetabolicDate's dateInitialized guard in the slice, not a per-mount ref: this component
+  // unmounts every time the user navigates away (AppShell renders it conditionally), so a local
+  // ref would re-arm on every visit and clobber a date set deliberately just before arriving here
+  // (e.g. clicking a day's bar on the macro chart).
   useEffect(() => {
-    if (!hasAppliedMetabolicDate.current && metabolicDate) {
-      hasAppliedMetabolicDate.current = true
-      dispatch(setFoodEntriesDate(metabolicDate))
+    if (metabolicDate) {
+      dispatch(applyMetabolicDate(metabolicDate))
     }
   }, [dispatch, metabolicDate])
 
