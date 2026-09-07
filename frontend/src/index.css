@@ -775,6 +775,104 @@ input {
   max-height: 90dvh;
 }
 
+/* ---------- Live barcode scanner ---------- */
+.barcode-scanner-dialog {
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: 100vw;
+  height: 100dvh;
+  max-width: 100vw;
+  max-height: 100dvh;
+  background: #000;
+}
+
+.barcode-scanner-dialog[open] {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+.barcode-scanner-dialog::backdrop {
+  background: #000;
+}
+
+.barcode-scanner-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.barcode-scanner-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.barcode-scanner-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.barcode-scanner-close {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  right: 14px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.barcode-scanner-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.barcode-scanner-badge {
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-family: var(--font-mono);
+  font-size: calc(13px * var(--font-scale));
+  text-align: center;
+  max-width: 85vw;
+}
+
+.barcode-scanner-badge--success {
+  background: rgba(0, 168, 89, 0.85);
+}
+
+.barcode-scanner-badge--error {
+  background: rgba(209, 83, 62, 0.85);
+}
+
+.barcode-scanner-fallback {
+  background: none;
+  border: none;
+  color: #fff;
+  text-decoration: underline;
+  font-family: var(--font-mono);
+  font-size: calc(12px * var(--font-scale));
+  cursor: pointer;
+  padding: 4px;
+}
+
 /* ---------- Offline queue panel ---------- */
 .queue-empty {
   color: var(--text-muted);

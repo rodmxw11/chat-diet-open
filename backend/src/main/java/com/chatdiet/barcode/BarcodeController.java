@@ -1,6 +1,7 @@
 package com.chatdiet.barcode;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -10,7 +11,11 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 
-/** REST endpoint for decoding a barcode from an uploaded product photo. */
+/**
+ * REST endpoint for resolving a barcode to a product identity - either decoded server-side from an
+ * uploaded product photo ({@link #decode}, the fallback path for browsers without a live in-page
+ * scanner), or already decoded client-side and just needing resolution ({@link #resolve}).
+ */
 @RestController
 @RequestMapping("/api/barcode")
 public class BarcodeController {
@@ -48,5 +53,19 @@ public class BarcodeController {
                             new BarcodeDecodeResponse(upc, resolved.resolvedName(), resolved.needsManualEntry()));
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Resolves a UPC the client already decoded itself (the live in-page scanner's client-side
+     * {@code BarcodeDetector}), skipping the image upload and server-side ZXing decode that
+     * {@link #decode} does - the value is already in hand, so only identity resolution is needed.
+     *
+     * @param upc the barcode value read client-side
+     * @return 200 with the resolution outcome, same shape as {@link #decode}
+     */
+    @GetMapping("/resolve")
+    public ResponseEntity<BarcodeDecodeResponse> resolve(@RequestParam("upc") String upc) {
+        var resolved = upcResolutionService.resolve(upc);
+        return ResponseEntity.ok(new BarcodeDecodeResponse(upc, resolved.resolvedName(), resolved.needsManualEntry()));
     }
 }
