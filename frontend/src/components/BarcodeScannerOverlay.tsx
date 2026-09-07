@@ -22,7 +22,9 @@ const CAPTURE_HOLD_MS = 350
 type ScanState = 'requesting' | 'scanning' | 'captured' | 'error'
 
 // Live in-page barcode scanner: opens the rear camera directly (no OS camera app round-trip),
-// runs a throttled BarcodeDetector loop, and draws a live bracket around whatever it finds. Only
+// runs a throttled BarcodeDetector loop, and draws a live bracket around whatever it finds -
+// continuously, not stopping at the first hit, so the detected value stays visible and the user
+// confirms it with the Capture button rather than the app guessing and firing on its own. Only
 // ever rendered when BarcodeScanButton has already feature-detected `BarcodeDetector` support -
 // this component assumes it exists. Falls back to nothing itself on getUserMedia failure beyond
 // showing the error and the "snap a photo instead" escape hatch; the actual fallback flow (file
@@ -36,9 +38,17 @@ export default function BarcodeScannerOverlay({ open, onClose, onDetected, onFal
   const lastDetectAtRef = useRef(0)
   const detectingRef = useRef(false)
   const stoppedRef = useRef(false)
+  // Set by the effect below to the capture() closure for the current session, so the "Capture"
+  // button (rendered outside that effect) can trigger it without duplicating the stop/vibrate/
+  // hand-off logic.
+  const captureRef = useRef<((upc: string) => void) | null>(null)
 
   const [state, setState] = useState<ScanState>('requesting')
   const [errorMessage, setErrorMessage] = useState('')
+  // Whatever the detector currently sees in-frame, updated continuously - scanning no longer
+  // auto-captures on the first hit, so the user can see what would be captured and confirm it
+  // with the button instead of the app guessing for them.
+  const [detectedValue, setDetectedValue] = useState<string | null>(null)
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -61,6 +71,7 @@ export default function BarcodeScannerOverlay({ open, onClose, onDetected, onFal
     stoppedRef.current = false
     setState('requesting')
     setErrorMessage('')
+    setDetectedValue(null)
 
     const detector = new window.BarcodeDetector!({ formats: BARCODE_FORMATS })
 
@@ -94,13 +105,15 @@ export default function BarcodeScannerOverlay({ open, onClose, onDetected, onFal
         detectingRef.current = true
         try {
           const barcodes = await detector.detect(video)
-          if (!stoppedRef.current && barcodes.length > 0) {
-            drawBracket(canvas, video, barcodes[0].cornerPoints)
-            capture(barcodes[0].rawValue)
-            detectingRef.current = false
-            return
+          if (!stoppedRef.current) {
+            if (barcodes.length > 0) {
+              drawBracket(canvas, video, barcodes[0].cornerPoints)
+              setDetectedValue(barcodes[0].rawValue)
+            } else {
+              clearCanvas(canvas)
+              setDetectedValue(null)
+            }
           }
-          if (!stoppedRef.current) clearCanvas(canvas)
         } catch (error) {
           console.error('Barcode detection failed on this frame:', error)
         }
@@ -118,6 +131,7 @@ export default function BarcodeScannerOverlay({ open, onClose, onDetected, onFal
       stopStream()
       window.setTimeout(() => onDetected(upc), CAPTURE_HOLD_MS)
     }
+    captureRef.current = capture
 
     async function start() {
       try {
@@ -169,6 +183,7 @@ export default function BarcodeScannerOverlay({ open, onClose, onDetected, onFal
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
       stopStream()
       window.removeEventListener('resize', resizeCanvas)
+      captureRef.current = null
     }
   }, [open, onDetected])
 
@@ -187,9 +202,23 @@ export default function BarcodeScannerOverlay({ open, onClose, onDetected, onFal
         </button>
         <div className="barcode-scanner-footer">
           {state === 'requesting' && <span className="barcode-scanner-badge">Starting camera…</span>}
-          {state === 'scanning' && <span className="barcode-scanner-badge">Point the camera at a barcode</span>}
+          {state === 'scanning' && (
+            <span className="barcode-scanner-badge">
+              {detectedValue ? `Detected: ${detectedValue}` : 'Point the camera at a barcode'}
+            </span>
+          )}
           {state === 'captured' && <span className="barcode-scanner-badge barcode-scanner-badge--success">Captured</span>}
           {state === 'error' && <span className="barcode-scanner-badge barcode-scanner-badge--error">{errorMessage}</span>}
+          {state === 'scanning' && (
+            <button
+              type="button"
+              className="barcode-scanner-capture"
+              disabled={!detectedValue}
+              onClick={() => detectedValue && captureRef.current?.(detectedValue)}
+            >
+              Capture
+            </button>
+          )}
           <button type="button" className="barcode-scanner-fallback" onClick={onFallbackToPhoto}>
             Can't find it? Snap a photo instead
           </button>
