@@ -205,7 +205,9 @@ input {
 
 .app-header-summary {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
 }
 
 .goal-headline {
