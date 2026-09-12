@@ -26,7 +26,7 @@ cd backend
 gradlew bootRun
 ```
 
-This creates an H2 file database at `backend/data/chat-diet` on first run and applies Liquibase migrations automatically.
+This creates a SQLite file database at `backend/data/chat-diet.db` on first run and applies Liquibase migrations automatically.
 
 **Frontend** (Vite dev server):
 
@@ -52,7 +52,7 @@ cd ..
 docker-deploy.cmd
 ```
 
-This builds/rebuilds the `chat-diet-backend` image, stops any previous container, and starts a new one on `http://localhost:8080`, with `backend\data` mounted into the container so the H2 database and backups persist across restarts. The API key is already baked into the image via `application.yml` (which Gradle packages into the jar), so no environment variable needs to be passed at `docker run` time.
+This builds/rebuilds the `chat-diet-backend` image, stops any previous container, and starts a new one on `http://localhost:8080`, with `backend\data` mounted into the container so the SQLite database and backups persist across restarts. The API key is already baked into the image via `application.yml` (which Gradle packages into the jar), so no environment variable needs to be passed at `docker run` time.
 
 The frontend is not containerized. Run it separately with `npm run dev`, or build a static bundle with `npm run build` (output in `frontend/dist`) and serve it with any static file server.
 
