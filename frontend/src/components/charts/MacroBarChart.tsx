@@ -97,12 +97,15 @@ function averageCalories(macros: { calories: number }[]): number | null {
   return loggedDays.reduce((sum, day) => sum + day.calories, 0) / loggedDays.length
 }
 
-// The visible bars are stacked macro grams, not calories - calories only ever appear as the badge
-// text above each bar, positioned off the bar's own height, so there's no calorie-scaled axis to
-// hang a Recharts <ReferenceLine> off. Rather than fight Recharts' multi-axis wiring for an axis no
-// Bar uses, this maps `average` onto the plot area directly (0 at the bottom, maxCalories at the
-// top) and draws a plain SVG line - geometrically independent of the bars' own gram scale. The
-// "avg N cal" text lives in the card header instead of riding on the line itself: with narrow bars
+// The stacked segments are sized by each macro's calorie contribution (protein/carbs at 4 cal/g,
+// fat at 9 cal/g) rather than raw grams, so bar height always tracks the calorie badge above it -
+// a gram-based stack could make a higher-calorie, fattier day render shorter than a lower-calorie,
+// carbier one. The in-bar labels still show grams (via each LabelList's own dataKey), only the
+// segment height itself is calorie-weighted. There's still no calorie-scaled axis to hang a
+// Recharts <ReferenceLine> off, since the axis is hidden. Rather than fight Recharts' multi-axis
+// wiring for an axis no Bar uses, this maps `average` onto the plot area directly (0 at the bottom,
+// maxCalories at the top) and draws a plain SVG line - geometrically independent of the bars' own
+// scale. The "avg N cal" text lives in the card header instead of riding on the line itself: with narrow bars
 // (30-day view especially) a tall day's bar/badge can sit right where the line crosses, so an
 // in-chart label risked getting covered or looking like a mismatched box floating over a bar.
 function AverageCalorieLine({ average, maxCalories }: { average: number; maxCalories: number }) {
@@ -129,6 +132,15 @@ export default function MacroBarChart() {
   const showInBarLabels = range === 7
   const average = averageCalories(macros)
   const maxCalories = Math.max(1, ...macros.map((day) => day.calories))
+  // Stack segments by calorie contribution (Atwater factors: 4 cal/g for protein and carbs, 9 cal/g
+  // for fat) rather than raw grams - see the comment above averageCalories for why bar height needs
+  // to track the calorie badge rather than gram totals.
+  const chartData = macros.map((day) => ({
+    ...day,
+    proteinCal: day.proteinG * 4,
+    fatCal: day.fatG * 9,
+    carbsCal: day.carbsG * 4,
+  }))
 
   // Jumps to that day's food log. Wired on the chart container rather than the individual Bar
   // segments: Recharts only attaches a segment's own onClick to a hover-swapped "active" layer,
@@ -164,7 +176,7 @@ export default function MacroBarChart() {
       {average !== null && <div className="macro-chart-avg-caption">avg {Math.round(average)} cal</div>}
       <ResponsiveContainer width="100%" height={250}>
         <BarChart
-          data={macros}
+          data={chartData}
           margin={{ top: 24, right: 4, left: -28, bottom: 0 }}
           barCategoryGap={range === 30 ? 2 : 8}
           onClick={handleChartClick}
@@ -179,13 +191,13 @@ export default function MacroBarChart() {
             interval={range === 30 ? 3 : 0}
           />
           <YAxis hide />
-          <Bar dataKey="proteinG" stackId="macros" fill="var(--macro-protein)" isAnimationActive={false}>
+          <Bar dataKey="proteinCal" stackId="macros" fill="var(--macro-protein)" isAnimationActive={false}>
             {showInBarLabels && <LabelList dataKey="proteinG" content={segmentLabel('P')} />}
           </Bar>
-          <Bar dataKey="fatG" stackId="macros" fill="var(--macro-fat)" isAnimationActive={false}>
+          <Bar dataKey="fatCal" stackId="macros" fill="var(--macro-fat)" isAnimationActive={false}>
             {showInBarLabels && <LabelList dataKey="fatG" content={segmentLabel('F')} />}
           </Bar>
-          <Bar dataKey="carbsG" stackId="macros" fill="var(--macro-carbs)" isAnimationActive={false}>
+          <Bar dataKey="carbsCal" stackId="macros" fill="var(--macro-carbs)" isAnimationActive={false}>
             {showInBarLabels && <LabelList dataKey="carbsG" content={segmentLabel('C')} />}
             <LabelList dataKey="calories" content={CalorieBadge} />
           </Bar>
