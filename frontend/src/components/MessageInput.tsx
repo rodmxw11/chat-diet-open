@@ -55,7 +55,7 @@ export default function MessageInput() {
         <button type="button" className="quick-entry-button" onClick={() => quickEntry('Note that ')}>
           Note
         </button>
-        <button type="button" className="quick-entry-button" onClick={() => quickEntry('I ate ')}>
+        <button type="button" className="quick-entry-button" onClick={() => quickEntry('Today I ate ')}>
           Ate
         </button>
         <button type="button" className="quick-entry-button" onClick={() => quickEntry('Weight ')}>

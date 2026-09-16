@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
  */
 public final class FastLogParser {
 
-    private static final Pattern LEADING_ATE = Pattern.compile("(?i)^(?:i\\s+)?ate\\s+");
+    private static final Pattern LEADING_ATE = Pattern.compile("(?i)^(?:today\\s+)?(?:i\\s+)?ate\\s+");
     private static final Pattern TRAILING_PUNCT = Pattern.compile("[.!?\\s]+$");
     private static final Pattern GRAMS_FIRST =
             Pattern.compile("(?i)^([0-9]*\\.?[0-9]+)\\s*g(?:rams?)?\\s+(?:of\\s+)?(\\S.*)$");
