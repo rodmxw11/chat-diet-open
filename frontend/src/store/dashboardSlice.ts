@@ -42,6 +42,13 @@ export interface TdeeStatus {
 
 export type MacroRange = 7 | 30
 
+export interface BloodPressureReading {
+  timestamp: string
+  systolic: number
+  diastolic: number
+  bpm: number | null
+}
+
 interface DashboardState {
   range: MacroRange
   macros: DailyMacros[]
@@ -50,6 +57,9 @@ interface DashboardState {
   weightTrendStatus: 'idle' | 'loading' | 'error'
   tdee: TdeeStatus | null
   tdeeStatus: 'idle' | 'loading' | 'error'
+  bpRange: MacroRange
+  bloodPressure: BloodPressureReading[]
+  bloodPressureStatus: 'idle' | 'loading' | 'error'
 }
 
 const initialState: DashboardState = {
@@ -60,6 +70,9 @@ const initialState: DashboardState = {
   weightTrendStatus: 'idle',
   tdee: null,
   tdeeStatus: 'idle',
+  bpRange: 7,
+  bloodPressure: [],
+  bloodPressureStatus: 'idle',
 }
 
 export const loadMacros = createAsyncThunk('dashboard/loadMacros', async (days: MacroRange) => {
@@ -80,12 +93,21 @@ export const loadTdeeEstimate = createAsyncThunk('dashboard/loadTdeeEstimate', a
   return (await response.json()) as TdeeStatus
 })
 
+export const loadBloodPressure = createAsyncThunk('dashboard/loadBloodPressure', async (days: MacroRange) => {
+  const response = await fetch(`/api/dashboard/blood-pressure?days=${days}`)
+  if (!response.ok) throw new Error(`Blood pressure request failed: ${response.status}`)
+  return (await response.json()) as BloodPressureReading[]
+})
+
 const dashboardSlice = createSlice({
   name: 'dashboard',
   initialState,
   reducers: {
     setRange: (state, action: PayloadAction<MacroRange>) => {
       state.range = action.payload
+    },
+    setBpRange: (state, action: PayloadAction<MacroRange>) => {
+      state.bpRange = action.payload
     },
   },
   extraReducers: (builder) => {
@@ -120,8 +142,18 @@ const dashboardSlice = createSlice({
       .addCase(loadTdeeEstimate.rejected, (state) => {
         state.tdeeStatus = 'error'
       })
+      .addCase(loadBloodPressure.pending, (state) => {
+        state.bloodPressureStatus = 'loading'
+      })
+      .addCase(loadBloodPressure.fulfilled, (state, action) => {
+        state.bloodPressureStatus = 'idle'
+        state.bloodPressure = action.payload
+      })
+      .addCase(loadBloodPressure.rejected, (state) => {
+        state.bloodPressureStatus = 'error'
+      })
   },
 })
 
-export const { setRange } = dashboardSlice.actions
+export const { setRange, setBpRange } = dashboardSlice.actions
 export default dashboardSlice.reducer

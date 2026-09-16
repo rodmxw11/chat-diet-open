@@ -17,13 +17,16 @@ public class DashboardController {
     private final WeightTrendService weightTrendService;
     private final DayBoundaryService dayBoundaryService;
     private final AdaptiveTdeeService adaptiveTdeeService;
+    private final BloodPressureService bloodPressureService;
 
     public DashboardController(MacroChartService macroChartService, WeightTrendService weightTrendService,
-                                DayBoundaryService dayBoundaryService, AdaptiveTdeeService adaptiveTdeeService) {
+                                DayBoundaryService dayBoundaryService, AdaptiveTdeeService adaptiveTdeeService,
+                                BloodPressureService bloodPressureService) {
         this.macroChartService = macroChartService;
         this.weightTrendService = weightTrendService;
         this.dayBoundaryService = dayBoundaryService;
         this.adaptiveTdeeService = adaptiveTdeeService;
+        this.bloodPressureService = bloodPressureService;
     }
 
     /** Per-day macro breakdown for the last {@code days} (7 or 30) metabolic days, oldest first. */
@@ -38,6 +41,12 @@ public class DashboardController {
     @GetMapping("/api/dashboard/weight-trend")
     public WeightTrendResponse weightTrend() {
         return weightTrendService.trend30Day();
+    }
+
+    /** Blood pressure / heart rate readings for the last {@code days} (7 or 30), oldest first. */
+    @GetMapping("/api/dashboard/blood-pressure")
+    public List<BloodPressureReading> bloodPressure(@RequestParam(defaultValue = "7") int days) {
+        return bloodPressureService.readings(days);
     }
 
     /** Flat DTO wrapping {@link TdeeResult} so the frontend has one predictable response shape. */

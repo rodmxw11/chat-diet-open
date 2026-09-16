@@ -1194,6 +1194,12 @@ input {
   margin-top: 10px;
 }
 
+.bp-table-wrapper {
+  margin-top: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
 /* ---------- Shopping mode ---------- */
 .shop-screen {
   display: flex;

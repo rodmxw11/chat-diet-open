@@ -9,6 +9,29 @@ plugins {
 group = 'com.chatdiet'
 version = '0.0.1-SNAPSHOT'
 
+// Short commit hash baked into build-info.properties below, for the About page. Falls back
+// gracefully (e.g. a shallow clone or a source tarball with no .git directory) rather than
+// failing the build.
+def gitCommit
+try {
+    gitCommit = providers.exec {
+        commandLine 'git', 'rev-parse', '--short', 'HEAD'
+    }.standardOutput.asText.get().trim()
+} catch (Exception ignored) {
+    gitCommit = 'unknown'
+}
+
+// Writes META-INF/build-info.properties (name/version/build time, plus the git commit above) into
+// the jar - Spring Boot's ProjectInfoAutoConfiguration picks it up as a BuildProperties bean with
+// no extra dependency (doesn't require Actuator). Consumed by AboutService for the About page.
+springBoot {
+    buildInfo {
+        properties {
+            additional = ['git.commit': gitCommit]
+        }
+    }
+}
+
 java {
 	toolchain {
 		languageVersion = JavaLanguageVersion.of(21)
