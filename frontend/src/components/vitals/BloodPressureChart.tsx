@@ -31,7 +31,7 @@ function toChartPoints(readings: BloodPressureReading[]): ChartPoint[] {
   }))
 }
 
-function average(values: number[]): number | null {
+export function average(values: number[]): number | null {
   if (values.length === 0) return null
   return values.reduce((sum, v) => sum + v, 0) / values.length
 }

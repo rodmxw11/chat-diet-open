@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { setScreen } from '../../store/uiSlice'
 import { loadBloodPressure, setBpRange, type MacroRange } from '../../store/dashboardSlice'
-import BloodPressureChart from './BloodPressureChart'
+import BloodPressureChart, { average } from './BloodPressureChart'
 
 function formatDate(iso: string): string {
   const date = new Date(iso)
@@ -27,7 +27,9 @@ export default function BloodPressureView() {
     dispatch(loadBloodPressure(range))
   }, [dispatch, range])
 
-  const latest = readings.length > 0 ? readings[readings.length - 1] : null
+  const systolicAvg = average(readings.map((r) => r.systolic))
+  const diastolicAvg = average(readings.map((r) => r.diastolic))
+  const bpmAvg = average(readings.map((r) => r.bpm).filter((v): v is number => v !== null))
 
   return (
     <div className="shop-screen">
@@ -44,7 +46,9 @@ export default function BloodPressureView() {
           <div className="shop-header-text">
             <span className="shop-title">Blood pressure</span>
             <span className="shop-progress">
-              {latest ? `Last: ${latest.systolic}/${latest.diastolic}${latest.bpm !== null ? ` · ${latest.bpm} bpm` : ''}` : 'No readings yet'}
+              {systolicAvg !== null && diastolicAvg !== null
+                ? `Avg: ${Math.round(systolicAvg)}/${Math.round(diastolicAvg)}${bpmAvg !== null ? ` · ${Math.round(bpmAvg)} bpm` : ''} (${range}d)`
+                : 'No readings yet'}
             </span>
           </div>
         </div>
