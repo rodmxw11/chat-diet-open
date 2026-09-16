@@ -1,0 +1,43 @@
+databaseChangeLog:
+  - changeSet:
+      id: 025-create-omron-reading-table
+      author: chat-diet
+      changes:
+        - createTable:
+            tableName: omron_reading
+            columns:
+              - column:
+                  name: id
+                  type: INTEGER
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: systolic
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: diastolic
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: bpm
+                  type: INT
+        # Explicit index rather than an inline column constraint - see 023's note on SQLite's
+        # table-recreate dance silently dropping inline UNIQUE constraints on later addColumn
+        # changesets. Also what CSV import upserts (ON CONFLICT(timestamp)) rely on.
+        - createIndex:
+            indexName: idx_omron_reading_timestamp
+            tableName: omron_reading
+            unique: true
+            columns:
+              - column:
+                  name: timestamp
