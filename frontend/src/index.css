@@ -28,6 +28,9 @@
   --status-retrying: #c99a2a;
   --status-offline: #d1533e;
 
+  --vitals-systolic: #d1533e;
+  --vitals-diastolic: #3f7cc9;
+
   --destructive-text: #c1503a;
   --destructive-border: #ecb9ac;
   --destructive-hover-bg: #fbeceb;
@@ -84,6 +87,9 @@
   --status-online: #6fd0a1;
   --status-retrying: #e0b74f;
   --status-offline: #e57a64;
+
+  --vitals-systolic: #e57a64;
+  --vitals-diastolic: #7aa8e8;
 
   --destructive-text: #f0917d;
   --destructive-border: #6b3a35;

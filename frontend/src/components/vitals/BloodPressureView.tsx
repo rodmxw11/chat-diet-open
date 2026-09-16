@@ -78,10 +78,10 @@ export default function BloodPressureView() {
               <BloodPressureChart readings={readings} />
               <div className="weight-chart-legend">
                 <span>
-                  <span className="legend-swatch legend-swatch--line" style={{ background: 'var(--accent)' }} /> SBP
+                  <span className="legend-swatch legend-swatch--line" style={{ background: 'var(--vitals-systolic)' }} /> SBP
                 </span>
                 <span>
-                  <span className="legend-swatch legend-swatch--line" style={{ background: 'var(--status-offline)' }} /> DBP
+                  <span className="legend-swatch legend-swatch--line" style={{ background: 'var(--vitals-diastolic)' }} /> DBP
                 </span>
                 <span>
                   <span className="legend-swatch legend-swatch--line" style={{ background: 'var(--macro-carbs)' }} /> BPM
