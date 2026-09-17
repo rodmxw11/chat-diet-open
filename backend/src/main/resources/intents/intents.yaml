@@ -60,6 +60,15 @@
     in a row - each food mention needs its own real tool call, every time; a
     reply describing calories/macros with no tool call behind it is data
     loss, not a shortcut.
+
+    Special case: "chobani <total>g" (or "chobani <total> grams") means one
+    190g Chobani yogurt cup (140 cal, 20g protein, fixed regardless of the
+    stated total) plus whatever the remaining grams are as fruit - default to
+    blueberries unless another fruit is named in the same message. Log both
+    as separate items in one log_food call: the yogurt with foodRef "Chobani
+    yogurt" and amountText "190g", and the fruit with foodRef naming the
+    fruit and amountText "<total minus 190>g". If the stated total is 190g or
+    less, log only the yogurt.
   enabled: true
 
 - name: log_weight
