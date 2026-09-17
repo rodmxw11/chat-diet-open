@@ -1,9 +1,11 @@
+import type { Key } from 'react'
 import {
   CartesianGrid,
   Line,
   LineChart,
   ReferenceLine,
   ResponsiveContainer,
+  Symbols,
   Tooltip,
   XAxis,
   YAxis,
@@ -46,6 +48,30 @@ function formatTooltipDateTime(time: number): string {
   return date.toLocaleString(undefined, { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
+function isMorning(time: number): boolean {
+  return new Date(time).getHours() < 12
+}
+
+// Recharts' Line dot prop is normally one fixed shape for a whole series; rendering it as a
+// per-point function instead lets the marker itself say AM (circle) vs PM (diamond), on top of
+// the series' own color, without a fourth series or separate chart.
+function renderTimeOfDayDot(color: string) {
+  return ({ cx, cy, payload, key }: { cx?: number; cy?: number; payload?: ChartPoint; key?: Key | null }) => {
+    if (cx == null || cy == null || !payload) return null
+    return (
+      <Symbols
+        key={key}
+        cx={cx}
+        cy={cy}
+        type={isMorning(payload.time) ? 'circle' : 'diamond'}
+        size={30}
+        fill={color}
+        stroke={color}
+      />
+    )
+  }
+}
+
 function BloodPressureTooltip({ active, payload }: TooltipContentProps) {
   const row = payload?.[0]?.payload as ChartPoint | undefined
   if (!active || !row) return null
@@ -64,7 +90,9 @@ function BloodPressureTooltip({ active, payload }: TooltipContentProps) {
 // what was asked for) on a time-based X axis - readings land at their real time of day rather than
 // snapping to evenly-spaced categories, so multiple same-day readings show their actual spacing.
 // Only horizontal gridlines are drawn, capped at 4 ticks, and each series gets a light dashed
-// reference line at its own average, labeled with that average, in the series' own color.
+// reference line at its own average, labeled with that average, in the series' own color. Each
+// point's marker shape also encodes time of day - circle before noon, diamond from noon on -
+// independent of which series it belongs to (see the AM/PM legend below the chart).
 export default function BloodPressureChart({ readings }: { readings: BloodPressureReading[] }) {
   const data = toChartPoints(readings)
   const systolicAvg = average(readings.map((r) => r.systolic))
@@ -138,9 +166,30 @@ export default function BloodPressureChart({ readings }: { readings: BloodPressu
             }}
           />
         )}
-        <Line dataKey="systolic" stroke={SYSTOLIC_COLOR} dot={{ r: 2.5 }} strokeWidth={1.75} isAnimationActive={false} connectNulls />
-        <Line dataKey="diastolic" stroke={DIASTOLIC_COLOR} dot={{ r: 2.5 }} strokeWidth={1.75} isAnimationActive={false} connectNulls />
-        <Line dataKey="bpm" stroke={BPM_COLOR} dot={{ r: 2.5 }} strokeWidth={1.75} isAnimationActive={false} connectNulls />
+        <Line
+          dataKey="systolic"
+          stroke={SYSTOLIC_COLOR}
+          dot={renderTimeOfDayDot(SYSTOLIC_COLOR)}
+          strokeWidth={1.75}
+          isAnimationActive={false}
+          connectNulls
+        />
+        <Line
+          dataKey="diastolic"
+          stroke={DIASTOLIC_COLOR}
+          dot={renderTimeOfDayDot(DIASTOLIC_COLOR)}
+          strokeWidth={1.75}
+          isAnimationActive={false}
+          connectNulls
+        />
+        <Line
+          dataKey="bpm"
+          stroke={BPM_COLOR}
+          dot={renderTimeOfDayDot(BPM_COLOR)}
+          strokeWidth={1.75}
+          isAnimationActive={false}
+          connectNulls
+        />
       </LineChart>
     </ResponsiveContainer>
   )

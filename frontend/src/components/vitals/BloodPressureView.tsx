@@ -90,6 +90,12 @@ export default function BloodPressureView() {
                 <span>
                   <span className="legend-swatch legend-swatch--line" style={{ background: 'var(--macro-carbs)' }} /> BPM
                 </span>
+                <span>
+                  <span className="legend-swatch legend-swatch--dot" /> AM
+                </span>
+                <span>
+                  <span className="legend-swatch legend-swatch--diamond" /> PM
+                </span>
               </div>
               <div className="sql-table-wrapper bp-table-wrapper">
                 <table className="sql-table">
