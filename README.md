@@ -10,6 +10,8 @@ or run an arbitrary analytical query over your own history.
 Built as a personal PWA running on a home server, reachable from phone and desktop
 over a private Tailscale network.
 
+![chat-diet on the desktop: the chat column beside a dashboard of macro and weight-trend charts](images/desktop-dashboard.png)
+
 ## Why it works this way
 
 **The database is private, and that is the point.** Food logging only produces useful
@@ -60,6 +62,10 @@ Items directly.
 The frontend is a responsive React PWA with light and dark themes — it works as a
 desktop web app and installs as a mobile app, with an offline queue that drains when
 the connection returns. An optional Alexa skill allows voice logging.
+
+| Logging by chat | Navigation | Calories & macros |
+|---|---|---|
+| ![The mobile chat view, logging food in plain language and answering a question about calories remaining](images/mobile-chat.png) | ![The mobile navigation menu listing charts, foods, micronutrients, vitals, notes and schema](images/mobile-menu.png) | ![A week of stacked calorie bars broken into protein, carbs and fat, against the daily target](images/mobile-calories-macros.png) |
 
 ## Architecture
 
