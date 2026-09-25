@@ -28,6 +28,16 @@ gradlew bootRun
 
 This creates a SQLite file database at `backend/data/chat-diet.db` on first run and applies Liquibase migrations automatically.
 
+That database starts empty, so the charts and history screens have nothing to show. To start against 60 days of generated data instead, copy the demo database into place and point the app at it:
+
+```
+copy demo\chat-diet-demo.db backend\data\
+cd backend
+gradlew bootRun --args="--spring.datasource.url=jdbc:sqlite:./data/chat-diet-demo.db"
+```
+
+Your own `chat-diet.db` is untouched - the two sit side by side, and you switch between them with that one argument. See [demo/README.md](demo/README.md).
+
 **Frontend** (Vite dev server):
 
 ```

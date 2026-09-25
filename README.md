@@ -122,6 +122,21 @@ your Anthropic API key and personal biometrics (that file is gitignored), then
 `gradlew bootRun` in `backend/`. The SQLite database and its schema are created
 automatically on first run.
 
+### Try it with demo data
+
+A fresh database is empty, which makes the charts hard to judge. [`demo/`](demo/)
+holds a ready-to-run database of 60 days of generated data — the screenshots above
+are taken from it:
+
+```
+copy demo\chat-diet-demo.db backend\data\
+cd backend
+gradlew bootRun --args="--spring.datasource.url=jdbc:sqlite:./data/chat-diet-demo.db"
+```
+
+Every screen except the chat box works without an API key. See
+[demo/README.md](demo/README.md) for how it is generated.
+
 ## Documentation
 
 | Document | Contents |
@@ -129,6 +144,7 @@ automatically on first run.
 | [SPEC.md](SPEC.md) | Full design specification as implemented |
 | [USER-GUIDE.md](USER-GUIDE.md) | What you can say to the app |
 | [HOW-TO-RUN.md](HOW-TO-RUN.md) | Local dev and Docker deployment |
+| [demo/](demo/) | Ready-to-run database of generated data, and how to regenerate it |
 | [docs/](docs/) | Design notes, architecture assessments, Alexa skill specs |
 
 ## Status

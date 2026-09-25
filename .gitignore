@@ -41,6 +41,5 @@ graphify-out/
 TO-DO.md
 docs/MEAL-PLANS.md
 
-# Generated demo data and the full screenshot set it produced. Kept locally for re-shooting
-# screenshots; the handful published in the README live in images/ and are tracked.
-demo-assets/
+# The working copy the app actually runs against; the pristine one is tracked in demo/.
+backend/data/chat-diet-demo.db
