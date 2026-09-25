@@ -33,3 +33,10 @@ backup-data/
 certs/
 
 .playwright-mcp/
+
+# Knowledge-graph tool output: local cache artifacts, embeds absolute local paths
+graphify-out/
+
+# Personal scratchpad and diet notes: real health data, kept local only
+TO-DO.md
+docs/MEAL-PLANS.md
