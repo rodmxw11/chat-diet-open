@@ -377,6 +377,28 @@ input {
   color: var(--accent-hover);
 }
 
+/* Phone widths. Every control in the header is pinned to a 44px touch target and must not shrink,
+   so the row's min-content width is fixed - on a 390px screen (iPhone 14 Pro and similar) that
+   overflowed, clipping the rightmost icon and part of the send button with nothing to scroll to.
+   Reclaim the space from the gaps, side padding and the "Online" text instead of the targets: the
+   status dot still conveys state visually and the button keeps its aria-label for screen readers. */
+@media (max-width: 460px) {
+  .app-header {
+    gap: 8px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .app-header-icons,
+  .app-header-actions {
+    gap: 6px;
+  }
+
+  .status-label {
+    display: none;
+  }
+}
+
 /* ---------- Chat window / messages ---------- */
 .chat-window {
   flex: 1;
@@ -693,6 +715,9 @@ input {
 
 .input-pill {
   flex: 1;
+  /* Without this a flex item refuses to shrink past its content's min-content width, and a bare
+     <input> carries a wide intrinsic width - which pushed the send button off-screen on phones. */
+  min-width: 0;
   display: flex;
   align-items: center;
   background: var(--surface);
@@ -703,6 +728,7 @@ input {
 
 .input-pill input {
   flex: 1;
+  min-width: 0;
   border: none;
   background: transparent;
   color: var(--text-primary);
@@ -712,6 +738,7 @@ input {
 }
 
 .send-button {
+  flex-shrink: 0;
   min-height: 44px;
   padding: 10px 18px;
   border-radius: 12px;
@@ -1364,10 +1391,13 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
+  row-gap: 8px;
   gap: 8px;
 }
 
 .date-input {
+  min-width: 0;
   min-height: 44px;
   padding: 8px 10px;
   border: 1px solid var(--border-input);
@@ -1437,6 +1467,11 @@ input {
   padding: 7px 10px;
   text-align: left;
   border-bottom: 1px solid var(--border-nested-2);
+  /* table-layout: fixed gives every column an equal share, so a token wider than that share (a
+     "Calories" heading, a 3-digit value) would otherwise spill out and render on top of the next
+     column. break-word rather than anywhere: only break a word that genuinely cannot fit, instead
+     of letting every cell wrap mid-word. */
+  overflow-wrap: break-word;
 }
 
 .foods-table th {
@@ -1489,6 +1524,108 @@ input {
 .foods-table th:nth-child(4),
 .foods-table td:nth-child(4) {
   width: 22%;
+}
+
+/* The percentages above describe Daily Foods' four columns (time / food / calories / macros).
+   Food Items reuses .foods-table for styling but has eight columns, so it would otherwise inherit
+   that split positionally - handing 44% to the one-word "Source" badge while the name, the widest
+   content in the table, was squeezed into 18% and spilled over the calorie column. Restate the
+   widths for this table's own shape. */
+.foods-table.food-items-table th:nth-child(1),
+.foods-table.food-items-table td:nth-child(1) {
+  width: 30%;
+  /* anywhere, not break-word: a single long token like "Blueberries" is one unbreakable word that
+     break-word still lets spill over the calorie column, the same reason Daily Foods' food column
+     uses anywhere. Only the name column needs it - the numeric ones are sized to fit. */
+  overflow-wrap: anywhere;
+}
+
+.foods-table.food-items-table th:nth-child(2),
+.foods-table.food-items-table td:nth-child(2) {
+  width: 13%;
+}
+
+.foods-table.food-items-table th:nth-child(3),
+.foods-table.food-items-table td:nth-child(3),
+.foods-table.food-items-table th:nth-child(4),
+.foods-table.food-items-table td:nth-child(4),
+.foods-table.food-items-table th:nth-child(5),
+.foods-table.food-items-table td:nth-child(5),
+.foods-table.food-items-table th:nth-child(6),
+.foods-table.food-items-table td:nth-child(6) {
+  width: 12%;
+}
+
+.foods-table.food-items-table th:nth-child(7),
+.foods-table.food-items-table td:nth-child(7) {
+  width: 11%;
+}
+
+/* Phone widths. Must sit after the width rules above, not up with the header's media query: a
+   media query adds no specificity, so an equally-specific later rule would simply win. */
+@media (max-width: 460px) {
+  .foods-table th,
+  .foods-table td {
+    padding: 6px;
+  }
+
+  /* Daily Foods' desktop split leaves the time column too narrow once --font-scale is turned up,
+     so "12:30 PM" broke between the digits. Take the room from the food column, which wraps on
+     word boundaries and reads fine either way. Scoped to its own modifier class (the pattern
+     .food-items-table already uses) because the schema viewer reuses .foods-table with its own
+     60/40 split at the same specificity - an unscoped rule here would silently override it. */
+  .foods-table.daily-foods-table th:nth-child(1),
+  .foods-table.daily-foods-table td:nth-child(1) {
+    width: 22%;
+  }
+
+  .foods-table.daily-foods-table th:nth-child(2),
+  .foods-table.daily-foods-table td:nth-child(2) {
+    width: 34%;
+  }
+
+  .foods-table.daily-foods-table th:nth-child(3),
+  .foods-table.daily-foods-table td:nth-child(3) {
+    width: 20%;
+  }
+
+  .foods-table.daily-foods-table th:nth-child(4),
+  .foods-table.daily-foods-table td:nth-child(4) {
+    width: 24%;
+  }
+
+  /* Eight columns split across a phone screen leaves each too narrow to hold even one word, so
+     names wrapped a letter per line. Drop the two secondary columns and give the space to the
+     name - calories and macros are what the list is actually read for. */
+  .foods-table.food-items-table th:nth-child(2),
+  .foods-table.food-items-table td:nth-child(2),
+  .foods-table.food-items-table th:nth-child(7),
+  .foods-table.food-items-table td:nth-child(7) {
+    display: none;
+  }
+
+  /* Shares must total ~100%: table-layout: fixed hands any shortfall to the last column, which
+     would balloon the delete cell and starve the numeric ones. The numeric columns are sized for
+     a four-character value ("21.2") at the largest --font-scale, where that string is ~41px wide -
+     hence the tighter padding here too. The name column takes what is left and wraps, which it
+     does gracefully; a clipped or overlapping number does not. */
+  .foods-table.food-items-table th:nth-child(1),
+  .foods-table.food-items-table td:nth-child(1) {
+    width: 32%;
+  }
+
+  .foods-table.food-items-table th:nth-child(3),
+  .foods-table.food-items-table td:nth-child(3),
+  .foods-table.food-items-table th:nth-child(4),
+  .foods-table.food-items-table td:nth-child(4),
+  .foods-table.food-items-table th:nth-child(5),
+  .foods-table.food-items-table td:nth-child(5),
+  .foods-table.food-items-table th:nth-child(6),
+  .foods-table.food-items-table td:nth-child(6) {
+    width: 16%;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
 }
 
 /* ---------- Food items (CRUD) ---------- */

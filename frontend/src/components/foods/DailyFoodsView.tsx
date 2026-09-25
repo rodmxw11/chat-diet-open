@@ -154,7 +154,7 @@ export default function DailyFoodsView() {
 
         {items.length > 0 && (
           <div className="foods-table-wrapper">
-            <table className="foods-table">
+            <table className="foods-table daily-foods-table">
               <thead>
                 <tr>
                   <th>Time</th>
