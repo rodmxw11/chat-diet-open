@@ -67,6 +67,14 @@ the connection returns. An optional Alexa skill allows voice logging.
 |---|---|---|
 | ![The mobile chat view, logging food in plain language and answering a question about calories remaining](images/mobile-chat.png) | ![The mobile navigation menu listing charts, foods, micronutrients, vitals, notes and schema](images/mobile-menu.png) | ![A week of stacked calorie bars broken into protein, carbs and fat, against the daily target](images/mobile-calories-macros.png) |
 
+The same data also drives the trend views — a smoothed weight line with its goal
+track and a back-calculated TDEE, and blood pressure charted with its own running
+averages:
+
+| Weight trend | Blood pressure |
+|---|---|
+| ![Daily weigh-ins as diamonds under a smoothed trend line and a dashed goal line, above a table of weight, trend and variance per day](images/mobile-weight-trend.png) | ![Systolic, diastolic and heart-rate lines over a week, above a table of individual readings by date and time](images/mobile-blood-pressure.png) |
+
 ## Architecture
 
 The LLM is a router, not a calculator. An intent registry (`intents.yaml`) maps
