@@ -10,6 +10,17 @@ or run an arbitrary analytical query over your own history.
 Built as a personal PWA running on a home server, reachable from phone and desktop
 over a private Tailscale network.
 
+> **This is a work in progress, and it is built for one person.**
+>
+> The code is public because it may be useful to read or adapt, not because it is a
+> finished product. It changes frequently and the changes are driven entirely by my own
+> **personal** pain points — whatever annoyed me while logging a meal that week. Features
+> appear, get reshaped, or get deleted on that basis alone. There is no release cadence,
+> no deprecation policy, and no commitment to keeping anything stable for anyone else.
+>
+> Expect rough edges, defaults tuned to my habits, and decisions that make sense only for
+> a single user. Fork it if you want something that stays still.
+
 ![chat-diet on the desktop: the chat column beside a dashboard of macro and weight-trend charts](images/desktop-dashboard.png)
 
 ## Why it works this way
@@ -154,8 +165,11 @@ continue refining through a year of real use, then open it to family members to 
 out whether it works as well for people who did not build it, and consider a published
 release only if it does.
 
-Because it was built for one person, some behavior is still tuned to that person's
-habits — shorthand phrases, portion defaults, and imperial units throughout.
+Development is reactive rather than planned. Each change starts as friction I hit while
+using it — a phrase the parser fumbled, a number I wanted on screen without asking, a
+screen that was awkward on a phone — so the shape of the app tracks one person's habits
+closely: shorthand phrases, portion defaults, and imperial units throughout. That is the
+reason it works well for me, and the reason it may not for you.
 
 ## License
 
