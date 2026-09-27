@@ -4,6 +4,7 @@ import com.chatdiet.fooditem.FoodItem;
 import com.chatdiet.fooditem.PortionUnitService;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
@@ -11,9 +12,11 @@ import java.util.regex.Pattern;
  * explicit grams/kcal/servings value. Tiers: an explicit gram amount, optionally with a leading
  * count+unit alongside it for teaching ("2 eggs, 100g"); an explicit calorie amount ("250 cal")
  * inverted through the item's per-100g calories; a bare serving count scaled by the item's
- * {@code typical_serving_g}; a count plus a natural unit resolved against {@code PORTION_UNIT}
- * ("2 medium", "a bowl"). Unparseable or empty input is {@link QuantityResolution.Unresolvable} -
- * never a guess.
+ * {@code typical_serving_g} (unresolvable when the item has none); a count plus a natural unit
+ * resolved against {@code PORTION_UNIT} ("2 medium", "a bowl"). A spelled-out count - "a", "an",
+ * "one" through "twelve" - reads as its number, since spoken and model-relayed amounts often
+ * arrive that way ("an apple" → "1", "two medium" → "2 medium"). Unparseable or empty input is
+ * {@link QuantityResolution.Unresolvable} - never a guess.
  */
 @Service
 public class QuantityResolver {
@@ -25,6 +28,13 @@ public class QuantityResolver {
     private static final Pattern PURE_NUMBER = Pattern.compile("^[0-9]*\\.?[0-9]+$");
     private static final Pattern COUNT_AND_UNIT = Pattern.compile("^([0-9]*\\.?[0-9]+)?\\s*(.*)$");
     private static final Pattern LEADING_ARTICLE = Pattern.compile("(?i)^(a|an|the)\\s+");
+    private static final Pattern BARE_ARTICLE = Pattern.compile("(?i)^an?$");
+    private static final Pattern LEADING_COUNT_WORD = Pattern.compile(
+            "(?i)^(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\\b");
+    private static final Map<String, String> COUNT_WORDS = Map.ofEntries(
+            Map.entry("one", "1"), Map.entry("two", "2"), Map.entry("three", "3"), Map.entry("four", "4"),
+            Map.entry("five", "5"), Map.entry("six", "6"), Map.entry("seven", "7"), Map.entry("eight", "8"),
+            Map.entry("nine", "9"), Map.entry("ten", "10"), Map.entry("eleven", "11"), Map.entry("twelve", "12"));
 
     private final PortionUnitService portionUnitService;
 
@@ -37,7 +47,7 @@ public class QuantityResolver {
         if (amountText == null || amountText.isBlank()) {
             return new QuantityResolution.Unresolvable();
         }
-        var trimmed = amountText.trim();
+        var trimmed = spelledCountToDigits(amountText.trim());
 
         var explicit = parseExplicitGrams(trimmed);
         if (explicit != null) {
@@ -50,6 +60,11 @@ public class QuantityResolver {
         }
 
         if (PURE_NUMBER.matcher(trimmed).matches()) {
+            // No typical serving means no honest gram figure for "1 apple": unresolvable, so the
+            // caller asks (or the model estimates a medium one) rather than silently assuming 100g.
+            if (item.typicalServingG() == null) {
+                return new QuantityResolution.Unresolvable();
+            }
             return resolveServings(item, Double.parseDouble(trimmed));
         }
 
@@ -121,6 +136,15 @@ public class QuantityResolver {
             }
         }
         return new QuantityResolution.Grams(grams);
+    }
+
+    /** "a"/"an" alone → "1"; a leading "one".."twelve" → its digits ("two medium" → "2 medium"). */
+    private static String spelledCountToDigits(String text) {
+        if (BARE_ARTICLE.matcher(text).matches()) {
+            return "1";
+        }
+        var m = LEADING_COUNT_WORD.matcher(text);
+        return m.find() ? COUNT_WORDS.get(m.group(1).toLowerCase()) + text.substring(m.end()) : text;
     }
 
     private record CountAndUnit(double count, String unit) {

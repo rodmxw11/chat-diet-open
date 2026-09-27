@@ -75,6 +75,29 @@ class QuantityResolverTest {
     }
 
     @Test
+    void spelledOutCountsReadAsNumbers() {
+        var item = new FoodItem(3L, "clif bar", null, 380.0, 10.0, 65.0, 7.0, 5.0, 21.0, 210.0, 2.0, 0.0, 200.0,
+                68.0, "MANUAL", 0, null, null);
+        assertThat(quantityResolver.resolve(item, "a")).isEqualTo(new QuantityResolution.Grams(68.0));
+        assertThat(quantityResolver.resolve(item, "An")).isEqualTo(new QuantityResolution.Grams(68.0));
+        assertThat(quantityResolver.resolve(item, "one")).isEqualTo(new QuantityResolution.Grams(68.0));
+        assertThat(quantityResolver.resolve(item, "two")).isEqualTo(new QuantityResolution.Grams(136.0));
+        assertThat(quantityResolver.resolve(banana, "two medium")).isEqualTo(new QuantityResolution.Grams(236.0));
+        assertThat(quantityResolver.resolve(banana, "one medium")).isEqualTo(new QuantityResolution.Grams(118.0));
+    }
+
+    /**
+     * "an apple" against an item with no typical serving used to log a silent 100g - about half a
+     * real apple. Unresolvable instead, so the caller asks or the model estimates a medium one.
+     */
+    @Test
+    void aBareCountWithNoTypicalServingIsUnresolvable() {
+        assertThat(quantityResolver.resolve(banana, "1")).isInstanceOf(QuantityResolution.Unresolvable.class);
+        assertThat(quantityResolver.resolve(banana, "an")).isInstanceOf(QuantityResolution.Unresolvable.class);
+        assertThat(quantityResolver.resolve(banana, "two")).isInstanceOf(QuantityResolution.Unresolvable.class);
+    }
+
+    @Test
     void parsesExplicitCaloriesIntoGramsViaThePer100gFigure() {
         // banana is 89 cal/100g, so 178 cal = 200 g.
         assertThat(quantityResolver.resolve(banana, "178 cal")).isEqualTo(new QuantityResolution.Grams(200.0));
