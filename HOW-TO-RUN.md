@@ -19,7 +19,7 @@ Then edit it and fill in your `sex`, `birth-date`, `height-in`, `goal.weekly-rat
 
 ## Option A - Local dev (fastest for iterating)
 
-**Backend** (Spring Boot, port 8080):
+**Backend** (Spring Boot, HTTPS on port 8443, or HTTP on 8080 without the `server:` block):
 
 ```
 cd backend
@@ -78,8 +78,10 @@ The database is the same `backend\data\chat-diet.db` file that `bootRun` uses, s
 
 Once the backend is running (either option above), the REST API is documented live via springdoc-openapi:
 
-- **Swagger UI** (interactive, browsable): `http://localhost:8080/swagger-ui/index.html`
-- **Raw OpenAPI spec** (JSON): `http://localhost:8080/v3/api-docs`
+- **Swagger UI** (interactive, browsable): `https://<machine>.<tailnet>.ts.net:8443/swagger-ui/index.html`
+- **Raw OpenAPI spec** (JSON): `https://<machine>.<tailnet>.ts.net:8443/v3/api-docs`
+
+Without the `server:` HTTPS block, use `http://localhost:8080` in place of the `https://...:8443` origin.
 
 This is generated straight from the controller code, so it always reflects the current endpoints.
 
