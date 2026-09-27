@@ -80,12 +80,11 @@ tasks.named('test') {
 	useJUnitPlatform()
 }
 
-tasks.register('dockerBuild', Exec) {
-	group = 'docker'
-	description = 'Builds the chat-diet-backend Docker image from the compiled jar.'
-	dependsOn tasks.named('bootJar')
-	workingDir = projectDir
-	commandLine 'docker', 'build', '-t', 'chat-diet-backend', '.'
+// application.yml holds the API key and personal config, so it stays out of the jar (and so out
+// of the Docker image). docker-compose.yml mounts it at /app/config/application.yml instead, which
+// Spring Boot loads automatically. bootRun is unaffected - it reads from processResources output.
+tasks.named('bootJar') {
+	exclude 'application.yml'
 }
 
 def frontendDir = file('../frontend')

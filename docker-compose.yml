@@ -1,0 +1,25 @@
+# Runs the backend (which also serves the bundled PWA) in Docker. Build the jar first:
+#   backend\gradlew -p backend bootJar
+#   docker compose up -d --build
+# Never run this alongside `gradlew bootRun` - both would open backend/data/chat-diet.db.
+services:
+  backend:
+    build: ./backend
+    image: chat-diet-backend
+    container_name: chat-diet-backend
+    restart: unless-stopped
+    environment:
+      # Metabolic-day boundaries use the JVM's default zone; the container would otherwise be UTC.
+      TZ: America/New_York
+      # The container's loopback isn't reachable through a published port, so the Alexa connector
+      # binds all container interfaces and the port is published on the host's loopback only.
+      CHAT_DIET_ALEXA_ADDRESS: 0.0.0.0
+    ports:
+      - "8443:8443"
+      - "127.0.0.1:8081:8081"
+    volumes:
+      # SQLite DB, backups, and OMRON imports stay on the host, same files bootRun uses.
+      - ./backend/data:/app/data
+      - ./backend/certs:/app/certs:ro
+      # Kept out of the image because it holds the API key; Spring loads ./config/application.yml.
+      - ./backend/src/main/resources/application.yml:/app/config/application.yml:ro

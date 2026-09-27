@@ -14,14 +14,21 @@ import org.springframework.stereotype.Component;
  * terminates TLS itself, so this connector never needs a certificate, and binding to loopback
  * only (never {@code 0.0.0.0}) means nothing on this port is reachable except through that proxy
  * or from the box itself. {@link AlexaPathIsolationFilter} restricts what it'll actually serve.
+ *
+ * <p>In Docker the container's own loopback isn't reachable through a published port, so
+ * docker-compose.yml sets {@code chat-diet.alexa.address} to {@code 0.0.0.0} and publishes the
+ * port on the host's {@code 127.0.0.1} only, which keeps the same loopback-only exposure.
  */
 @Component
 public class AlexaConnectorConfig implements WebServerFactoryCustomizer<TomcatServletWebServerFactory> {
 
     private final int alexaPort;
+    private final String alexaAddress;
 
-    public AlexaConnectorConfig(@Value("${chat-diet.alexa.port:8081}") int alexaPort) {
+    public AlexaConnectorConfig(@Value("${chat-diet.alexa.port:8081}") int alexaPort,
+                                @Value("${chat-diet.alexa.address:127.0.0.1}") String alexaAddress) {
         this.alexaPort = alexaPort;
+        this.alexaAddress = alexaAddress;
     }
 
     @Override
@@ -30,7 +37,7 @@ public class AlexaConnectorConfig implements WebServerFactoryCustomizer<TomcatSe
         connector.setPort(alexaPort);
         connector.setScheme("http");
         connector.setSecure(false);
-        connector.setProperty("address", "127.0.0.1");
+        connector.setProperty("address", alexaAddress);
         factory.addAdditionalConnectors(connector);
     }
 }

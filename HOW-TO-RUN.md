@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Java 21 (only needed if running the backend outside Docker)
+- Java 21 (also needed for the Docker option, to build the jar)
 - Node.js (for the frontend)
 - Docker (only needed for the Docker option)
 - An Anthropic API key
@@ -48,27 +48,30 @@ npm run dev
 
 Open the URL Vite prints (typically `http://localhost:5173`).
 
-## Option B - Docker (backend only)
+## Option B - Docker (Compose)
 
-The Docker image only packages the backend. Build the jar and image with the Gradle task, then deploy:
-
-```
-cd backend
-gradlew dockerBuild
-```
+The image runs the backend jar, which already bundles the built frontend, so the one container serves the whole PWA. Build the jar, then start it with Compose from the repo root:
 
 ```
-cd ..
-docker-deploy.cmd
+backend\gradlew -p backend bootJar
+docker compose up -d --build
 ```
 
-This builds/rebuilds the `chat-diet-backend` image, stops any previous container, and starts a new one on `http://localhost:8080`, with `backend\data` mounted into the container so the SQLite database and backups persist across restarts. The API key is already baked into the image via `application.yml` (which Gradle packages into the jar), so no environment variable needs to be passed at `docker run` time.
+`docker-compose.yml` publishes HTTPS on `8443` and the Alexa connector on `127.0.0.1:8081`. It sets `TZ` so metabolic-day boundaries match local time, and bind-mounts these host paths:
 
-The frontend is not containerized. Run it separately with `npm run dev`, or build a static bundle with `npm run build` (output in `frontend/dist`) and serve it with any static file server.
+| Host | Container | Purpose |
+|---|---|---|
+| `backend\data` | `/app/data` | SQLite database (`chat-diet.db`), backups, OMRON imports |
+| `backend\certs` | `/app/certs` (read-only) | Tailscale HTTPS cert/key |
+| `backend\src\main\resources\application.yml` | `/app/config/application.yml` (read-only) | Config and API key |
+
+The database is the same `backend\data\chat-diet.db` file that `bootRun` uses, so data persists across rebuilds and moves freely between the two options. **Never run both at once.** Stop `bootRun` before `docker compose up`, and vice versa, or two processes will write to one SQLite file.
+
+`application.yml` is deliberately left out of the jar, so the API key is never baked into the image. After editing it, run `docker compose restart`; no rebuild is needed. Stop the container with `docker compose down`.
 
 ## Verifying it's up
 
-- Backend: `http://localhost:8080` should respond (check `/api/...` endpoints or backend logs for "Started BackendApplication").
+- Backend: `https://<machine>.<tailnet>.ts.net:8443/api/ping` should return `ok` (or `http://localhost:8080/api/ping` if you omitted the `server:` HTTPS block), and the logs should show "Started BackendApplication".
 - Frontend: open the Vite dev URL and confirm the chat UI loads and can reach the backend.
 
 ## API documentation
@@ -84,4 +87,5 @@ This is generated straight from the controller code, so it always reflects the c
 
 - **Backend fails to start, or the model calls fail with an auth error** - check `spring.ai.anthropic.api-key` in `backend/src/main/resources/application.yml` is set to a real key, not the placeholder.
 - **Backend fails to start with a missing `application.yml`** - see One-time setup above.
-- **Docker build fails to find the jar** - run `gradlew dockerBuild` (not a bare `docker build`); it depends on `bootJar` so the jar always gets built first.
+- **Docker build fails to find the jar** - run `backend\gradlew -p backend bootJar` before `docker compose up --build`; the image copies the prebuilt jar from `backend/build/libs`.
+- **Container starts but has no config / API key errors** - it reads `application.yml` only from the mount, so check that `backend/src/main/resources/application.yml` exists.
