@@ -33,40 +33,61 @@ starts, a nightly backup job that doesn't run while scaled to zero, and rework o
 - **Image contents:** the `eclipse-temurin:21-jre` base plus the boot jar only; there is no Node.js at runtime.
   Node is needed only on the machine that builds the jar: Gradle's `buildFrontend` task runs
   `npm run build` and copies the static bundle into the jar under `static/`.
+- **Image registry:** a private Docker repository in Google Artifact Registry, `us-east1`, next to the
+  VM (`us-east1-docker.pkg.dev/<project>/chat-diet/backend`).
+  - The PC builds and pushes the images. The VM only pulls, and never builds.
+  - Each image is tagged with its git short SHA, so rolling back means switching to an older tag.
+  - The VM authenticates with its own service account, so no registry password is stored on it.
+  - Pulls within the same region are free. Storage beyond the free 0.5 GB is $0.10/GB-month, and a
+    cleanup policy keeps it small.
+  - The image holds no secrets, because `application.yml` is excluded from the jar.
+  - The VM must stay an x86 (`e2`) machine: the PC builds amd64 images, which an ARM `t2a` VM can't run.
 
 ## Steps
 
-0. **Optional Dockerfile cleanup** (`backend/Dockerfile`):
-   - Use `COPY --chown=appuser:appuser` for the jar instead of a later `chown -R /app`. The `chown`
-     currently copies the ~97 MB jar into a second layer.
-   - Change `EXPOSE 8080` to `EXPOSE 8443 8081`.
+0. **Repo changes** (commit these before deploying):
+   - `backend/Dockerfile`: use `COPY --chown=appuser:appuser` for the jar instead of a later `chown -R /app`.
+     The `chown` currently copies the ~97 MB jar into a second layer, which every push would upload
+     again. Also change `EXPOSE 8080` to `EXPOSE 8443 8081`.
+   - `docker-compose.yml`: change `image:` to `${CHAT_DIET_IMAGE:-chat-diet-backend}:${TAG:-latest}`
+     and keep `build: ./backend`. With no `.env`, local behavior is unchanged. On a machine that deploys,
+     `.env` (already gitignored) sets `CHAT_DIET_IMAGE=us-east1-docker.pkg.dev/<project>/chat-diet/backend`
+     and `TAG=<git short SHA>`. This keeps the project ID out of the public repo.
 1. **Local tooling:** install the Google Cloud CLI, then `gcloud init`. Pick or create a project with
-   billing enabled, and enable the Compute Engine API.
-2. **Create the VM** with `gcloud compute instances create chat-diet ...` (machine type, image, disk as
-   above).
+   billing enabled, and enable the Compute Engine and Artifact Registry APIs.
+2. **Create the registry and the VM:**
+   - `gcloud artifacts repositories create chat-diet --repository-format=docker --location=us-east1`,
+     with a cleanup policy that keeps the 10 most recent versions.
+   - On the PC, run `gcloud auth configure-docker us-east1-docker.pkg.dev` once.
+   - Create a service account `chat-diet-vm`, and grant it `roles/artifactregistry.reader` on the
+     `chat-diet` repository only.
+   - Create the VM with `gcloud compute instances create chat-diet ...` (machine type, image and disk as
+     above), passing `--service-account=chat-diet-vm@<project>.iam.gserviceaccount.com --scopes=cloud-platform`.
+     The IAM role, not the scope, limits what the VM can do.
    - Add a firewall rule allowing tcp:22 from the IAP range only.
    - Attach a snapshot schedule to the boot disk (`gcloud compute resource-policies create
      snapshot-schedule`, daily, 14-day retention).
 3. **Provision the VM** (`gcloud compute ssh chat-diet --tunnel-through-iap`):
    - Install Docker Engine + the compose plugin, and add the user to the `docker` group.
    - Install Tailscale, run `tailscale up --hostname=chat-diet`, and approve the machine in the admin console.
-   - `git clone` this repo to `~/chat-diet`. That supplies `docker-compose.yml` and `backend/Dockerfile`
-     at the paths compose expects.
+   - `git clone` this repo to `~/chat-diet` to get `docker-compose.yml`, which `git pull` keeps current.
+     The VM doesn't build, so it needs no jar.
+   - Run `gcloud auth configure-docker us-east1-docker.pkg.dev`. Debian images on GCE ship with `gcloud`,
+     and this makes `docker pull` use the VM's service account.
    - Run `tailscale cert` for `chat-diet.<tailnet>.ts.net` into `~/chat-diet/backend/certs/`.
    - Add a monthly cron job that re-runs `tailscale cert`, then `docker compose restart` (certs expire after 90 days).
-4. **Ship the artifacts** (`gcloud compute scp --tunnel-through-iap`):
-   - `backend/build/libs/backend-0.0.1-SNAPSHOT.jar` → `~/chat-diet/backend/build/libs/`
-   - `application.yml` → `~/chat-diet/backend/src/main/resources/`, with the `server.ssl` cert paths
-     edited to the new hostname.
-
-   The image is built on the VM from this jar (`docker compose up -d --build`), so no Artifact Registry
-   is needed. The jar contains no secrets, since `application.yml` is excluded from it.
+4. **Build, push, and ship the config:**
+   - On the PC: run `backend\gradlew -p backend bootJar`. Set `CHAT_DIET_IMAGE` and `TAG` (the git short
+     SHA) in `.env`, then run `docker compose build` and `docker compose push`.
+   - `gcloud compute scp --tunnel-through-iap` `application.yml` → `~/chat-diet/backend/src/main/resources/`,
+     with the `server.ssl` cert paths edited to the new hostname.
+   - On the VM: write `~/chat-diet/.env` with the same `CHAT_DIET_IMAGE` and `TAG`, then run `docker compose pull`.
 5. **Cutover** (the only step that touches live data):
    1. On the phone, open the app and make sure the offline queue is empty. Queued entries belong to the old URL.
    2. On the PC: `docker compose down`. This also keeps the container from coming back after a reboot.
    3. Copy `backend/data/` (`chat-diet.db`, `backups/`, `OMRON-DOWNLOADS/`) to the VM. Leave the PC copy
       untouched for rollback.
-   4. On the VM: `docker compose up -d --build`.
+   4. On the VM: `docker compose up -d`. Never pass `--build` on the VM.
 6. **Alexa:** follow `scripts/TAILSCALE-ALEXA-CONFIG.md` on the VM:
    - Turn on Funnel: 443 → `http://localhost:8081`. The node needs the `funnel` attribute in the tailnet policy.
    - Turn Funnel off on the PC.
@@ -74,12 +95,18 @@ starts, a nightly backup job that doesn't run while scaled to zero, and rework o
 7. **Phone:** remove the old PWA and install it from the new URL.
 8. **Follow-ups once it works:**
    - Add an "Option C - Google Cloud VM" section to `HOW-TO-RUN.md` covering steps 2-7.
-   - No code changes are needed. `docker-compose.yml` already sets `TZ: America/New_York`, mounts
-     config, certs and data, and binds the Alexa port to loopback.
+   - Apart from step 0, no code changes are needed. `docker-compose.yml` already sets
+     `TZ: America/New_York`, mounts config, certs and data, and binds the Alexa port to loopback.
 
 ## Deploying later changes
 
-Locally, run `backend\gradlew -p backend bootJar`. Then copy the jar to the VM and run `docker compose up -d --build` there.
+1. On the PC:
+   - Run `backend\gradlew -p backend bootJar`.
+   - Set `TAG` in `.env` to the new commit's short SHA.
+   - Run `docker compose build`, then `docker compose push`.
+2. On the VM: set `TAG` in `.env` to the same value, then run `docker compose pull` and `docker compose up -d`.
+
+To roll back a bad release, set `TAG` on the VM to the previous SHA and run `docker compose up -d`.
 For a config-only change, edit `application.yml` on the VM and run `docker compose restart`.
 
 ## Verification
@@ -95,5 +122,6 @@ For a config-only change, edit `application.yml` on the VM and run `docker compo
 
 ## Rollback
 
-Stop the VM container, then run `docker compose up -d` on the PC against its untouched `backend/data`.
+A bad release only needs the image tag switched back (see above). To abandon the VM entirely, stop
+the VM container, then run `docker compose up -d` on the PC against its untouched `backend/data`.
 First copy the VM's `chat-diet.db` back with `gcloud compute scp` if any entries were made there since cutover.
