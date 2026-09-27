@@ -41,6 +41,24 @@ function formatHour(hour: number): string {
   return new Date(2000, 0, 1, hour).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 }
 
+// Fetched and saved via a blob rather than a plain <a href download>: the service worker answers
+// navigations with the cached app shell, and some browsers treat a download link as a navigation -
+// which would save index.html instead of the database. A fetch() never counts as one.
+async function downloadExport(): Promise<void> {
+  const response = await fetch('/api/export')
+  if (!response.ok) {
+    throw new Error(`Export failed (${response.status})`)
+  }
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'chat-diet-export.zip'
+  const url = URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 // Full-page view, same pattern as SchemaView. Uptime is computed live from startupTime (ticking
 // every second) rather than displaying the uptimeSeconds snapshot from the last fetch, which
 // would otherwise freeze the moment the page loaded.
@@ -49,6 +67,14 @@ export default function AboutView() {
   const info = useAppSelector((state) => state.about.info)
   const status = useAppSelector((state) => state.about.status)
   const [now, setNow] = useState(() => Date.now())
+  const [exportStatus, setExportStatus] = useState<'idle' | 'exporting' | 'error'>('idle')
+
+  const exportDb = () => {
+    setExportStatus('exporting')
+    downloadExport()
+      .then(() => setExportStatus('idle'))
+      .catch(() => setExportStatus('error'))
+  }
 
   useEffect(() => {
     dispatch(loadAbout())
@@ -121,6 +147,19 @@ export default function AboutView() {
             </div>
           </div>
         )}
+
+        <div className="about-export">
+          <button
+            type="button"
+            className="today-button"
+            onClick={exportDb}
+            disabled={exportStatus === 'exporting'}
+            title="Download a zip with a consistent copy of the SQLite database"
+          >
+            {exportStatus === 'exporting' ? 'Exporting…' : 'Export DB'}
+          </button>
+          {exportStatus === 'error' && <span className="about-export-error">Export failed - try again.</span>}
+        </div>
       </div>
     </div>
   )

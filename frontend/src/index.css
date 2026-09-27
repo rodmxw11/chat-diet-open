@@ -1436,6 +1436,19 @@ input {
   cursor: default;
 }
 
+.about-export {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.about-export-error {
+  font-family: var(--font-mono);
+  font-size: calc(13px * var(--font-scale));
+  color: var(--text-muted);
+}
+
 .date-weekday {
   min-width: 2.5em;
   font-family: var(--font-mono);
