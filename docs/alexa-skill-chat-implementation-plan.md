@@ -1,5 +1,29 @@
 # Implement the Alexa voice-logging skill for chat-diet
 
+## Status (2026-09-27)
+
+Steps 0-7 are done. What was actually built differs from the text below in a few ways:
+
+- **Invocation name** is now `rod chat diet`. Phrase requests as "ask …" or "open …"; "tell rod
+  … that …" triggers Alexa's announcement feature instead (see the spec's §A).
+- **Signature verification** reads `Signature-256` via the SDK's own `ServletConstants`. The
+  original `Signature` header carries a SHA-1 signature that SDK 2.86's SHA256withRSA check can
+  never pass, so every real request had been rejected until this fix.
+- **Voice channel** uses `PromptAssembler.systemPrompt(boolean voice)` / `tools(boolean voice)`
+  with `VOICE_EXCLUDED_INTENTS = {show_chart, run_sql}`, rather than `Set<String>` overloads.
+  `ChatService` builds its web and voice clients from `chatClientBuilder.clone()`, because the
+  builder is mutable and `defaultTools()` accumulates.
+- **`AlexaController` doesn't add `channel` to `ChatRequest`.** It calls the same two steps as
+  `ChatController` directly: `FastFoodLogService.tryHandle`, then
+  `ChatService.reply(..., voice = true)`. The turn is filed under the metabolic day of Alexa's
+  request timestamp. The web's offline-queue timing note doesn't apply to voice.
+- **Carrier phrase** for `AteIntent` is `"I ate "`. `FastLogParser` strips it, so a known alias
+  with an amount ("i ate 142 grams of cheerios") logs with no model call.
+- **Step 8 is deferred.** Only the SSML part is done (`<say-as interpret-as="cardinal">` on whole
+  numbers, plus markdown/marker stripping). Templated confirmations and the FDC timeout wait until
+  a real Echo shows timeouts: a model-path turn on the e2-micro took 6.6-10 s in testing, against
+  Alexa's ~8 s budget.
+
 ## Context
 
 `docs/alexa-skill-chat-diet-spec.md` (recently rewritten from an earlier

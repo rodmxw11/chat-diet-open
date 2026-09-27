@@ -34,10 +34,13 @@ sentences, every number echoed) except for two tools (`show_chart`,
 The goal: log hands-free. Three utterances, nothing else:
 
 ```
-Alexa, tell my food diary i ate 142 grams of chicken breast
-Alexa, tell my food diary i weight two thirteen point four
-Alexa, tell my food diary note that i skipped lunch
+Alexa, ask rod chat diet i ate 142 grams of chicken breast
+Alexa, ask rod chat diet i weigh two thirteen point four
+Alexa, ask rod chat diet note that i skipped lunch
 ```
+
+Or open a session and keep talking: `Alexa, open rod chat diet` → "Ready."
+→ `i weigh two thirteen point four` → `i ate a banana` → `stop`.
 
 Everything else — queries, charts, corrections — stays in the PWA.
 
@@ -67,23 +70,38 @@ Network and certificate configuration is out of scope here — see
 
 ## Status
 
-**Console side is complete.** Skill created, custom model, provision-your-own
-hosting, invocation name `my food diary`, interaction model built (4
-successful builds). Endpoint set to HTTPS with the trusted-CA certificate
-option.
+As of 2026-09-27:
 
-**Nothing on the Java side exists yet.** The port move to 8443 has not
-happened; there is no `/alexa` controller, no verification filter, no voice
-channel.
+**Console side is complete.** Skill created, custom model, provision-your-own
+hosting, invocation name `rod chat diet` (renamed from `my food diary`; see
+§A), interaction model built. Endpoint set to HTTPS with the trusted-CA
+certificate option, pointing at the Funnel on the Google Cloud VM.
+
+**Java side is built** (build order steps 1–7; see
+`docs/alexa-skill-chat-implementation-plan.md`): app on 8443, loopback-only
+Alexa connector on 8081 with path isolation, signature verification, and an
+`AlexaController` that routes the three logging intents through the fast
+path and then `ChatService` on the voice channel (§B4). Signature
+verification only started passing real requests on 2026-09-27: the filter
+had been handing the SDK the legacy SHA-1 `Signature` header while
+`ask-sdk-servlet-support` 2.86 verifies `Signature-256` with SHA256withRSA.
+
+**Not built yet:** the §B5 latency mitigations (templated confirmations,
+tighter FDC timeout). They're deferred until a real Echo shows timeouts.
 
 ---
 
 ## A. Interaction model (done — recorded for reference)
 
-Invocation name: **`my food diary`**. Chosen over "chat diet" and "diet
-coach": clean syllable boundaries, no homophone collision, and it reads
-correctly in the mid-sentence position (`tell my food diary i ate…`) where a
-name ending in a weak syllable blurs into what follows.
+Invocation name: **`rod chat diet`** (the JSON below still shows the
+original `my food diary`, which was chosen over "chat diet" and "diet
+coach" for clean syllable boundaries in the mid-sentence position).
+
+**Use "ask …" or "open …", never "tell rod … that …".** Because the name
+starts with a person's name, `tell rod chat diet that i ate a banana` is
+claimed by Alexa's built-in announcement feature ("Announcing to your
+devices") before any skill sees it. `ask rod chat diet i ate …` and
+`open rod chat diet` both reach the skill, as confirmed in the simulator.
 
 ```json
 {

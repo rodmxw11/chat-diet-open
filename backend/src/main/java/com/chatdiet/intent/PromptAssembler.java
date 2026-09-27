@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -22,6 +23,10 @@ import java.util.stream.Collectors;
  * running - which silently mis-dates (or, if the model dead-reckons a plausible-but-wrong
  * loggedAt instead of leaving it unset, mis-times) anything logged after that. {@link #tools()} is
  * fine to call once at startup - the intent-to-tool mapping doesn't change at runtime.
+ *
+ * <p>Both have a voice variant for the Alexa channel: it drops the intents whose output only makes
+ * sense on a screen ({@link #VOICE_EXCLUDED_INTENTS}) and appends {@link #VOICE_INSTRUCTIONS}.
+ * {@code log_food} stays in - voice needs its clarification-list instructions as much as web does.
  */
 @Component
 public class PromptAssembler {
@@ -49,6 +54,20 @@ public class PromptAssembler {
                undermines their weight-loss goal.
             """;
 
+    /** Intents whose output is a chart or table, which a speaker can't show. */
+    public static final Set<String> VOICE_EXCLUDED_INTENTS = Set.of("show_chart", "run_sql");
+
+    private static final String VOICE_INSTRUCTIONS = """
+
+            VOICE CHANNEL: this turn was spoken to an Alexa speaker and your reply
+            will be read aloud. There is no screen. Reply in one or two short
+            spoken sentences, under about 15 words when you can. Still echo every
+            number you persist. Use no markdown, lists, symbols, or emoji, and
+            never mention charts, tables, links, or the app's screens. When you
+            must offer choices, say them briefly as "one, ...; two, ..." so the
+            user can answer with a number.
+            """;
+
     private final IntentRegistry intentRegistry;
     private final ToolRegistry toolRegistry;
 
@@ -65,14 +84,20 @@ public class PromptAssembler {
      * prompt fragment), freshly on every call so the stamped date/time is never stale.
      */
     public String systemPrompt() {
-        var fragments = intentRegistry.enabledIntents().stream()
+        return systemPrompt(false);
+    }
+
+    /** {@link #systemPrompt()}, or its voice variant for the Alexa channel. */
+    public String systemPrompt(boolean voice) {
+        var fragments = intentsFor(voice).stream()
                 .map(IntentDefinition::promptFragment)
                 .collect(Collectors.joining("\n"));
 
         return BASE_PERSONA
                 + "\nCurrent date/time: " + LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
                 + ". The metabolic day rolls over at " + dayRolloverHour + ":00, not calendar midnight.\n\n"
-                + fragments;
+                + fragments
+                + (voice ? VOICE_INSTRUCTIONS : "");
     }
 
     /**
@@ -81,10 +106,21 @@ public class PromptAssembler {
      * time.
      */
     public List<ToolCallback> tools() {
-        var toolNames = intentRegistry.enabledIntents().stream()
+        return tools(false);
+    }
+
+    /** {@link #tools()}, or the voice variant without the screen-only intents' tools. */
+    public List<ToolCallback> tools(boolean voice) {
+        var toolNames = intentsFor(voice).stream()
                 .flatMap(intent -> intent.toolNames().stream())
                 .distinct()
                 .toList();
         return toolRegistry.toolsFor(toolNames);
+    }
+
+    private List<IntentDefinition> intentsFor(boolean voice) {
+        return intentRegistry.enabledIntents().stream()
+                .filter(intent -> !voice || !VOICE_EXCLUDED_INTENTS.contains(intent.name()))
+                .toList();
     }
 }

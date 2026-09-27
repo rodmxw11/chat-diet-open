@@ -23,8 +23,9 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
- * The main chat loop: builds a single {@link ChatClient} at startup with the tool set
- * ({@link PromptAssembler#tools()}), then for each turn sends a freshly-built system prompt
+ * The main chat loop: builds a {@link ChatClient} at startup with the tool set
+ * ({@link PromptAssembler#tools()}) - plus a second one for the Alexa voice channel, with the
+ * screen-only tools left out - then for each turn sends a freshly-built system prompt
  * ({@link PromptAssembler#systemPrompt()}) - so the model's notion of "now" never goes stale on a
  * long-running process - along with the current metabolic day's recent history from
  * {@link ConversationHistoryStore}, and hands the exchange back to that store to persist and cache,
@@ -72,7 +73,8 @@ public class ChatService {
             "That didn't actually save - I tried twice and the weight log still didn't go through. "
                     + "Please resend it and I'll try again.";
 
-    private final ChatClient chatClient;
+    private final ChatClient webChatClient;
+    private final ChatClient voiceChatClient;
     private final PromptAssembler promptAssembler;
     private final ConversationHistoryStore historyStore;
     private final DayBoundaryService dayBoundaryService;
@@ -83,8 +85,13 @@ public class ChatService {
                         ConversationHistoryStore historyStore, DayBoundaryService dayBoundaryService,
                         SqlUsageContext sqlUsageContext, FoodLogVerificationContext foodLogVerificationContext,
                         WeightLogVerificationContext weightLogVerificationContext) {
-        this.chatClient = chatClientBuilder
-                .defaultTools(promptAssembler.tools().toArray())
+        // The builder is mutable and defaultTools() accumulates, so each client gets its own clone -
+        // building both from the same instance would hand the voice client the web tool set too.
+        this.webChatClient = chatClientBuilder.clone()
+                .defaultTools(promptAssembler.tools(false).toArray())
+                .build();
+        this.voiceChatClient = chatClientBuilder.clone()
+                .defaultTools(promptAssembler.tools(true).toArray())
                 .build();
         this.promptAssembler = promptAssembler;
         this.historyStore = historyStore;
@@ -111,9 +118,19 @@ public class ChatService {
      *                   earlier than now and is what {@code metabolicDate} was derived from
      */
     public String reply(LocalDate metabolicDate, LocalDateTime occurredAt, String userText) {
+        return reply(metabolicDate, occurredAt, userText, false);
+    }
+
+    /**
+     * {@link #reply(LocalDate, LocalDateTime, String)}, optionally for the Alexa voice channel: a
+     * spoken-reply system prompt and no screen-only tools. History is shared with the web channel -
+     * it's keyed by metabolic day alone - so a voice turn and a typed turn see one conversation.
+     */
+    public String reply(LocalDate metabolicDate, LocalDateTime occurredAt, String userText, boolean voice) {
+        var chatClient = voice ? voiceChatClient : webChatClient;
         var history = historyStore.get(metabolicDate);
         var chatResponse = chatClient.prompt()
-                .system(promptAssembler.systemPrompt())
+                .system(promptAssembler.systemPrompt(voice))
                 .messages(history)
                 .user(userText)
                 .call()
@@ -138,7 +155,7 @@ public class ChatService {
             retryMessages.add(new UserMessage(verifier.nudge()));
 
             var retryResponse = chatClient.prompt()
-                    .system(promptAssembler.systemPrompt())
+                    .system(promptAssembler.systemPrompt(voice))
                     .messages(retryMessages)
                     .call()
                     .chatResponse();
