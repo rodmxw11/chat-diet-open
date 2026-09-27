@@ -1,6 +1,6 @@
 # Plan: deploy chat-diet to a Google Compute Engine VM
 
-Status: not yet executed.
+Status: executed 2026-09-27. Day-to-day operation is documented in HOW-TO-RUN.md, "Option C - Google Cloud VM".
 
 ## Context
 

@@ -69,6 +69,44 @@ The database is the same `backend\data\chat-diet.db` file that `bootRun` uses, s
 
 `application.yml` is deliberately left out of the jar, so the API key is never baked into the image. After editing it, run `docker compose restart`; no rebuild is needed. Stop the container with `docker compose down`.
 
+## Option C - Google Cloud VM (always on)
+
+The same Compose setup, running on a small Google Compute Engine VM, so the app stays up whether or not the home PC is. The PC builds and pushes images to a private Artifact Registry repository, and the VM only pulls them. The full one-time setup (project, billing, registry, firewall, VM, swap, Tailscale, certs, and moving the data over) is in [docs/GOOGLE-CLOUD-DEPLOY-PLAN.md](docs/GOOGLE-CLOUD-DEPLOY-PLAN.md).
+
+**Layout:**
+- **VM:** an `e2-micro` (1 GB RAM plus a 2 GB swap file) running Debian 12. It's reachable only over Tailscale at `https://chat-diet.<tailnet>.ts.net:8443`. The public IP has no open ports, and SSH goes through Google's IAP tunnel.
+- **Data:** the database lives on the VM's persistent disk at `~/chat-diet/backend/data/chat-diet.db`, mounted at `/app/data` exactly as in Option B. It's backed up by the app's nightly zips in `data/backups` and a daily disk snapshot kept 14 days.
+- **Settings:** `~/chat-diet/.env` on the VM sets `CHAT_DIET_IMAGE`, `TAG` (the git short SHA to run), and `JAVA_TOOL_OPTIONS=-Xmx256m -XX:MaxMetaspaceSize=192m -XX:+UseSerialGC`, which keeps the JVM within the e2-micro's memory.
+- **Ownership:** the container runs as `appuser`, with UID/GID 10001. On Linux, the bind-mounted `backend/data`, `backend/certs`, and `application.yml` must be owned by `10001:10001`, or SQLite can't write and the TLS key can't be read. A root cron job renews the Tailscale cert monthly and re-applies that ownership.
+- **Alexa:** the Tailscale Funnel for `/alexa` runs on the VM (see [scripts/TAILSCALE-ALEXA-CONFIG.md](scripts/TAILSCALE-ALEXA-CONFIG.md)).
+
+**Deploying a change**, from the repo root in PowerShell, after committing:
+
+```
+backend\gradlew -p backend bootJar
+$env:CHAT_DIET_IMAGE = "us-east1-docker.pkg.dev/<project>/chat-diet/backend"
+$env:TAG = git rev-parse --short HEAD
+docker compose build
+docker compose push
+```
+
+Then on the VM (`gcloud compute ssh chat-diet --zone=us-east1-b --tunnel-through-iap`), set `TAG` in `~/chat-diet/.env` to the same SHA and run:
+
+```
+cd ~/chat-diet
+docker compose pull
+docker compose up -d
+```
+
+Set the variables only in the shell, not in a `.env` on the PC, so local Option B runs keep using the plain `chat-diet-backend` image. Never pass `--build` on the VM; it has no jar to build from.
+
+**Day to day on the VM:**
+- **Roll back a bad release:** set `TAG` back to the previous SHA, then run `docker compose up -d`. The registry keeps the 10 newest images.
+- **Config change:** edit `backend/src/main/resources/application.yml` on the VM, then run `docker compose restart`. The file stays owned by `10001:10001` with mode `600`.
+- **Logs and memory:** run `docker logs chat-diet-backend` and `docker stats --no-stream`. A `RestartCount` above 0 in `docker inspect chat-diet-backend` means the JVM was killed for running out of memory. If that happens, resize the VM to `e2-small` (stop, `gcloud compute instances set-machine-type`, start).
+
+Only one instance may use the database at a time. Once the VM is live, the PC's `backend\data\chat-diet.db` is a stale copy, so never run Option A or B against it expecting current data.
+
 ## Verifying it's up
 
 - Backend: `https://<machine>.<tailnet>.ts.net:8443/api/ping` should return `ok` (or `http://localhost:8080/api/ping` if you omitted the `server:` HTTPS block), and the logs should show "Started BackendApplication".
