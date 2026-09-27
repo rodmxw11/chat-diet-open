@@ -1,0 +1,87 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "rod chat diet",
+      "intents": [
+        { "name": "AMAZON.CancelIntent", "samples": [] },
+        { "name": "AMAZON.HelpIntent", "samples": [] },
+        { "name": "AMAZON.StopIntent", "samples": [] },
+        { "name": "AMAZON.NavigateHomeIntent", "samples": [] },
+        { "name": "AMAZON.FallbackIntent", "samples": [] },
+        { "name": "AMAZON.YesIntent", "samples": [] },
+        { "name": "AMAZON.NoIntent", "samples": [] },
+        {
+          "name": "AteIntent",
+          "slots": [{ "name": "text", "type": "AMAZON.SearchQuery" }],
+          "samples": ["i ate {text}", "i eight {text}", "ate {text}"]
+        },
+        {
+          "name": "NoteIntent",
+          "slots": [{ "name": "text", "type": "AMAZON.SearchQuery" }],
+          "samples": ["note that {text}", "note {text}"]
+        },
+        {
+          "name": "WeightIntent",
+          "slots": [{ "name": "text", "type": "AMAZON.SearchQuery" }],
+          "samples": ["i weight {text}", "i wait {text}", "i weigh {text}", "weight {text}"]
+        },
+        {
+          "name": "ChoiceIntent",
+          "slots": [
+            { "name": "choice", "type": "CHOICE_WORD" },
+            { "name": "number", "type": "AMAZON.NUMBER" },
+            { "name": "unit", "type": "AMOUNT_UNIT" },
+            { "name": "ordinal", "type": "AMAZON.Ordinal" }
+          ],
+          "samples": [
+            "{choice}",
+            "a {choice}",
+            "a {choice} one",
+            "the {choice} one",
+            "{choice} one",
+            "it was {choice}",
+            "it was a {choice}",
+            "{number}",
+            "number {number}",
+            "option {number}",
+            "{number} {unit}",
+            "about {number} {unit}",
+            "{ordinal}",
+            "the {ordinal}",
+            "the {ordinal} one"
+          ]
+        }
+      ],
+      "types": [
+        {
+          "name": "CHOICE_WORD",
+          "values": [
+            { "name": { "value": "small" } },
+            { "name": { "value": "medium", "synonyms": ["regular", "normal", "average"] } },
+            { "name": { "value": "large", "synonyms": ["big"] } },
+            { "name": { "value": "extra large", "synonyms": ["jumbo", "extra big"] } },
+            { "name": { "value": "mini", "synonyms": ["tiny"] } },
+            { "name": { "value": "half" } },
+            { "name": { "value": "whole" } },
+            { "name": { "value": "estimate", "synonyms": ["just estimate it", "your estimate", "guess"] } },
+            { "name": { "value": "none of those", "synonyms": ["none", "neither", "something else"] } }
+          ]
+        },
+        {
+          "name": "AMOUNT_UNIT",
+          "values": [
+            { "name": { "value": "grams", "synonyms": ["gram", "g"] } },
+            { "name": { "value": "ounces", "synonyms": ["ounce", "oz"] } },
+            { "name": { "value": "cups", "synonyms": ["cup"] } },
+            { "name": { "value": "slices", "synonyms": ["slice"] } },
+            { "name": { "value": "pieces", "synonyms": ["piece"] } },
+            { "name": { "value": "servings", "synonyms": ["serving"] } },
+            { "name": { "value": "tablespoons", "synonyms": ["tablespoon"] } },
+            { "name": { "value": "teaspoons", "synonyms": ["teaspoon"] } },
+            { "name": { "value": "calories", "synonyms": ["calorie", "cal"] } }
+          ]
+        }
+      ]
+    }
+  }
+}

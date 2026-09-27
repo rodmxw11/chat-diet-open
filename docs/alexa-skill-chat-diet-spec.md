@@ -93,9 +93,9 @@ tighter FDC timeout). They're deferred until a real Echo shows timeouts.
 
 ## A. Interaction model (done — recorded for reference)
 
-Invocation name: **`rod chat diet`** (the JSON below still shows the
-original `my food diary`, which was chosen over "chat diet" and "diet
-coach" for clean syllable boundaries in the mid-sentence position).
+Invocation name: **`rod chat diet`**, renamed from `my food diary`, which had been
+chosen over "chat diet" and "diet coach" for clean syllable boundaries in the
+mid-sentence position.
 
 **Use "ask …" or "open …", never "tell rod … that …".** Because the name
 starts with a person's name, `tell rod chat diet that i ate a banana` is
@@ -103,38 +103,12 @@ claimed by Alexa's built-in announcement feature ("Announcing to your
 devices") before any skill sees it. `ask rod chat diet i ate …` and
 `open rod chat diet` both reach the skill, as confirmed in the simulator.
 
-```json
-{
-  "interactionModel": {
-    "languageModel": {
-      "invocationName": "my food diary",
-      "intents": [
-        { "name": "AMAZON.CancelIntent", "samples": [] },
-        { "name": "AMAZON.HelpIntent", "samples": [] },
-        { "name": "AMAZON.StopIntent", "samples": [] },
-        { "name": "AMAZON.FallbackIntent", "samples": [] },
-        {
-          "name": "AteIntent",
-          "slots": [{ "name": "text", "type": "AMAZON.SearchQuery" }],
-          "samples": ["i ate {text}", "i eight {text}", "ate {text}"]
-        },
-        {
-          "name": "NoteIntent",
-          "slots": [{ "name": "text", "type": "AMAZON.SearchQuery" }],
-          "samples": ["note that {text}", "note {text}"]
-        },
-        {
-          "name": "WeightIntent",
-          "slots": [{ "name": "text", "type": "AMAZON.SearchQuery" }],
-          "samples": ["i weight {text}", "i wait {text}",
-                      "i weigh {text}", "weight {text}"]
-        }
-      ],
-      "types": []
-    }
-  }
-}
-```
+The live model is tracked in [`alexa-interaction-model.json`](alexa-interaction-model.json);
+paste it into the console's **Build → Interaction Model → JSON Editor**, then **Save** and **Build**.
+Besides the three logging intents it has `ChoiceIntent` (bare answers to the model's clarifying
+questions: "medium", "two", "the second one", "150 grams"), plus `AMAZON.YesIntent`/`NoIntent`.
+The logging intents' `AMAZON.SearchQuery` slots only match with a carrier phrase, so without
+`ChoiceIntent` an answer like "medium" never reaches the backend.
 
 ### Why three intents and not one catch-all
 

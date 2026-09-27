@@ -107,6 +107,38 @@ class AlexaControllerTest {
     }
 
     @Test
+    void aBareAnswerGoesToTheModelWithNoCarrierPhrase() throws Exception {
+        send(choiceRequest("\"choice\": {\"name\": \"choice\", \"value\": \"medium\"}"));
+        send(choiceRequest("\"ordinal\": {\"name\": \"ordinal\", \"value\": \"2\"}"));
+        send(choiceRequest("\"number\": {\"name\": \"number\", \"value\": \"150\"}, "
+                + "\"unit\": {\"name\": \"unit\", \"value\": \"grams\"}"));
+        send(intentRequest("AMAZON.YesIntent", null));
+
+        verify(chatService).reply(any(), any(), eq("medium"), eq(true));
+        verify(chatService).reply(any(), any(), eq("2"), eq(true));
+        verify(chatService).reply(any(), any(), eq("150 grams"), eq(true));
+        verify(chatService).reply(any(), any(), eq("yes"), eq(true));
+    }
+
+    @Test
+    void aChoiceWithNoRecognizedValueWritesNothing() throws Exception {
+        send(choiceRequest("\"choice\": {\"name\": \"choice\", \"value\": \"?\"}"))
+                .andExpect(jsonPath("$.response.outputSpeech.ssml").value("<speak>Sorry?</speak>"));
+        verifyNoInteractions(chatService, fastFoodLogService);
+    }
+
+    @Test
+    void aQuestionGetsAnAnswerReprompt() throws Exception {
+        when(chatService.reply(any(), any(), anyString(), anyBoolean()))
+                .thenReturn("One apple - small, medium, or large?");
+
+        send(intentRequest("AteIntent", "an apple"))
+                .andExpect(jsonPath("$.response.shouldEndSession").value(false))
+                .andExpect(jsonPath("$.response.reprompt.outputSpeech.ssml")
+                        .value("<speak>Say your answer, or stop.</speak>"));
+    }
+
+    @Test
     void fallbackWritesNothing() throws Exception {
         send(intentRequest("AMAZON.FallbackIntent", null))
                 .andExpect(jsonPath("$.response.outputSpeech.ssml").value("<speak>Sorry?</speak>"))
@@ -154,6 +186,13 @@ class AlexaControllerTest {
 
     private static String intentRequest(String intentName, String text) {
         return intentRequest(intentName, text, java.time.Instant.now().toString());
+    }
+
+    private static String choiceRequest(String slotsJson) {
+        return envelope("""
+                {"type": "IntentRequest", "requestId": "r1", "timestamp": "%s", "locale": "en-US",
+                 "intent": {"name": "ChoiceIntent", "confirmationStatus": "NONE", "slots": {%s}}}"""
+                .formatted(java.time.Instant.now().toString(), slotsJson));
     }
 
     private static String intentRequest(String intentName, String text, String timestamp) {

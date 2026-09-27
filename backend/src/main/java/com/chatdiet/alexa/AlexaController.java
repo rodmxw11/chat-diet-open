@@ -1,5 +1,6 @@
 package com.chatdiet.alexa;
 
+import com.amazon.ask.model.Intent;
 import com.amazon.ask.model.IntentRequest;
 import com.amazon.ask.model.LaunchRequest;
 import com.amazon.ask.model.Request;
@@ -24,7 +25,9 @@ import java.util.regex.Pattern;
  * Endpoint Alexa's skill service calls for every request, after {@link AlexaSignatureFilter} has
  * verified it. Turns the three logging intents into the same chat turn the web app would send -
  * carrier phrase + what was said, deterministic fast path first, then {@link ChatService} on the
- * voice channel - and speaks the reply.
+ * voice channel - and speaks the reply. Bare answers to the model's clarifying questions
+ * ({@code ChoiceIntent}, yes/no) go through the same turn with no carrier phrase: the logging
+ * intents' {@code AMAZON.SearchQuery} slots need a carrier phrase, so "medium" alone can't reach them.
  *
  * <p>An Alexa session is only mic-open/mic-closed state: history is keyed by metabolic day, so a
  * voice turn lands in the same conversation as that day's typed turns, and ending a session writes
@@ -44,6 +47,7 @@ public class AlexaController {
 
     private static final String TEXT_SLOT = "text";
     private static final String REPROMPT = "Anything else?";
+    private static final String ANSWER_REPROMPT = "Say your answer, or stop.";
     private static final String NOT_UNDERSTOOD = "Sorry?";
     private static final String HELP = "Say I ate, then the food. Or say I weigh, or note that.";
     private static final String FAILED =
@@ -104,15 +108,15 @@ public class AlexaController {
             }
         }
 
-        var carrier = CARRIER_PHRASES.get(intentName);
-        var spoken = slotValue(request);
-        if (carrier == null || spoken == null) {
+        var text = turnText(request.getIntent());
+        if (text == null) {
+            log.info("Alexa {} not understood - nothing written", intentName);
             return speak(NOT_UNDERSTOOD, false);
         }
 
         var started = System.currentTimeMillis();
         try {
-            var reply = logTurn(carrier + spoken, request);
+            var reply = logTurn(text, request);
             log.info("Alexa {} turn took {} ms", intentName, System.currentTimeMillis() - started);
             return speak(reply, false);
         } catch (RuntimeException e) {
@@ -133,19 +137,57 @@ public class AlexaController {
                 .orElseGet(() -> chatService.reply(metabolicDate, occurredAt, text, true));
     }
 
-    private static String slotValue(IntentRequest request) {
-        var slots = request.getIntent().getSlots();
-        Slot slot = slots == null ? null : slots.get(TEXT_SLOT);
-        var value = slot == null ? null : slot.getValue();
-        return value == null || value.isBlank() ? null : value.strip();
+    /**
+     * The chat text for an intent: a logging intent's carrier phrase plus what was said, or - for
+     * a bare answer to the model's own clarifying question ("medium", "two", "150 grams", "yes") -
+     * just the answer, which the model resolves against that question since it sees the day's
+     * whole conversation. Null when there's nothing usable, so nothing gets written.
+     */
+    private static String turnText(Intent intent) {
+        var carrier = CARRIER_PHRASES.get(intent.getName());
+        if (carrier != null) {
+            var spoken = slotValue(intent, TEXT_SLOT);
+            return spoken == null ? null : carrier + spoken;
+        }
+        return switch (intent.getName()) {
+            case "ChoiceIntent" -> choiceText(intent);
+            case "AMAZON.YesIntent" -> "yes";
+            case "AMAZON.NoIntent" -> "no";
+            default -> null;
+        };
     }
 
-    /** Builds a response envelope; open sessions get the standard reprompt. */
+    /** "the second one" → "2", "150 grams" → "150 grams", "two" → "2", "medium" → "medium". */
+    private static String choiceText(Intent intent) {
+        var ordinal = slotValue(intent, "ordinal");
+        if (ordinal != null) {
+            return ordinal;
+        }
+        var number = slotValue(intent, "number");
+        if (number != null) {
+            var unit = slotValue(intent, "unit");
+            return unit == null ? number : number + " " + unit;
+        }
+        return slotValue(intent, "choice");
+    }
+
+    private static String slotValue(Intent intent, String slotName) {
+        var slots = intent.getSlots();
+        Slot slot = slots == null ? null : slots.get(slotName);
+        var value = slot == null ? null : slot.getValue();
+        return value == null || value.isBlank() || "?".equals(value) ? null : value.strip();
+    }
+
+    /**
+     * Builds a response envelope. Open sessions get a reprompt - one that invites an answer when
+     * the reply is itself a question, since "Anything else?" would talk over it.
+     */
     private static Map<String, Object> speak(String text, boolean endSession) {
         var response = new LinkedHashMap<String, Object>();
         response.put("outputSpeech", ssml(text));
         if (!endSession) {
-            response.put("reprompt", Map.of("outputSpeech", ssml(REPROMPT)));
+            var reprompt = text.strip().endsWith("?") ? ANSWER_REPROMPT : REPROMPT;
+            response.put("reprompt", Map.of("outputSpeech", ssml(reprompt)));
         }
         response.put("shouldEndSession", endSession);
         return Map.of("version", "1.0", "response", response);
