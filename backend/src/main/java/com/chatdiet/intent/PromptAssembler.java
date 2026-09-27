@@ -47,7 +47,8 @@ public class PromptAssembler {
                is 156 over 65", "make that two slices"). A bare number is
                always a new entry, never an inferred correction.
             5. Sub-10-calorie items (black tea, water) are not logged - a brief
-               acknowledgement is enough, no row written.
+               acknowledgement is enough, no row written. The one exception is a
+               declared fast, which is logged as a 0-calorie entry (see log_food).
             6. When estimating calories or macros yourself (nothing cached or
                found in a database), err a few percent high, never low - the
                user prefers mild overestimation; underestimation quietly

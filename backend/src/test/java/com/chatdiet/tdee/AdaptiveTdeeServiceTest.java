@@ -58,7 +58,7 @@ class AdaptiveTdeeServiceTest {
 
     @Test
     void computesTdeeFromIntakeAndAnOlsFitOfTheSmoothedWeightTrend() {
-        var to = dayBoundaryService.today();
+        var to = dayBoundaryService.today().minusDays(1);
         var from = to.minusDays(14);
 
         // Two weigh-ins only, 14 days apart, straight-line from 200 to 193 lbs - interpolateGaps
@@ -92,9 +92,33 @@ class AdaptiveTdeeServiceTest {
         assertThat(estimate.standardErrorCalories()).isEqualTo(47);
     }
 
+    /**
+     * Today is a partial day - a breakfast-only running total averaged in as a whole day's intake
+     * understated the estimate by ~90 cal. The window ends at yesterday, so today's row is ignored.
+     */
+    @Test
+    void todaysPartialDayIsLeftOutOfTheIntakeAverage() {
+        var to = dayBoundaryService.today().minusDays(1);
+        var from = to.minusDays(14);
+        weightEntryRepository.save(new WeightEntry(from.atTime(12, 0), 200.0));
+        weightEntryRepository.save(new WeightEntry(to.atTime(12, 0), 193.0));
+        for (int i = 0; i < 7; i++) {
+            dailyMacroCacheRepository.save(
+                    new DailyMacroCache(null, to.minusDays(i), 2000, 0, 0, 0, LocalDateTime.now()));
+        }
+        dailyMacroCacheRepository.save(
+                new DailyMacroCache(null, dayBoundaryService.today(), 78, 0, 0, 0, LocalDateTime.now()));
+
+        var estimate = (TdeeResult.Estimate) adaptiveTdeeService.estimate();
+
+        // Same inputs as the hand-computed case above, so the same 2906 - the 78 changes nothing.
+        assertThat(estimate.loggedDays()).isEqualTo(7);
+        assertThat(estimate.estimatedCalories()).isEqualTo(2906);
+    }
+
     @Test
     void flagsACaveatWhenTheCalorieGoalChangedRecently() {
-        var to = dayBoundaryService.today();
+        var to = dayBoundaryService.today().minusDays(1);
         var from = to.minusDays(14);
         weightEntryRepository.save(new WeightEntry(from.atTime(12, 0), 200.0));
         weightEntryRepository.save(new WeightEntry(to.atTime(12, 0), 193.0));
@@ -114,7 +138,7 @@ class AdaptiveTdeeServiceTest {
 
     @Test
     void unavailableWhenFewerThanMinLoggedDays() {
-        var to = dayBoundaryService.today();
+        var to = dayBoundaryService.today().minusDays(1);
         var from = to.minusDays(14);
         weightEntryRepository.save(new WeightEntry(from.atTime(12, 0), 200.0));
         weightEntryRepository.save(new WeightEntry(to.atTime(12, 0), 193.0));
@@ -133,7 +157,7 @@ class AdaptiveTdeeServiceTest {
 
     @Test
     void unavailableWhenFewerThanMinTrendPointsExistInTheWindow() {
-        var to = dayBoundaryService.today();
+        var to = dayBoundaryService.today().minusDays(1);
         // Weigh-ins only from the last 3 days - the trend map has no entries at all before the
         // first one, so only 3 of the 15 days in the window resolve to a real point.
         for (int i = 0; i < 3; i++) {

@@ -38,6 +38,16 @@
     your reply ("Logged a medium apple, 190 grams, 99 calories."), so the
     user can correct it afterwards.
 
+    Fasting: when the user says they fasted for a day ("I fasted today",
+    "fasted yesterday", "I'm doing a zero-calorie day"), log exactly one
+    log_food item with foodRef "fasted", amountText "" (empty - never a
+    gram amount), useEstimate true, and totalCalories and every macro set
+    to 0, using loggedAt for a past day as usual. A day
+    only counts toward the adaptive TDEE when it has at least one entry, so
+    this 0-calorie entry is what makes a fast count as a real 0 rather than
+    a day that was never logged. Log it once per day - check the day's foods
+    first if unsure - and don't log it on a day that already has food.
+
     log_food's reply falls into one of two shapes. If it's a plain
     confirmation, you're done - relay it. If it contains a numbered list (each
     option silently tagged with a marker like "[ref:item:57]",

@@ -99,4 +99,46 @@ class DailyMacroCacheServiceTest {
         assertThat(cached).isPresent();
         assertThat(cached.get().totalCalories()).isEqualTo(400);
     }
+
+    /** A day whose only entry was deleted is no longer logged - not a 0-calorie "fast" for TDEE. */
+    @Test
+    void deletingADaysLastEntryRemovesItsRow() {
+        var today = LocalDate.now();
+        var entry = foodEntryRepository.save(
+                new FoodEntry(today.atTime(9, 0), "banana", 89, 1.1, 22.8, 0.3, "LOG_FOOD"));
+        dailyMacroCacheService.recompute(today);
+        assertThat(dailyMacroCacheRepository.findByMetabolicDate(today)).isPresent();
+
+        foodEntryRepository.delete(entry);
+        dailyMacroCacheService.recompute(today);
+
+        assertThat(dailyMacroCacheRepository.findByMetabolicDate(today)).isEmpty();
+    }
+
+    /** A deliberate fast is logged as a 0-calorie entry, and that day does count - as a real 0. */
+    @Test
+    void aZeroCalorieFastEntryKeepsAZeroRow() {
+        var today = LocalDate.now();
+        foodEntryRepository.save(new FoodEntry(today.atTime(9, 0), "fasted", 0, 0.0, 0.0, 0.0, "LOG_FOOD"));
+
+        dailyMacroCacheService.recompute(today);
+
+        assertThat(dailyMacroCacheRepository.findByMetabolicDate(today).orElseThrow().totalCalories()).isZero();
+    }
+
+    /** A forgotten day in the middle of the history must not become a 0-calorie row on restart. */
+    @Test
+    void backfillSkipsDaysWithNoEntriesAndClearsStaleZeroRows() {
+        var today = LocalDate.now();
+        var gapDay = today.minusDays(1);
+        foodEntryRepository.save(new FoodEntry(today.minusDays(2).atTime(9, 0), "lunch", 500, 0.0, 0.0, 0.0, "LOG_FOOD"));
+        foodEntryRepository.save(new FoodEntry(today.atTime(9, 0), "breakfast", 400, 0.0, 0.0, 0.0, "LOG_FOOD"));
+        dailyMacroCacheRepository.save(new DailyMacroCache(null, gapDay, 0, 0, 0, 0, java.time.LocalDateTime.now()));
+
+        dailyMacroCacheService.backfill();
+
+        assertThat(dailyMacroCacheRepository.findByMetabolicDate(gapDay)).isEmpty();
+        assertThat(dailyMacroCacheRepository.findByMetabolicDate(today.minusDays(2))).isPresent();
+        assertThat(dailyMacroCacheRepository.findByMetabolicDate(today)).isPresent();
+    }
 }

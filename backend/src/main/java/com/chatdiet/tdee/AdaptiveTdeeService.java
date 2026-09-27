@@ -29,6 +29,13 @@ import java.util.Map;
  * feeds back into {@code DailyTarget} automatically. An earlier version of this idea did that and
  * was removed for oscillating on sparse weigh-ins without damping (see SPEC.md); this avoids that
  * failure mode by simply not closing the loop.
+ *
+ * <p>The window ends at yesterday, the last <em>complete</em> metabolic day. Today's running total
+ * is a partial day - averaging a 78-calorie breakfast in as if it were a whole day's intake drags
+ * the estimate down by ~90 cal, by an amount that shrinks as the day's logging fills in. A day
+ * counts as logged when it has a {@link DailyMacroCache} row, which exists only while that day has
+ * at least one food entry - so a deliberate fast is logged as a 0-calorie entry, and a day with
+ * nothing logged is left out of the average rather than counted as a fast.
  */
 @Service
 public class AdaptiveTdeeService {
@@ -68,7 +75,7 @@ public class AdaptiveTdeeService {
     }
 
     public TdeeResult estimate() {
-        var to = dayBoundaryService.today();
+        var to = dayBoundaryService.today().minusDays(1);
         var from = to.minusDays(WINDOW_DAYS);
         var trendByDate = weightTrendService.smoothedTrendByDate();
 

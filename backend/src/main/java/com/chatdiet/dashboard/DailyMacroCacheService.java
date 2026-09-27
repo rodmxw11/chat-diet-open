@@ -28,20 +28,30 @@ public class DailyMacroCacheService {
         this.dayBoundaryService = dayBoundaryService;
     }
 
-    /** Re-sums every food entry on the given metabolic day and upserts its cache row. */
+    /**
+     * Re-sums every food entry on the given metabolic day and upserts its cache row - or removes
+     * the row when the day has no entries left. A row means "this day was logged": adaptive TDEE
+     * averages over exactly these rows, so a day whose only entry was deleted (or that was never
+     * logged at all) must not linger as a 0-calorie row posing as a fast. A real fast is logged as
+     * a 0-calorie entry, which does keep a row.
+     */
     public void recompute(LocalDate metabolicDate) {
         var start = dayBoundaryService.startOfMetabolicDay(metabolicDate);
         var end = dayBoundaryService.endOfMetabolicDay(metabolicDate);
         var entries = foodEntryRepository.findByLoggedAtBetween(start, end);
+        var existing = dailyMacroCacheRepository.findByMetabolicDate(metabolicDate);
+
+        if (entries.isEmpty()) {
+            existing.ifPresent(dailyMacroCacheRepository::delete);
+            return;
+        }
 
         double protein = entries.stream().mapToDouble(e -> e.totalProteinG() != null ? e.totalProteinG() : 0).sum();
         double carbs = entries.stream().mapToDouble(e -> e.totalCarbsG() != null ? e.totalCarbsG() : 0).sum();
         double fat = entries.stream().mapToDouble(e -> e.totalFatG() != null ? e.totalFatG() : 0).sum();
         int calories = entries.stream().mapToInt(e -> e.totalCalories() != null ? e.totalCalories() : 0).sum();
 
-        var existingId = dailyMacroCacheRepository.findByMetabolicDate(metabolicDate)
-                .map(DailyMacroCache::id)
-                .orElse(null);
+        var existingId = existing.map(DailyMacroCache::id).orElse(null);
         dailyMacroCacheRepository.save(
                 new DailyMacroCache(existingId, metabolicDate, calories, protein, carbs, fat, LocalDateTime.now()));
     }
@@ -55,7 +65,8 @@ public class DailyMacroCacheService {
      * Backfills cache rows for every metabolic day spanned by existing food entries, so history
      * logged before this cache existed shows up immediately rather than waiting for a new write to
      * each of those days. Cheap and idempotent enough to just always run at startup - personal-app
-     * data volumes make re-summing the full history once, on boot, a non-issue.
+     * data volumes make re-summing the full history once, on boot, a non-issue. Days in the span
+     * with no entries get no row, and any stale 0-calorie row left on such a day is removed.
      */
     @PostConstruct
     void backfill() {
