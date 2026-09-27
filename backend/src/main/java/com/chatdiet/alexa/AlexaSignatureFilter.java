@@ -1,6 +1,7 @@
 package com.chatdiet.alexa;
 
 import com.amazon.ask.model.RequestEnvelope;
+import com.amazon.ask.servlet.ServletConstants;
 import com.amazon.ask.servlet.verifiers.AlexaHttpRequest;
 import com.amazon.ask.servlet.verifiers.SkillRequestSignatureVerifier;
 import com.amazon.ask.servlet.verifiers.SkillRequestTimestampVerifier;
@@ -23,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Verifies every request to {@code /alexa} is genuinely from Alexa before anything else touches
- * it - the {@code Signature}/{@code SignatureCertChainUrl} headers against the raw request body
+ * it - the {@code Signature-256}/{@code SignatureCertChainUrl} headers against the raw request body
  * ({@link SkillRequestSignatureVerifier}, which validates the cert chain against Amazon's root CA
  * and caches the downloaded certificate itself) and the request timestamp against a tolerance
  * ({@link SkillRequestTimestampVerifier}, replay-attack protection), and the request envelope's
@@ -49,8 +50,11 @@ public class AlexaSignatureFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(AlexaSignatureFilter.class);
 
     private static final String ALEXA_PATH = "/alexa";
-    private static final String SIGNATURE_HEADER = "Signature";
-    private static final String CERT_CHAIN_URL_HEADER = "SignatureCertChainUrl";
+    // The SDK verifies with SHA256withRSA, which only matches Alexa's "Signature-256" header - the
+    // legacy "Signature" header carries a SHA-1 signature that can never verify. Use the SDK's own
+    // constants so the header and the algorithm can't drift apart again.
+    private static final String SIGNATURE_HEADER = ServletConstants.SIGNATURE_REQUEST_HEADER;
+    private static final String CERT_CHAIN_URL_HEADER = ServletConstants.SIGNATURE_CERTIFICATE_CHAIN_URL_REQUEST_HEADER;
 
     /** Alexa's own tolerance for how stale a request's timestamp may be, per the ASK SDK's default. */
     private static final long TIMESTAMP_TOLERANCE = 150;
