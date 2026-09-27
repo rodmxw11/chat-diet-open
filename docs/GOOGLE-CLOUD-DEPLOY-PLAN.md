@@ -60,7 +60,8 @@ starts, a nightly backup job that doesn't run while scaled to zero, and rework o
 0. **Repo changes** (commit these before deploying):
    - `backend/Dockerfile`: use `COPY --chown=appuser:appuser` for the jar instead of a later `chown -R /app`.
      The `chown` currently copies the ~97 MB jar into a second layer, which every push would upload
-     again. Also change `EXPOSE 8080` to `EXPOSE 8443 8081`.
+     again. Also change `EXPOSE 8080` to `EXPOSE 8443 8081`, and pin `appuser` to UID/GID 10001 so
+     the VM can chown its bind mounts to match.
    - `docker-compose.yml`: change `image:` to `${CHAT_DIET_IMAGE:-chat-diet-backend}:${TAG:-latest}`
      and keep `build: ./backend`. With no `.env`, local behavior is unchanged. On a machine that deploys,
      `.env` (already gitignored) sets `CHAT_DIET_IMAGE=us-east1-docker.pkg.dev/<project>/chat-diet/backend`
@@ -91,8 +92,11 @@ starts, a nightly backup job that doesn't run while scaled to zero, and rework o
      The VM doesn't build, so it needs no jar.
    - Run `gcloud auth configure-docker us-east1-docker.pkg.dev`. Debian images on GCE ship with `gcloud`,
      and this makes `docker pull` use the VM's service account.
-   - Run `tailscale cert` for `chat-diet.<tailnet>.ts.net` into `~/chat-diet/backend/certs/`.
-   - Add a monthly cron job that re-runs `tailscale cert`, then `docker compose restart` (certs expire after 90 days).
+   - Run `tailscale cert` for `chat-diet.<tailnet>.ts.net` into `~/chat-diet/backend/certs/`, then
+     `sudo chown -R 10001:10001 ~/chat-diet/backend/certs`. The container runs as `appuser`
+     (UID/GID 10001, pinned in the Dockerfile), and `tailscale cert` writes the key as root-only.
+   - Add a monthly root cron job that re-runs `tailscale cert`, repeats that `chown`, then runs
+     `docker compose restart` (certs expire after 90 days).
 4. **Build, push, and ship the config:**
    - On the PC: run `backend\gradlew -p backend bootJar`. Set `CHAT_DIET_IMAGE` and `TAG` (the git short
      SHA) in `.env`, then run `docker compose build` and `docker compose push`.
@@ -103,8 +107,9 @@ starts, a nightly backup job that doesn't run while scaled to zero, and rework o
 5. **Cutover** (the only step that touches live data):
    1. On the phone, open the app and make sure the offline queue is empty. Queued entries belong to the old URL.
    2. On the PC: `docker compose down`. This also keeps the container from coming back after a reboot.
-   3. Copy `backend/data/` (`chat-diet.db`, `backups/`, `OMRON-DOWNLOADS/`) to the VM. Leave the PC copy
-      untouched for rollback.
+   3. Copy `backend/data/` (`chat-diet.db`, `backups/`, `OMRON-DOWNLOADS/`) to the VM, then
+      `sudo chown -R 10001:10001 ~/chat-diet/backend/data` so the container can write to the database.
+      Windows ignores ownership, but a Linux host doesn't. Leave the PC copy untouched for rollback.
    4. On the VM: `docker compose up -d`. Never pass `--build` on the VM.
 6. **Alexa:** follow `scripts/TAILSCALE-ALEXA-CONFIG.md` on the VM:
    - Turn on Funnel: 443 → `http://localhost:8081`. The node needs the `funnel` attribute in the tailnet policy.

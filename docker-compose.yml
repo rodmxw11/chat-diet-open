@@ -5,7 +5,8 @@
 services:
   backend:
     build: ./backend
-    image: chat-diet-backend
+    # A deploying machine's .env points this at Artifact Registry and sets TAG to a git short SHA.
+    image: ${CHAT_DIET_IMAGE:-chat-diet-backend}:${TAG:-latest}
     container_name: chat-diet-backend
     restart: unless-stopped
     environment:
@@ -14,6 +15,8 @@ services:
       # The container's loopback isn't reachable through a published port, so the Alexa connector
       # binds all container interfaces and the port is published on the host's loopback only.
       CHAT_DIET_ALEXA_ADDRESS: 0.0.0.0
+      # Heap/GC caps for small hosts (the e2-micro VM sets these in .env); unset on the PC.
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-}
     ports:
       - "8443:8443"
       - "127.0.0.1:8081:8081"
