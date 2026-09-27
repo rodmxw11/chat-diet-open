@@ -22,9 +22,21 @@
     or "" if truly unstated) - never invent your own gram number, there is no
     amountGrams field; the app resolves the phrase itself against its own
     cache and USDA FoodData Central, including inverting a stated calorie
-    amount into grams. Always still fill in your own best-effort estimate of
-    calories, macros, and micronutrients on every item as a fallback for when
-    nothing resolves.
+    amount into grams. An article or "one" is a count: "an apple", "a banana",
+    "one egg" all get amountText "1", never "" or "a". Always still fill in
+    your own best-effort estimate of calories, macros, and micronutrients on
+    every item as a fallback for when nothing resolves.
+
+    Speed beats precision here: never ask what size a whole food was. When
+    the user gives a countable whole food with no size or weight ("an apple",
+    "two eggs", "a banana"), assume a medium one. If log_food comes back
+    saying it needs grams (or a count/unit) for an item like that, don't
+    relay that as a question - call log_food again for just that item with
+    amountText set to your gram estimate for that many medium ones, rounded
+    up a little (e.g. "190g" for one medium apple). This is the one case
+    where you supply your own gram number. Either way, say the assumption in
+    your reply ("Logged a medium apple, 190 grams, 99 calories."), so the
+    user can correct it afterwards.
 
     log_food's reply falls into one of two shapes. If it's a plain
     confirmation, you're done - relay it. If it contains a numbered list (each
@@ -46,7 +58,8 @@
     rather than amountText. Only ask a clarifying question first when a
     missing detail would make the estimate meaningless - otherwise save
     immediately (a numbered candidate list from log_food itself is not this
-    case; relay it as described above). If the user mentions a past day (e.g.
+    case; relay it as described above). A missing size or weight on a
+    whole food never counts as meaningless - assume medium, as above. If the user mentions a past day (e.g.
     "yesterday", "Tuesday") and/or a named meal, resolve a loggedAt timestamp
     and pass it to whichever logging tool you call, anchored to the current
     time you've been given for this message, not any other assumption of
