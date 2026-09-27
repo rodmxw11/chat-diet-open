@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { dismissQuantityPrompt, logScannedFood, type QuantityUnit } from '../store/chatSlice'
-import { loadMacros, loadTdeeEstimate, loadWeightTrend } from '../store/dashboardSlice'
-import { loadSummary } from '../store/summarySlice'
+import { invalidateAfterLog } from '../store/dashboardApi'
 
 const UNITS: { value: QuantityUnit; label: string }[] = [
   { value: 'g', label: 'g' },
@@ -17,7 +16,6 @@ const UNITS: { value: QuantityUnit; label: string }[] = [
 export default function QuantityPromptBar() {
   const dispatch = useAppDispatch()
   const prompt = useAppSelector((state) => state.chat.quantityPrompt)
-  const macroRange = useAppSelector((state) => state.dashboard.range)
   const [amount, setAmount] = useState('')
   const [unit, setUnit] = useState<QuantityUnit>('g')
 
@@ -38,10 +36,7 @@ export default function QuantityPromptBar() {
     dispatch(
       logScannedFood({ foodItemId: prompt.foodItemId, name: prompt.name, amount: value, unit }),
     ).finally(() => {
-      dispatch(loadSummary())
-      dispatch(loadWeightTrend())
-      dispatch(loadTdeeEstimate())
-      dispatch(loadMacros(macroRange))
+      dispatch(invalidateAfterLog())
     })
   }
 

@@ -3,7 +3,12 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { loadScanQueue } from '../../store/barcodeQueueSlice'
 import { loadEntryQueue, loadHistory, loadQueue } from '../../store/chatSlice'
 import { loadNotes } from '../../store/notesSlice'
-import { loadMacros, loadTdeeEstimate, loadWeightTrend } from '../../store/dashboardSlice'
+import {
+  useGetMacrosQuery,
+  useGetSummaryQuery,
+  useGetTdeeQuery,
+  useGetWeightTrendQuery,
+} from '../../store/dashboardApi'
 import Header from '../Header'
 import ChatWindow from '../ChatWindow'
 import MessageInput from '../MessageInput'
@@ -35,22 +40,22 @@ export default function AppShell() {
     document.documentElement.dataset.theme = theme
   }, [theme])
 
-  // Fetched once here (not inside Sidebar/ChartSheets) so the same dashboard state feeds both the
-  // desktop sidebar and the mobile chart sheets without re-fetching when the sheet opens or the
-  // viewport crosses a breakpoint.
+  // Subscribed here, where it's always mounted: the summary is polled so the header stays current
+  // even after a tool-driven change made elsewhere (e.g. a chat turn on another device), and the
+  // chart data is prefetched so the mobile chart sheets open already filled in. The charts read the
+  // same cache through their own hooks, so this costs no extra requests.
+  useGetSummaryQuery(undefined, { pollingInterval: 60_000 })
+  useGetMacrosQuery(range)
+  useGetWeightTrendQuery()
+  useGetTdeeQuery()
+
   useEffect(() => {
     dispatch(loadHistory())
     dispatch(loadQueue())
     dispatch(loadEntryQueue())
     dispatch(loadScanQueue())
-    dispatch(loadWeightTrend())
-    dispatch(loadTdeeEstimate())
     dispatch(loadNotes())
   }, [dispatch])
-
-  useEffect(() => {
-    dispatch(loadMacros(range))
-  }, [dispatch, range])
 
   return (
     <div className="app-shell">

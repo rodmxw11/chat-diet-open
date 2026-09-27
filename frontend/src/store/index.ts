@@ -4,12 +4,12 @@ import barcodeQueueReducer from './barcodeQueueSlice'
 import chatReducer from './chatSlice'
 import chatHistoryReducer from './chatHistorySlice'
 import connectivityReducer from './connectivitySlice'
+import { dashboardApi } from './dashboardApi'
 import dashboardReducer from './dashboardSlice'
 import foodEntriesReducer from './foodEntriesSlice'
 import foodItemsReducer from './foodItemsSlice'
 import notesReducer from './notesSlice'
 import schemaReducer from './schemaSlice'
-import summaryReducer from './summarySlice'
 import uiReducer from './uiSlice'
 
 export const store = configureStore({
@@ -24,9 +24,10 @@ export const store = configureStore({
     foodItems: foodItemsReducer,
     notes: notesReducer,
     schema: schemaReducer,
-    summary: summaryReducer,
     ui: uiReducer,
+    [dashboardApi.reducerPath]: dashboardApi.reducer,
   },
+  middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(dashboardApi.middleware),
 })
 
 export type RootState = ReturnType<typeof store.getState>

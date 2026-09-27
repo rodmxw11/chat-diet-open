@@ -11,7 +11,7 @@ import {
   YAxis,
   type TooltipContentProps,
 } from 'recharts'
-import type { BloodPressureReading } from '../../store/dashboardSlice'
+import type { BloodPressureReading } from '../../store/dashboardApi'
 
 interface ChartPoint {
   time: number

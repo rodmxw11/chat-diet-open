@@ -1,7 +1,7 @@
-import { useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { setScreen } from '../../store/uiSlice'
-import { loadBloodPressure, setBpRange, type MacroRange } from '../../store/dashboardSlice'
+import { setBpRange, type MacroRange } from '../../store/dashboardSlice'
+import { useGetBloodPressureQuery } from '../../store/dashboardApi'
 import BloodPressureChart, { average } from './BloodPressureChart'
 
 function formatDate(iso: string): string {
@@ -20,12 +20,8 @@ function formatTime(iso: string): string {
 export default function BloodPressureView() {
   const dispatch = useAppDispatch()
   const range = useAppSelector((state) => state.dashboard.bpRange)
-  const readings = useAppSelector((state) => state.dashboard.bloodPressure)
-  const status = useAppSelector((state) => state.dashboard.bloodPressureStatus)
-
-  useEffect(() => {
-    dispatch(loadBloodPressure(range))
-  }, [dispatch, range])
+  const { data: readings = [], isFetching, isError } = useGetBloodPressureQuery(range)
+  const status = isError ? 'error' : isFetching ? 'loading' : 'idle'
 
   const systolicAvg = average(readings.map((r) => r.systolic))
   const diastolicAvg = average(readings.map((r) => r.diastolic))

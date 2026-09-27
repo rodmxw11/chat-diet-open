@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { setScreen } from '../../store/uiSlice'
+import { useGetSummaryQuery } from '../../store/dashboardApi'
 import { loadFoodEntries, setFoodEntriesDate, type FoodEntry } from '../../store/foodEntriesSlice'
 
 // Parses a "YYYY-MM-DD" string as a local-time date and shifts it by `days`, avoiding the
@@ -53,7 +54,7 @@ export default function MicronutrientsView() {
   const date = useAppSelector((state) => state.foodEntries.date)
   const items = useAppSelector((state) => state.foodEntries.items)
   const status = useAppSelector((state) => state.foodEntries.status)
-  const metabolicDate = useAppSelector((state) => state.summary.data?.metabolicDate)
+  const metabolicDate = useGetSummaryQuery().data?.metabolicDate
 
   const hasAppliedMetabolicDate = useRef(false)
   useEffect(() => {

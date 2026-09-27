@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { appendDraftText, toggleTts } from '../store/chatSlice'
 import { openOverlay, setScreen, toggleMenu, closeMenu, toggleTheme } from '../store/uiSlice'
+import { useGetSummaryQuery } from '../store/dashboardApi'
 import StatusLight from './StatusLight'
 import BarcodeScanButton from './BarcodeScanButton'
 
@@ -11,7 +12,7 @@ export default function Header() {
   const dispatch = useAppDispatch()
   const ttsEnabled = useAppSelector((state) => state.chat.ttsEnabled)
   const status = useAppSelector((state) => state.chat.status)
-  const summary = useAppSelector((state) => state.summary.data)
+  const summary = useGetSummaryQuery().data
   const menuOpen = useAppSelector((state) => state.ui.menu)
   const range = useAppSelector((state) => state.dashboard.range)
   const queueCount = useAppSelector(

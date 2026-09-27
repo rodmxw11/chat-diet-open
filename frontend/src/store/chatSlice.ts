@@ -9,9 +9,7 @@ import {
   type QueuedEntry,
   type QueuedRequest,
 } from '../lib/offlineQueue'
-import { loadMacros, loadTdeeEstimate, loadWeightTrend } from './dashboardSlice'
-import { loadSummary } from './summarySlice'
-import type { RootState } from './index'
+import { invalidateAfterLog } from './dashboardApi'
 
 export interface SeriesPoint {
   at: string
@@ -119,7 +117,7 @@ export const sendMessage = createAsyncThunk<ChatApiResponse, string, { rejectVal
 
 // Replays every queued request in order, stopping at the first failure so the rest stay queued -
 // order matters because ChatController.replyAt depends on clientSentAt ordering.
-export const drainQueue = createAsyncThunk('chat/drainQueue', async (_, { dispatch, getState }) => {
+export const drainQueue = createAsyncThunk('chat/drainQueue', async (_, { dispatch }) => {
   const items = await listQueued()
   let sentAny = false
   for (const item of items) {
@@ -135,10 +133,7 @@ export const drainQueue = createAsyncThunk('chat/drainQueue', async (_, { dispat
   // Replayed turns can log food or weight same as any other - refresh the header and dashboard
   // charts rather than leaving them stuck at whatever they showed before reconnecting.
   if (sentAny) {
-    dispatch(loadSummary())
-    dispatch(loadWeightTrend())
-    dispatch(loadTdeeEstimate())
-    dispatch(loadMacros((getState() as RootState).dashboard.range))
+    dispatch(invalidateAfterLog())
   }
 })
 
@@ -222,7 +217,7 @@ export const logScannedFood = createAsyncThunk<
 })
 
 // Replays offline-queued quantity-prompt entries in order, stopping at the first failure.
-export const drainEntryQueue = createAsyncThunk('chat/drainEntryQueue', async (_, { dispatch, getState }) => {
+export const drainEntryQueue = createAsyncThunk('chat/drainEntryQueue', async (_, { dispatch }) => {
   const items = await listQueuedEntries()
   let sentAny = false
   for (const item of items) {
@@ -236,10 +231,7 @@ export const drainEntryQueue = createAsyncThunk('chat/drainEntryQueue', async (_
     }
   }
   if (sentAny) {
-    dispatch(loadSummary())
-    dispatch(loadWeightTrend())
-    dispatch(loadTdeeEstimate())
-    dispatch(loadMacros((getState() as RootState).dashboard.range))
+    dispatch(invalidateAfterLog())
   }
 })
 

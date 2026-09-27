@@ -10,8 +10,7 @@ import {
   YAxis,
   type TooltipContentProps,
 } from 'recharts'
-import { useAppSelector } from '../../store/hooks'
-import type { GoalLine } from '../../store/dashboardSlice'
+import { useGetTdeeQuery, useGetWeightTrendQuery, type GoalLine } from '../../store/dashboardApi'
 
 interface MergedPoint {
   date: string
@@ -79,8 +78,8 @@ function buildSeries(
 // GoalLine anchor point/slope the backend returns, rather than the backend materializing every
 // point of a straight line.
 export default function WeightTrendChart() {
-  const trend = useAppSelector((state) => state.dashboard.weightTrend)
-  const tdee = useAppSelector((state) => state.dashboard.tdee)
+  const trend = useGetWeightTrendQuery().data
+  const tdee = useGetTdeeQuery().data
 
   if (!trend) return null
 

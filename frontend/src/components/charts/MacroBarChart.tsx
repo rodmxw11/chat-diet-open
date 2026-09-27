@@ -10,6 +10,7 @@ import {
 } from 'recharts'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { setRange, type MacroRange } from '../../store/dashboardSlice'
+import { useGetMacrosQuery } from '../../store/dashboardApi'
 import { setFoodEntriesDate } from '../../store/foodEntriesSlice'
 import { closeOverlay, setScreen } from '../../store/uiSlice'
 
@@ -128,7 +129,7 @@ function AverageCalorieLine({ average, maxCalories }: { average: number; maxCalo
 export default function MacroBarChart() {
   const dispatch = useAppDispatch()
   const range = useAppSelector((state) => state.dashboard.range)
-  const macros = useAppSelector((state) => state.dashboard.macros)
+  const macros = useGetMacrosQuery(range).data ?? []
   const showInBarLabels = range === 7
   const average = averageCalories(macros)
   const maxCalories = Math.max(1, ...macros.map((day) => day.calories))

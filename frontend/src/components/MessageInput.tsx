@@ -1,14 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { sendMessage, setDraftText } from '../store/chatSlice'
-import { loadMacros, loadTdeeEstimate, loadWeightTrend } from '../store/dashboardSlice'
-import { loadSummary } from '../store/summarySlice'
+import { invalidateAfterLog } from '../store/dashboardApi'
 
 export default function MessageInput() {
   const dispatch = useAppDispatch()
   const text = useAppSelector((state) => state.chat.draftText)
   const status = useAppSelector((state) => state.chat.status)
-  const macroRange = useAppSelector((state) => state.dashboard.range)
   const inputRef = useRef<HTMLInputElement>(null)
   const wasLoading = useRef(false)
 
@@ -33,10 +31,7 @@ export default function MessageInput() {
     // something (a weigh-in that never appears on the trend line, food that never appears on the
     // macro chart) - refresh them all the moment this turn settles instead of waiting for a reload.
     dispatch(sendMessage(trimmed)).finally(() => {
-      dispatch(loadSummary())
-      dispatch(loadWeightTrend())
-      dispatch(loadTdeeEstimate())
-      dispatch(loadMacros(macroRange))
+      dispatch(invalidateAfterLog())
     })
     dispatch(setDraftText(''))
   }

@@ -2,8 +2,7 @@ import { useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { setScreen } from '../../store/uiSlice'
 import { applyMetabolicDate, deleteFoodEntry, loadFoodEntries, setFoodEntriesDate } from '../../store/foodEntriesSlice'
-import { loadMacros } from '../../store/dashboardSlice'
-import { loadSummary } from '../../store/summarySlice'
+import { invalidateAfterLog, useGetSummaryQuery } from '../../store/dashboardApi'
 
 const TIME_FORMAT: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' }
 
@@ -47,8 +46,7 @@ export default function DailyFoodsView() {
   const date = useAppSelector((state) => state.foodEntries.date)
   const items = useAppSelector((state) => state.foodEntries.items)
   const status = useAppSelector((state) => state.foodEntries.status)
-  const metabolicDate = useAppSelector((state) => state.summary.data?.metabolicDate)
-  const macroRange = useAppSelector((state) => state.dashboard.range)
+  const metabolicDate = useGetSummaryQuery().data?.metabolicDate
 
   // Corrects the initial date to the server's current metabolic day (accounts for the
   // day-rollover hour) instead of the browser's raw local date - but only once per session, via
@@ -75,13 +73,12 @@ export default function DailyFoodsView() {
   // summary hasn't loaded yet.
   const today = metabolicDate ?? localIsoDate()
 
-  // The backend recomputes that day's macro cache as part of the delete itself; these refetches
-  // just pull the corrected numbers into the header and sidebar chart so they don't show stale
-  // totals until their next unrelated refresh.
+  // The backend recomputes that day's macro cache as part of the delete itself; invalidating just
+  // pulls the corrected numbers (header, macro chart, TDEE) in rather than showing stale totals
+  // until their next unrelated refresh.
   const handleDelete = (id: number) => {
     dispatch(deleteFoodEntry(id)).then(() => {
-      dispatch(loadSummary())
-      dispatch(loadMacros(macroRange))
+      dispatch(invalidateAfterLog())
     })
   }
 

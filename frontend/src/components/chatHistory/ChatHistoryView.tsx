@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { setScreen } from '../../store/uiSlice'
+import { useGetSummaryQuery } from '../../store/dashboardApi'
 import { loadChatHistoryForDate, setChatHistoryDate } from '../../store/chatHistorySlice'
 
 // Parses a "YYYY-MM-DD" string as a local-time date and shifts it by `days`, avoiding the
@@ -34,7 +35,7 @@ export default function ChatHistoryView() {
   const status = useAppSelector((state) => state.chatHistory.status)
   const haikuCostUsd = useAppSelector((state) => state.chatHistory.haikuCostUsd)
   const opusCostUsd = useAppSelector((state) => state.chatHistory.opusCostUsd)
-  const metabolicDate = useAppSelector((state) => state.summary.data?.metabolicDate)
+  const metabolicDate = useGetSummaryQuery().data?.metabolicDate
 
   // Corrects the initial date to the server's current metabolic day (accounts for the
   // day-rollover hour) instead of the browser's raw local date - but only once, on first load.
