@@ -1232,6 +1232,8 @@ input {
 
 .weight-table-wrapper {
   margin-top: 10px;
+  max-height: 320px;
+  overflow-y: auto;
 }
 
 .bp-table-wrapper {
