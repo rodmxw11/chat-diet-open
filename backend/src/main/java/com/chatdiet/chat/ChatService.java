@@ -57,7 +57,23 @@ public class ChatService {
             went through, so nothing was saved. If food was genuinely described, call log_food or \
             log_food_by_upc now with your best estimate before replying again. \
             If nothing should have been logged (e.g. you were reporting past data, not a new \
-            entry), say so plainly instead.]""";
+            entry), say so plainly instead. Reply to the user directly, as if this check never \
+            happened: don't apologize, don't say "you're right", and don't mention this note.]""";
+
+    /**
+     * Appended to the outgoing user message - never persisted - whenever there's history. History
+     * replays as plain text, so every earlier "Logged ..." reply looks like it was written with no
+     * tool call behind it; fast-path turns (which never involve the model at all) make that pattern
+     * dominant, and the model copies it. Measured before this note: 6 of 8 model-path food logs
+     * opened with a fake confirmation, caught only by the verifier's retry.
+     */
+    static final String SAVE_REMINDER = """
+
+
+            [System note, not from the user: the earlier "Logged ..." replies in this conversation \
+            were each saved by a real log_food / log_weight tool call that isn't shown in this \
+            history. Nothing is saved unless you call the tool yourself in this turn - never write \
+            a logging confirmation without one.]""";
 
     private static final String FOOD_STILL_UNVERIFIED_MESSAGE =
             "That didn't actually save - I tried twice and the food log still didn't go through. "
@@ -67,7 +83,9 @@ public class ChatService {
             [System check: that reply described logging a weight entry, but log_weight never \
             actually ran, so nothing was saved. If a weight reading was genuinely given, call \
             log_weight now before replying again. If nothing should have been logged (e.g. you were \
-            reporting a past or projected weight, not a new entry), say so plainly instead.]""";
+            reporting a past or projected weight, not a new entry), say so plainly instead. Reply to \
+            the user directly, as if this check never happened: don't apologize, don't say "you're \
+            right", and don't mention this note.]""";
 
     private static final String WEIGHT_STILL_UNVERIFIED_MESSAGE =
             "That didn't actually save - I tried twice and the weight log still didn't go through. "
@@ -129,10 +147,11 @@ public class ChatService {
     public String reply(LocalDate metabolicDate, LocalDateTime occurredAt, String userText, boolean voice) {
         var chatClient = voice ? voiceChatClient : webChatClient;
         var history = historyStore.get(metabolicDate);
+        var promptText = history.isEmpty() ? userText : userText + SAVE_REMINDER;
         var chatResponse = chatClient.prompt()
                 .system(promptAssembler.systemPrompt(voice))
                 .messages(history)
-                .user(userText)
+                .user(promptText)
                 .call()
                 .chatResponse();
 
@@ -150,7 +169,7 @@ public class ChatService {
                     + "corrective nudge. Unverified reply: {}", verifier.kind(), content);
 
             var retryMessages = new ArrayList<Message>(history);
-            retryMessages.add(new UserMessage(userText));
+            retryMessages.add(new UserMessage(promptText));
             retryMessages.add(new AssistantMessage(content));
             retryMessages.add(new UserMessage(verifier.nudge()));
 
