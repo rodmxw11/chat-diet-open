@@ -44,11 +44,11 @@ public class ToolRegistry {
         Class<?>[] typeArguments = GenericTypeResolver.resolveTypeArguments(bean.getClass(), Function.class);
         Class<?> requestType = typeArguments[0];
         var function = (Function<Object, Object>) bean;
-        return FunctionToolCallback.builder(meta.name(), function)
+        return new ErrorReportingToolCallback(FunctionToolCallback.builder(meta.name(), function)
                 .description(meta.description())
                 .inputType(requestType)
                 .toolCallResultConverter(TOOL_RESULT_CONVERTER)
-                .build();
+                .build());
     }
 
     /**

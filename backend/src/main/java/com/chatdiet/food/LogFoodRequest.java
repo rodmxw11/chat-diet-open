@@ -1,6 +1,7 @@
 package com.chatdiet.food;
 
-import java.time.LocalDateTime;
+import org.springframework.ai.tool.annotation.ToolParam;
+
 import java.util.List;
 
 /**
@@ -19,6 +20,7 @@ import java.util.List;
 public record LogFoodRequest(
         List<LogFoodItemRequest> items,
         Long attachToGroupId,
-        LocalDateTime loggedAt
+        @ToolParam(required = false, description = "ISO-8601 local time the food was eaten, e.g. 2026-09-27T18:00; a date alone (2026-09-27) logs at noon. Omit to log under now.")
+        String loggedAt
 ) {
 }

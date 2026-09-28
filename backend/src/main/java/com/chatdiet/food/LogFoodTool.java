@@ -81,6 +81,7 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
 
     @Override
     public ToolResult apply(LogFoodRequest request) {
+        var loggedAt = LoggedAtResolver.parse(request.loggedAt());
         Long groupId = request.attachToGroupId();
         var echoes = new ArrayList<String>();
         var clarifications = new ArrayList<String>();
@@ -93,7 +94,7 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
                 continue;
             }
             if (outcome instanceof ItemOutcome.UseEstimate) {
-                var logged = logEstimate(itemReq, groupId, request.loggedAt());
+                var logged = logEstimate(itemReq, groupId, loggedAt);
                 if (logged == null) {
                     clarifications.add("\"" + itemReq.foodRef() + "\": what should I log for calories/macros?");
                     continue;
@@ -112,7 +113,7 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
                 continue;
             }
 
-            var logged = logResolvedItem(item, itemReq, grams, groupId, request.loggedAt(), resolved.autoMatched());
+            var logged = logResolvedItem(item, itemReq, grams, groupId, loggedAt, resolved.autoMatched());
             groupId = logged.entry().entryGroupId();
             echoes.add(logged.echo());
             lastEntry = logged.entry();
