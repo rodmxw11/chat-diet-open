@@ -82,7 +82,13 @@ public class JdbcDialectConfig {
         @Override
         public LocalDateTime convert(String value) {
             try {
-                return LocalDateTime.parse(value);
+                // SQLite's own CURRENT_TIMESTAMP / datetime('now') write "2026-08-30 23:32:32" -
+                // a space, not ISO's 'T'. Rows set that way by migrations (022's seeded
+                // "orange juice" alias, 024's soft-deletes) failed to load at all, which made
+                // every "orange juice" log fail.
+                return LocalDateTime.parse(value.length() > 10 && value.charAt(10) == ' '
+                        ? value.substring(0, 10) + 'T' + value.substring(11)
+                        : value);
             } catch (Exception e) {
                 // A bare date string (e.g. from a column whose value happens to look like just a
                 // date) falls back to midnight of that date rather than failing the conversion.

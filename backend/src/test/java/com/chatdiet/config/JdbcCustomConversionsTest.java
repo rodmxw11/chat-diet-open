@@ -45,6 +45,12 @@ class JdbcCustomConversionsTest {
     private NoteRepository noteRepository;
 
     @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private com.chatdiet.fooditem.FoodAliasRepository foodAliasRepository;
+
+    @Autowired
     private DailyTargetRepository dailyTargetRepository;
 
     @Test
@@ -93,6 +99,33 @@ class JdbcCustomConversionsTest {
         var converted = new JdbcDialectConfig.StringToLocalDateTimeConverter().convert("2026-07-04T09:30:00");
 
         assertThat(converted).isEqualTo(LocalDateTime.of(2026, 7, 4, 9, 30, 0));
+    }
+
+    /** SQLite's CURRENT_TIMESTAMP format, as written by migrations 022 and 024 on the live data. */
+    @Test
+    void stringToLocalDateTimeConverterAcceptsSqlitesSpaceSeparatedTimestamps() {
+        var converter = new JdbcDialectConfig.StringToLocalDateTimeConverter();
+
+        assertThat(converter.convert("2026-08-30 23:32:32")).isEqualTo(LocalDateTime.of(2026, 8, 30, 23, 32, 32));
+        assertThat(converter.convert("2026-09-07 18:19:39")).isEqualTo(LocalDateTime.of(2026, 9, 7, 18, 19, 39));
+    }
+
+    /**
+     * The failure behind every "orange juice" log on 2026-09-28: the seeded alias row's created_at
+     * was "2026-08-30 23:32:32", so looking the alias up threw instead of returning it.
+     */
+    @Test
+    void anAliasRowWithASqliteTimestampLoadsThroughTheRepository() {
+        jdbcTemplate.update("INSERT INTO food_item (name, per100g_calories, lookup_source, use_count) "
+                + "VALUES ('seeded juice', 54, 'FDC', 0)");
+        var itemId = jdbcTemplate.queryForObject("SELECT id FROM food_item WHERE name = 'seeded juice'", Long.class);
+        jdbcTemplate.update("INSERT INTO food_alias (alias_normalized, food_item_id, source, created_at) "
+                + "VALUES ('seeded juice', ?, 'MANUAL', CURRENT_TIMESTAMP)", itemId);
+
+        var alias = foodAliasRepository.findByAliasNormalized("seeded juice");
+
+        assertThat(alias).isPresent();
+        assertThat(alias.get().foodItemId()).isEqualTo(itemId);
     }
 
     @Test
