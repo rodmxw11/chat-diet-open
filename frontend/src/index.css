@@ -1448,6 +1448,13 @@ input {
   margin-top: 12px;
 }
 
+.about-import-message {
+  margin: 8px 0 0;
+  font-family: var(--font-mono);
+  font-size: calc(13px * var(--font-scale));
+  color: var(--text-primary);
+}
+
 .about-export-error {
   font-family: var(--font-mono);
   font-size: calc(13px * var(--font-scale));

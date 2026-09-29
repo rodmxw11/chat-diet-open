@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
@@ -98,6 +99,49 @@ class OmronCsvImportServiceTest {
         assertThat(result.filesImported()).isEqualTo(2);
         assertThat(result.rowsImported()).isEqualTo(2);
         assertThat(omronReadingRepository.count()).isEqualTo(2);
+    }
+
+    @Test
+    void uploadReportsNewReadingsAndTheDateRangeAcrossAnOverlappingReimport() {
+        importService.importUpload(HEADER + "Sep 12 2026,05:34 am,141,76,63,-,-,-,-\n");
+
+        var result = importService.importUpload(HEADER
+                + "Sep 12 2026,05:34 am,141,76,63,-,-,-,-\n"
+                + "Sep 16 2026,06:00 am,130,80,-,-,-,-,-\n"
+                + "Sep 14 2026,05:22 am,150,79,61,-,-,-,\"slept badly, coffee\"\n");
+
+        assertThat(result.readings()).isEqualTo(3);
+        assertThat(result.newReadings()).isEqualTo(2);
+        assertThat(result.from()).isEqualTo(LocalDateTime.of(2026, 9, 12, 5, 34));
+        assertThat(result.to()).isEqualTo(LocalDateTime.of(2026, 9, 16, 6, 0));
+        assertThat(omronReadingRepository.count()).isEqualTo(3);
+    }
+
+    /** Excel and some download paths prefix a UTF-8 byte-order mark to the header. */
+    @Test
+    void uploadAcceptsAByteOrderMarkBeforeTheHeader() {
+        var result = importService.importUpload("﻿" + HEADER + "Sep 12 2026,05:34 am,141,76,63,-,-,-,-\n");
+
+        assertThat(result.readings()).isEqualTo(1);
+    }
+
+    @Test
+    void uploadRejectsAFileThatIsNotAnOmronExport() {
+        assertThatThrownBy(() -> importService.importUpload("name,calories\nbanana,105\n"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("OMRON blood pressure export");
+        assertThat(omronReadingRepository.count()).isZero();
+    }
+
+    /** Parsed in full before any write, so a damaged file doesn't half-import. */
+    @Test
+    void uploadWithAMalformedRowWritesNothing() {
+        assertThatThrownBy(() -> importService.importUpload(HEADER
+                + "Sep 12 2026,05:34 am,141,76,63,-,-,-,-\n"
+                + "Sep 13 2026,05:40 am,abc,76,63,-,-,-,-\n"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Line 3");
+        assertThat(omronReadingRepository.count()).isZero();
     }
 
     private Path writeCsv(String fileName, String dataRows) throws IOException {
