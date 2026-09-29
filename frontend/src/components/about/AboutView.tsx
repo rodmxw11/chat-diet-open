@@ -89,14 +89,26 @@ export default function AboutView() {
 
   return (
     <div className="shop-screen">
-      <header className="app-header">
-        <button type="button" className="back-button" onClick={() => dispatch(setScreen('chat'))} aria-label="Back to chat">
-          ←
-        </button>
-        <div className="shop-header-text">
-          <span className="shop-title">About</span>
-          <span className="shop-progress">chat-diet</span>
+      <header className="app-header app-header--stacked">
+        <div className="app-header-top-row">
+          <button type="button" className="back-button" onClick={() => dispatch(setScreen('chat'))} aria-label="Back to chat">
+            ←
+          </button>
+          <div className="shop-header-text">
+            <span className="shop-title">About</span>
+            <span className="shop-progress">chat-diet</span>
+          </div>
+          <button
+            type="button"
+            className="today-button"
+            onClick={exportDb}
+            disabled={exportStatus === 'exporting'}
+            title="Download a zip with a consistent copy of the SQLite database"
+          >
+            {exportStatus === 'exporting' ? 'Exporting…' : 'Export DB'}
+          </button>
         </div>
+        {exportStatus === 'error' && <p className="about-export-error">Export failed - try again.</p>}
       </header>
       <div className="shop-list-wrapper">
         {status === 'loading' && !info && <p className="shop-empty">Loading…</p>}
@@ -185,18 +197,6 @@ export default function AboutView() {
           </div>
         )}
 
-        <div className="about-export">
-          <button
-            type="button"
-            className="today-button"
-            onClick={exportDb}
-            disabled={exportStatus === 'exporting'}
-            title="Download a zip with a consistent copy of the SQLite database"
-          >
-            {exportStatus === 'exporting' ? 'Exporting…' : 'Export DB'}
-          </button>
-          {exportStatus === 'error' && <span className="about-export-error">Export failed - try again.</span>}
-        </div>
       </div>
     </div>
   )

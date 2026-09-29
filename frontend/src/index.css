@@ -1441,13 +1441,6 @@ input {
   cursor: default;
 }
 
-.about-export {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 12px;
-}
-
 .bp-header-stats {
   display: flex;
   flex-direction: column;
@@ -1466,6 +1459,7 @@ input {
 }
 
 .about-export-error {
+  margin: 0;
   font-family: var(--font-mono);
   font-size: calc(13px * var(--font-scale));
   color: var(--text-muted);
