@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { setScreen } from '../../store/uiSlice'
 import { loadAbout } from '../../store/aboutSlice'
-import { dashboardApi } from '../../store/dashboardApi'
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -60,33 +59,6 @@ async function downloadExport(): Promise<void> {
   URL.revokeObjectURL(url)
 }
 
-interface OmronUploadResult {
-  readings: number
-  newReadings: number
-  from: string
-  to: string
-}
-
-function formatDay(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
-
-// Uploads one OMRON blood-pressure CSV export. The server upserts by reading time, so re-importing
-// a report that overlaps an earlier one only adds the new readings; a file that isn't an OMRON
-// export (or has a bad row) is rejected whole, with the reason in the response.
-async function uploadOmronCsv(file: File): Promise<string> {
-  const body = new FormData()
-  body.append('file', file)
-  const response = await fetch('/api/omron/upload', { method: 'POST', body })
-  const data = await response.json().catch(() => null)
-  if (!response.ok) {
-    throw new Error(data?.error ?? `Import failed (${response.status})`)
-  }
-  const result = data as OmronUploadResult
-  const range = `${formatDay(result.from)} – ${formatDay(result.to)}`
-  return `Imported ${result.readings} readings (${range}), ${result.newReadings} new.`
-}
-
 // Full-page view, same pattern as SchemaView. Uptime is computed live from startupTime (ticking
 // every second) rather than displaying the uptimeSeconds snapshot from the last fetch, which
 // would otherwise freeze the moment the page loaded.
@@ -96,25 +68,6 @@ export default function AboutView() {
   const status = useAppSelector((state) => state.about.status)
   const [now, setNow] = useState(() => Date.now())
   const [exportStatus, setExportStatus] = useState<'idle' | 'exporting' | 'error'>('idle')
-  const [importStatus, setImportStatus] = useState<'idle' | 'importing'>('idle')
-  const [importMessage, setImportMessage] = useState<{ text: string; isError: boolean } | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const importBp = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    // Cleared right away so picking the same file again (e.g. after fixing it) still fires onChange.
-    event.target.value = ''
-    if (!file) return
-    setImportStatus('importing')
-    setImportMessage(null)
-    uploadOmronCsv(file)
-      .then((text) => {
-        setImportMessage({ text, isError: false })
-        dispatch(dashboardApi.util.invalidateTags(['BloodPressure']))
-      })
-      .catch((error: Error) => setImportMessage({ text: error.message, isError: true }))
-      .finally(() => setImportStatus('idle'))
-  }
 
   const exportDb = () => {
     setExportStatus('exporting')
@@ -205,23 +158,8 @@ export default function AboutView() {
           >
             {exportStatus === 'exporting' ? 'Exporting…' : 'Export DB'}
           </button>
-          <button
-            type="button"
-            className="today-button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={importStatus === 'importing'}
-            title="Upload an OMRON blood pressure CSV export and import its readings"
-          >
-            {importStatus === 'importing' ? 'Importing…' : 'Import BP'}
-          </button>
-          <input ref={fileInputRef} type="file" accept=".csv,text/csv" hidden onChange={importBp} />
           {exportStatus === 'error' && <span className="about-export-error">Export failed - try again.</span>}
         </div>
-        {importMessage && (
-          <p className={importMessage.isError ? 'about-import-message about-export-error' : 'about-import-message'}>
-            {importMessage.text}
-          </p>
-        )}
       </div>
     </div>
   )

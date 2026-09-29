@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { setScreen } from '../../store/uiSlice'
 import { setBpRange, type MacroRange } from '../../store/dashboardSlice'
 import { useGetBloodPressureQuery, useGetLatestBloodPressureQuery } from '../../store/dashboardApi'
 import BloodPressureChart, { average } from './BloodPressureChart'
+import ImportBpButton, { type ImportMessage } from './ImportBpButton'
 
 function formatDate(iso: string): string {
   const date = new Date(iso)
@@ -29,6 +31,7 @@ export default function BloodPressureView() {
   const status = isError ? 'error' : isFetching ? 'loading' : 'idle'
   // Newest reading overall, not just in the charted range - shows how current the imported data is.
   const latest = useGetLatestBloodPressureQuery().data
+  const [importMessage, setImportMessage] = useState<ImportMessage | null>(null)
 
   const systolicAvg = average(readings.map((r) => r.systolic))
   const diastolicAvg = average(readings.map((r) => r.diastolic))
@@ -48,14 +51,24 @@ export default function BloodPressureView() {
           </button>
           <div className="shop-header-text">
             <span className="shop-title">Blood pressure</span>
-            <span className="shop-progress">
-              {systolicAvg !== null && diastolicAvg !== null
-                ? `Avg: ${Math.round(systolicAvg)}/${Math.round(diastolicAvg)}${bpmAvg !== null ? ` · ${Math.round(bpmAvg)} bpm` : ''} (${range}d)`
-                : 'No readings yet'}
-            </span>
-            {latest && <span className="shop-progress">Latest reading: {formatLatest(latest.timestamp)}</span>}
           </div>
+          <ImportBpButton onResult={setImportMessage} />
         </div>
+        {/* A full-width row of its own: beside the Import BP button these lines wrapped mid-phrase
+            on phones. */}
+        <div className="bp-header-stats">
+          <span className="shop-progress">
+            {systolicAvg !== null && diastolicAvg !== null
+              ? `Avg: ${Math.round(systolicAvg)}/${Math.round(diastolicAvg)}${bpmAvg !== null ? ` · ${Math.round(bpmAvg)} bpm` : ''} (${range}d)`
+              : 'No readings yet'}
+          </span>
+          {latest && <span className="shop-progress">Latest reading: {formatLatest(latest.timestamp)}</span>}
+        </div>
+        {importMessage && (
+          <p className={importMessage.isError ? 'bp-import-message bp-import-message--error' : 'bp-import-message'}>
+            {importMessage.text}
+          </p>
+        )}
       </header>
       <div className="shop-list-wrapper">
         <div className="dash-card">

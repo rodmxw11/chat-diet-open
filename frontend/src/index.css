@@ -1448,11 +1448,21 @@ input {
   margin-top: 12px;
 }
 
-.about-import-message {
-  margin: 8px 0 0;
+.bp-header-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bp-import-message {
+  margin: 0;
   font-family: var(--font-mono);
   font-size: calc(13px * var(--font-scale));
   color: var(--text-primary);
+}
+
+.bp-import-message--error {
+  color: var(--text-muted);
 }
 
 .about-export-error {
