@@ -17,6 +17,7 @@ import java.time.Instant;
  * @param databaseSizeBytes size of the SQLite database file on disk, or {@code null} if it
  *                          couldn't be read
  * @param dayRolloverHour   the configured metabolic-day rollover hour
+ * @param memory            JVM heap/non-heap and system memory, as of this request
  */
 public record AboutInfo(
         String appName,
@@ -28,6 +29,7 @@ public record AboutInfo(
         String javaRuntime,
         String os,
         Long databaseSizeBytes,
-        int dayRolloverHour
+        int dayRolloverHour,
+        MemoryStats memory
 ) {
 }

@@ -1,5 +1,18 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 
+export interface MemoryStats {
+  heapUsedBytes: number
+  heapCommittedBytes: number
+  heapMaxBytes: number
+  /** Headroom before the heap limit: max minus used. */
+  heapFreeBytes: number
+  nonHeapUsedBytes: number
+  systemTotalBytes: number | null
+  systemFreeBytes: number | null
+  swapTotalBytes: number | null
+  swapFreeBytes: number | null
+}
+
 export interface AboutInfo {
   appName: string
   version: string | null
@@ -11,6 +24,7 @@ export interface AboutInfo {
   os: string
   databaseSizeBytes: number | null
   dayRolloverHour: number
+  memory: MemoryStats
 }
 
 interface AboutState {

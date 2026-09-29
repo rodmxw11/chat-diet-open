@@ -47,4 +47,18 @@ class AboutServiceTest {
         // context startup already triggered), so this should resolve rather than come back null.
         assertThat(info.databaseSizeBytes()).isNotNull().isGreaterThan(0);
     }
+
+    @Test
+    void reportsConsistentJvmAndSystemMemory() {
+        var memory = aboutService.current().memory();
+
+        assertThat(memory.heapUsedBytes()).isPositive();
+        assertThat(memory.heapUsedBytes()).isLessThanOrEqualTo(memory.heapCommittedBytes());
+        assertThat(memory.heapCommittedBytes()).isLessThanOrEqualTo(memory.heapMaxBytes());
+        assertThat(memory.heapFreeBytes()).isEqualTo(memory.heapMaxBytes() - memory.heapUsedBytes());
+        assertThat(memory.nonHeapUsedBytes()).isPositive();
+        // Temurin (what the app ships on) always provides the com.sun.management extension.
+        assertThat(memory.systemTotalBytes()).isNotNull().isPositive();
+        assertThat(memory.systemFreeBytes()).isNotNull().isBetween(0L, memory.systemTotalBytes());
+    }
 }

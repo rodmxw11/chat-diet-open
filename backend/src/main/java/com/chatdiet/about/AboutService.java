@@ -51,7 +51,8 @@ public class AboutService {
                 Runtime.version().toString(),
                 System.getProperty("os.name") + " " + System.getProperty("os.version"),
                 databaseSizeBytes(),
-                dayRolloverHour);
+                dayRolloverHour,
+                MemoryStats.current());
     }
 
     // Mirrors ExportService/ReadOnlySqlExecutor's assumption that spring.datasource.url is a

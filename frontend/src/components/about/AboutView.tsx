@@ -142,6 +142,39 @@ export default function AboutView() {
                     <td>Day rollover</td>
                     <td>{formatHour(info.dayRolloverHour)}</td>
                   </tr>
+                  <tr>
+                    <td>JVM heap free</td>
+                    <td>
+                      {formatBytes(info.memory.heapFreeBytes)} of {formatBytes(info.memory.heapMaxBytes)} max
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>JVM heap used</td>
+                    <td>
+                      {formatBytes(info.memory.heapUsedBytes)} ({formatBytes(info.memory.heapCommittedBytes)} committed)
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>JVM non-heap</td>
+                    <td>{formatBytes(info.memory.nonHeapUsedBytes)}</td>
+                  </tr>
+                  {info.memory.systemTotalBytes !== null && info.memory.systemFreeBytes !== null && (
+                    <tr>
+                      <td>System memory</td>
+                      <td>
+                        {formatBytes(info.memory.systemFreeBytes)} free of {formatBytes(info.memory.systemTotalBytes)}
+                      </td>
+                    </tr>
+                  )}
+                  {info.memory.swapTotalBytes !== null && info.memory.swapFreeBytes !== null && info.memory.swapTotalBytes > 0 && (
+                    <tr>
+                      <td>Swap</td>
+                      <td>
+                        {formatBytes(info.memory.swapTotalBytes - info.memory.swapFreeBytes)} used of{' '}
+                        {formatBytes(info.memory.swapTotalBytes)}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
