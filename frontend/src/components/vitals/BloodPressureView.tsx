@@ -1,7 +1,7 @@
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { setScreen } from '../../store/uiSlice'
 import { setBpRange, type MacroRange } from '../../store/dashboardSlice'
-import { useGetBloodPressureQuery } from '../../store/dashboardApi'
+import { useGetBloodPressureQuery, useGetLatestBloodPressureQuery } from '../../store/dashboardApi'
 import BloodPressureChart, { average } from './BloodPressureChart'
 
 function formatDate(iso: string): string {
@@ -14,6 +14,11 @@ function formatTime(iso: string): string {
   return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 }
 
+function formatLatest(iso: string): string {
+  const date = new Date(iso)
+  return date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
 // Full-page view, same pattern as MicronutrientsView, reached from the header menu. The chart
 // stays fixed at the top; only the readings table below it scrolls, so a 30-day range with many
 // readings doesn't push the chart out of view.
@@ -22,6 +27,8 @@ export default function BloodPressureView() {
   const range = useAppSelector((state) => state.dashboard.bpRange)
   const { data: readings = [], isFetching, isError } = useGetBloodPressureQuery(range)
   const status = isError ? 'error' : isFetching ? 'loading' : 'idle'
+  // Newest reading overall, not just in the charted range - shows how current the imported data is.
+  const latest = useGetLatestBloodPressureQuery().data
 
   const systolicAvg = average(readings.map((r) => r.systolic))
   const diastolicAvg = average(readings.map((r) => r.diastolic))
@@ -46,6 +53,7 @@ export default function BloodPressureView() {
                 ? `Avg: ${Math.round(systolicAvg)}/${Math.round(diastolicAvg)}${bpmAvg !== null ? ` · ${Math.round(bpmAvg)} bpm` : ''} (${range}d)`
                 : 'No readings yet'}
             </span>
+            {latest && <span className="shop-progress">Latest reading: {formatLatest(latest.timestamp)}</span>}
           </div>
         </div>
       </header>

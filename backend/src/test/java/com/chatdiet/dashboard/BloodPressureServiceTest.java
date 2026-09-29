@@ -68,4 +68,23 @@ class BloodPressureServiceTest {
         assertThat(readings).hasSize(1);
         assertThat(readings.getFirst().systolic()).isEqualTo(120);
     }
+
+    /** Independent of the charted range - a stale last reading is exactly when its date matters. */
+    @Test
+    void latestIsTheNewestReadingEvenOutsideTheChartedRange() {
+        var today = LocalDate.now();
+        log(today.minusDays(40), 140, 90, 70);
+        log(today.minusDays(35), 132, 84, 66);
+
+        var latest = bloodPressureService.latest();
+
+        assertThat(bloodPressureService.readings(30)).isEmpty();
+        assertThat(latest).isPresent();
+        assertThat(latest.get().timestamp()).isEqualTo(today.minusDays(35).atTime(8, 0));
+    }
+
+    @Test
+    void latestIsEmptyWhenNothingHasBeenImported() {
+        assertThat(bloodPressureService.latest()).isEmpty();
+    }
 }

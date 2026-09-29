@@ -3,6 +3,7 @@ package com.chatdiet.dashboard;
 import com.chatdiet.day.DayBoundaryService;
 import com.chatdiet.tdee.AdaptiveTdeeService;
 import com.chatdiet.tdee.TdeeResult;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,6 +48,14 @@ public class DashboardController {
     @GetMapping("/api/dashboard/blood-pressure")
     public List<BloodPressureReading> bloodPressure(@RequestParam(defaultValue = "7") int days) {
         return bloodPressureService.readings(days);
+    }
+
+    /** The newest blood pressure reading overall, or 204 when none have been imported. */
+    @GetMapping("/api/dashboard/blood-pressure/latest")
+    public ResponseEntity<BloodPressureReading> latestBloodPressure() {
+        return bloodPressureService.latest()
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     /** Flat DTO wrapping {@link TdeeResult} so the frontend has one predictable response shape. */

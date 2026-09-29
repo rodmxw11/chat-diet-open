@@ -86,6 +86,12 @@ export const dashboardApi = createApi({
       query: (days) => `dashboard/blood-pressure?days=${days}`,
       providesTags: ['BloodPressure'],
     }),
+    // The newest reading regardless of range (204 → null when none are imported), so the page can
+    // show how current the data is even when it's older than the charted 7 or 30 days.
+    getLatestBloodPressure: builder.query<BloodPressureReading | null, void>({
+      query: () => 'dashboard/blood-pressure/latest',
+      providesTags: ['BloodPressure'],
+    }),
   }),
 })
 
@@ -95,6 +101,7 @@ export const {
   useGetWeightTrendQuery,
   useGetTdeeQuery,
   useGetBloodPressureQuery,
+  useGetLatestBloodPressureQuery,
 } = dashboardApi
 
 /** Marks everything a log, correction, or delete can change as stale. */
