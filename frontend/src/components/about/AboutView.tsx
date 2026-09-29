@@ -158,11 +158,15 @@ export default function AboutView() {
                     <td>JVM non-heap</td>
                     <td>{formatBytes(info.memory.nonHeapUsedBytes)}</td>
                   </tr>
-                  {info.memory.systemTotalBytes !== null && info.memory.systemFreeBytes !== null && (
+                  {/* "Available" (Linux MemAvailable) counts cache the kernel reclaims on demand - strict
+                      "free" reads alarmingly low on any busy machine, so it's only the fallback. */}
+                  {info.memory.systemTotalBytes !== null && (info.memory.systemAvailableBytes ?? info.memory.systemFreeBytes) !== null && (
                     <tr>
                       <td>System memory</td>
                       <td>
-                        {formatBytes(info.memory.systemFreeBytes)} free of {formatBytes(info.memory.systemTotalBytes)}
+                        {info.memory.systemAvailableBytes !== null
+                          ? `${formatBytes(info.memory.systemAvailableBytes)} available of ${formatBytes(info.memory.systemTotalBytes)}`
+                          : `${formatBytes(info.memory.systemFreeBytes ?? 0)} free of ${formatBytes(info.memory.systemTotalBytes)}`}
                       </td>
                     </tr>
                   )}

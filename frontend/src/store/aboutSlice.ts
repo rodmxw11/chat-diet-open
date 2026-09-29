@@ -9,6 +9,8 @@ export interface MemoryStats {
   nonHeapUsedBytes: number
   systemTotalBytes: number | null
   systemFreeBytes: number | null
+  /** Linux MemAvailable: memory usable for new work without swapping, counting reclaimable cache. */
+  systemAvailableBytes: number | null
   swapTotalBytes: number | null
   swapFreeBytes: number | null
 }
