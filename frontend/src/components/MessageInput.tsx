@@ -3,6 +3,17 @@ import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { sendMessage, setDraftText } from '../store/chatSlice'
 import { invalidateAfterLog } from '../store/dashboardApi'
 
+// Each button prefills the input with a sentence start, so a common entry is a tap plus the
+// specifics. "Yesterday I ate ..." goes to the model rather than the fast path, which only logs
+// under now - the model backdates it via log_food's loggedAt.
+const QUICK_ENTRIES = [
+  { label: 'Today', prefix: 'Today I ate ' },
+  { label: 'Yesterday', prefix: 'Yesterday I ate ' },
+  { label: 'Weight', prefix: 'Weight ' },
+  { label: 'Note', prefix: 'Note that ' },
+  { label: 'Query', prefix: 'Run an SQL query that ' },
+]
+
 export default function MessageInput() {
   const dispatch = useAppDispatch()
   const text = useAppSelector((state) => state.chat.draftText)
@@ -47,18 +58,11 @@ export default function MessageInput() {
   return (
     <form className="message-input" onSubmit={submit}>
       <div className="quick-entry-row">
-        <button type="button" className="quick-entry-button" onClick={() => quickEntry('Note that ')}>
-          Note
-        </button>
-        <button type="button" className="quick-entry-button" onClick={() => quickEntry('Today I ate ')}>
-          Ate
-        </button>
-        <button type="button" className="quick-entry-button" onClick={() => quickEntry('Weight ')}>
-          Weight
-        </button>
-        <button type="button" className="quick-entry-button" onClick={() => quickEntry('Run SQL query that ')}>
-          Query
-        </button>
+        {QUICK_ENTRIES.map(({ label, prefix }) => (
+          <button key={label} type="button" className="quick-entry-button" onClick={() => quickEntry(prefix)}>
+            {label}
+          </button>
+        ))}
       </div>
       <div className="message-input-row">
         <div className="input-pill">
