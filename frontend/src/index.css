@@ -693,15 +693,15 @@ input {
 
 .quick-entry-row {
   display: flex;
-  /* Five prefill buttons need ~480px - wider than a phone's input row - so they wrap onto a
-     second line there rather than running off the edge (Note and Query were unreachable). */
+  /* Sized so the four prefill buttons fit one row on a typical phone; on a very narrow screen
+     they wrap to a second line rather than running off the edge. */
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .quick-entry-button {
   min-height: 32px;
-  padding: 0 14px;
+  padding: 0 10px;
   border: 1px solid var(--border-input);
   border-radius: 999px;
   background: var(--surface-tint);

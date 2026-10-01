@@ -11,7 +11,6 @@ const QUICK_ENTRIES = [
   { label: 'Yesterday', prefix: 'Yesterday I ate ' },
   { label: 'Weight', prefix: 'Weight ' },
   { label: 'Note', prefix: 'Note that ' },
-  { label: 'Query', prefix: 'Run an SQL query that ' },
 ]
 
 export default function MessageInput() {
