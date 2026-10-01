@@ -150,7 +150,7 @@ export default function WeightTrendChart() {
       </ResponsiveContainer>
       <div className="weight-chart-legend">
         <span>
-          <span className="legend-swatch legend-swatch--dot" /> weigh-in
+          <span className="legend-swatch legend-swatch--diamond" /> weigh-in
         </span>
         <span>
           <span className="legend-swatch legend-swatch--line" /> trend
