@@ -31,9 +31,28 @@ function num(value: unknown): number | undefined {
   return undefined
 }
 
-function formatDayLabel(iso: string): string {
-  const date = new Date(`${iso}T00:00:00`)
-  return date.toLocaleDateString(undefined, { weekday: 'short' })
+// X-axis tick: weekday with the day of the month underneath ("Mon" / "28"), so a bar can be
+// matched to a date at a glance - clicking it opens that day on Daily Foods.
+function DayTick({ x, y, payload }: { x?: number | string; y?: number | string; payload?: { value: string } }) {
+  if (payload === undefined) return null
+  const date = new Date(`${payload.value}T00:00:00`)
+  return (
+    <g transform={`translate(${num(x) ?? 0},${num(y) ?? 0})`}>
+      <text
+        textAnchor="middle"
+        fill="var(--dash-text-tertiary)"
+        fontSize="calc(9px * var(--font-scale))"
+        fontFamily="var(--font-mono)"
+      >
+        <tspan x={0} dy="0.9em">
+          {date.toLocaleDateString(undefined, { weekday: 'short' })}
+        </tspan>
+        <tspan x={0} dy="1.25em">
+          {date.getDate()}
+        </tspan>
+      </text>
+    </g>
+  )
 }
 
 // Stacked bar chart per the design handoff - no tooltip, legend, or hover state, but clicking a
@@ -178,17 +197,16 @@ export default function MacroBarChart() {
       <ResponsiveContainer width="100%" height={250}>
         <BarChart
           data={chartData}
-          margin={{ top: 24, right: 4, left: -28, bottom: 0 }}
+          margin={{ top: 24, right: 4, left: 4, bottom: 0 }}
           barCategoryGap={range === 30 ? 2 : 8}
           onClick={handleChartClick}
           className="macro-chart-clickable"
         >
           <XAxis
             dataKey="date"
-            tickFormatter={formatDayLabel}
+            tick={<DayTick />}
+            height={36}
             stroke="var(--dash-text-tertiary)"
-            fontSize="calc(9px * var(--font-scale))"
-            fontFamily="var(--font-mono)"
             interval={range === 30 ? 3 : 0}
           />
           <YAxis hide />
