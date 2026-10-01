@@ -1214,7 +1214,7 @@ input {
   background: var(--accent);
 }
 
-.legend-swatch--goal {
+.legend-swatch--fit {
   background: var(--status-retrying);
 }
 

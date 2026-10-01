@@ -10,13 +10,13 @@ import {
   YAxis,
   type TooltipContentProps,
 } from 'recharts'
-import { useGetTdeeQuery, useGetWeightTrendQuery, type GoalLine } from '../../store/dashboardApi'
+import { useGetTdeeQuery, useGetWeightTrendQuery } from '../../store/dashboardApi'
 
 interface MergedPoint {
   date: string
   actual: number | null
   trend: number | null
-  goal: number | null
+  fit: number | null
 }
 
 function formatDate(iso: string): string {
@@ -46,15 +46,36 @@ function WeightTooltip({ active, payload }: TooltipContentProps) {
   )
 }
 
-function goalValueOn(goal: GoalLine, date: string): number {
-  const days = (Date.parse(`${date}T00:00:00`) - Date.parse(`${goal.startDate}T00:00:00`)) / (24 * 60 * 60 * 1000)
-  return goal.startWeightLbs + goal.dailyRateLbs * days
+function daysSince(origin: string, date: string): number {
+  return (Date.parse(`${date}T00:00:00`) - Date.parse(`${origin}T00:00:00`)) / (24 * 60 * 60 * 1000)
+}
+
+interface LinearFit {
+  origin: string
+  intercept: number
+  slopePerDay: number
+}
+
+// Ordinary least-squares line through the weigh-ins shown (the raw diamonds, not the smoothed
+// trend) - the straight-line pace of the last 30 days. Null with fewer than two distinct days.
+function fitLine(actual: { date: string; weightLbs: number }[]): LinearFit | null {
+  if (actual.length < 2) return null
+  const origin = actual.map((p) => p.date).sort()[0]
+  const xs = actual.map((p) => daysSince(origin, p.date))
+  const ys = actual.map((p) => p.weightLbs)
+  const meanX = xs.reduce((a, b) => a + b, 0) / xs.length
+  const meanY = ys.reduce((a, b) => a + b, 0) / ys.length
+  const sxx = xs.reduce((sum, x) => sum + (x - meanX) ** 2, 0)
+  if (sxx === 0) return null
+  const sxy = xs.reduce((sum, x, i) => sum + (x - meanX) * (ys[i] - meanY), 0)
+  const slopePerDay = sxy / sxx
+  return { origin, intercept: meanY - slopePerDay * meanX, slopePerDay }
 }
 
 function buildSeries(
   actual: { date: string; weightLbs: number }[],
   smoothed: { date: string; value: number }[],
-  goal: GoalLine | null,
+  fit: LinearFit | null,
 ): MergedPoint[] {
   const dates = new Set<string>()
   actual.forEach((p) => dates.add(p.date))
@@ -68,22 +89,21 @@ function buildSeries(
     date,
     actual: actualByDate.get(date) ?? null,
     trend: smoothedByDate.get(date) ?? null,
-    goal: goal ? goalValueOn(goal, date) : null,
+    fit: fit ? fit.intercept + fit.slopePerDay * daysSince(fit.origin, date) : null,
   }))
 }
 
 // Non-interactive per the design handoff except for a hover tooltip on the weigh-in markers (see
 // WeightTooltip): no click handlers. Scatter for actual weigh-ins, solid line for the smoothed
-// Hacker's Diet trend, dashed line for the goal trajectory - computed client-side from the
-// GoalLine anchor point/slope the backend returns, rather than the backend materializing every
-// point of a straight line.
+// Hacker's Diet trend, dashed line for the linear fit of the visible weigh-ins (fitLine).
 export default function WeightTrendChart() {
   const trend = useGetWeightTrendQuery().data
   const tdee = useGetTdeeQuery().data
 
   if (!trend) return null
 
-  const data = buildSeries(trend.actual, trend.smoothed, trend.goal)
+  const fit = fitLine(trend.actual)
+  const data = buildSeries(trend.actual, trend.smoothed, fit)
 
   return (
     <div className="dash-card weight-chart-card">
@@ -122,9 +142,9 @@ export default function WeightTrendChart() {
             domain={['auto', 'auto']}
           />
           <Tooltip content={WeightTooltip} cursor={{ stroke: 'var(--dash-grid)' }} />
-          {trend.goal && (
+          {fit && (
             <Line
-              dataKey="goal"
+              dataKey="fit"
               stroke="var(--status-retrying)"
               strokeDasharray="4 4"
               dot={false}
@@ -155,9 +175,9 @@ export default function WeightTrendChart() {
         <span>
           <span className="legend-swatch legend-swatch--line" /> trend
         </span>
-        {trend.goal && (
+        {fit && (
           <span>
-            <span className="legend-swatch legend-swatch--goal" /> goal
+            <span className="legend-swatch legend-swatch--fit" /> fit {(fit.slopePerDay * 7).toFixed(1)} lb/wk
           </span>
         )}
       </div>
