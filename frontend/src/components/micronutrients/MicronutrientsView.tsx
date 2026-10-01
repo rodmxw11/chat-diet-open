@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { setScreen } from '../../store/uiSlice'
 import { useGetSummaryQuery } from '../../store/dashboardApi'
-import { loadFoodEntries, setFoodEntriesDate, type FoodEntry } from '../../store/foodEntriesSlice'
+import { applyMetabolicDate, loadFoodEntries, setFoodEntriesDate, type FoodEntry } from '../../store/foodEntriesSlice'
 
 // Parses a "YYYY-MM-DD" string as a local-time date and shifts it by `days`, avoiding the
 // UTC-midnight parsing trap of `new Date(dateStr)` (which can land on the wrong local day near
@@ -56,11 +56,11 @@ export default function MicronutrientsView() {
   const status = useAppSelector((state) => state.foodEntries.status)
   const metabolicDate = useGetSummaryQuery().data?.metabolicDate
 
-  const hasAppliedMetabolicDate = useRef(false)
+  // Once per session, not per visit (see DailyFoodsView): a per-mount ref re-armed on every visit
+  // and reset the date to today, so switching here from Daily Foods lost the day being viewed.
   useEffect(() => {
-    if (!hasAppliedMetabolicDate.current && metabolicDate) {
-      hasAppliedMetabolicDate.current = true
-      dispatch(setFoodEntriesDate(metabolicDate))
+    if (metabolicDate) {
+      dispatch(applyMetabolicDate(metabolicDate))
     }
   }, [dispatch, metabolicDate])
 
@@ -90,6 +90,10 @@ export default function MicronutrientsView() {
             <span className="shop-title">Micronutrients</span>
             <span className="shop-progress">{items.length} items logged</span>
           </div>
+          {/* Same day either way: both pages read the shared foodEntries.date. */}
+          <button type="button" className="today-button" onClick={() => dispatch(setScreen('foods'))}>
+            Foods
+          </button>
         </div>
         <div className="foods-date-row">
           <span className="date-weekday">{weekdayLabel(date)}</span>

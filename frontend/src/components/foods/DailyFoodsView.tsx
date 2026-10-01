@@ -107,6 +107,10 @@ export default function DailyFoodsView() {
                 : `${items.length} logged`}
             </span>
           </div>
+          {/* Same day either way: both pages read the shared foodEntries.date. */}
+          <button type="button" className="today-button" onClick={() => dispatch(setScreen('micronutrients'))}>
+            Micros
+          </button>
         </div>
         <div className="foods-date-row">
           <span className="date-weekday">{weekdayLabel(date)}</span>
