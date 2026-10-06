@@ -22,18 +22,36 @@ export const pingOnce = createAsyncThunk('connectivity/pingOnce', async () => {
   if (!response.ok) throw new Error(`Ping failed: ${response.status}`)
 })
 
-// Wraps a single ping with the reconnect side effect: draining the offline queue the moment we
-// come back online, whether that ping was from the once-a-minute poll or a manual retry.
+function queuedCount(state: RootState): number {
+  return state.chat.queue.length + state.chat.entryQueue.length + state.barcodeQueue.queue.length
+}
+
+// One drain at a time: each drain replays its IndexedDB queue and only removes an item after it
+// sends, so two overlapping drains would both send the same item - a duplicate log.
+let draining = false
+
+async function drainAll(dispatch: AppDispatch) {
+  if (draining) return
+  draining = true
+  try {
+    await Promise.all([dispatch(drainQueue()), dispatch(drainEntryQueue()), dispatch(drainScanQueue())])
+  } finally {
+    draining = false
+  }
+}
+
+// Wraps a single ping with the replay side effect: draining the offline queues whenever the server
+// is reachable and anything is waiting - not only on an offline -> online transition. A send that
+// failed in a brief blip (Tailscale waking, a server restart) gets queued while the status never
+// left `online`; with a transition-only drain it sat there until the next real outage ended.
 export const checkConnectivity = createAsyncThunk<void, void, { dispatch: AppDispatch; state: RootState }>(
   'connectivity/check',
   async (_, { dispatch, getState }) => {
     const before = getState().connectivity.status
     await dispatch(pingOnce())
     const after = getState().connectivity.status
-    if (after === 'online' && before !== 'online') {
-      dispatch(drainQueue())
-      dispatch(drainEntryQueue())
-      dispatch(drainScanQueue())
+    if (after === 'online' && (before !== 'online' || queuedCount(getState()) > 0)) {
+      await drainAll(dispatch)
     }
   },
 )
@@ -60,7 +78,7 @@ const connectivitySlice = createSlice({
             state.status = 'offline'
           }
         }
-        // Already offline: stays offline until a manual retry succeeds.
+        // Already offline: stays offline until a ping succeeds - polling continues while offline.
       })
   },
 })
@@ -70,23 +88,25 @@ export default connectivitySlice.reducer
 let monitorStarted = false
 
 /**
- * Pings /api/ping once/minute. Per spec, once the connection has been down long enough to reach
- * `offline` (not just `retrying`), auto-polling stops entirely - only a manual retry (the status
- * light's "try reconnect" action) will ping again from then on. `window online/offline` events are
- * a fast-path hint to check sooner, not a replacement for the polling contract.
+ * Pings /api/ping once a minute, including while `offline`. Polling used to stop entirely once the
+ * connection had been down long enough to reach `offline`, which left the app showing offline -
+ * and its queue unsent - after the connection came back (e.g. a phone's Tailscale reconnecting)
+ * until a reload or a manual "try reconnect". Also checks whenever the app becomes visible again,
+ * the usual moment after a phone sat in a pocket. `window online/offline` events stay as a hint to
+ * check sooner; they don't fire for VPN changes like Tailscale reconnecting.
  */
-export function startConnectivityMonitor(dispatch: AppDispatch, getState: () => RootState) {
+export function startConnectivityMonitor(dispatch: AppDispatch) {
   if (monitorStarted) return
   monitorStarted = true
 
-  const tick = () => {
-    if (getState().connectivity.status === 'offline') return
-    dispatch(checkConnectivity())
-  }
+  const check = () => dispatch(checkConnectivity())
 
-  tick()
-  setInterval(tick, 60_000)
+  check()
+  setInterval(check, 60_000)
 
-  window.addEventListener('online', () => dispatch(checkConnectivity()))
-  window.addEventListener('offline', () => dispatch(checkConnectivity()))
+  window.addEventListener('online', check)
+  window.addEventListener('offline', check)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') check()
+  })
 }

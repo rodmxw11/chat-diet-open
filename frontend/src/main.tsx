@@ -13,7 +13,7 @@ import './index.css'
 import App from './App.tsx'
 
 registerServiceWorkerUpdates()
-startConnectivityMonitor(store.dispatch, store.getState)
+startConnectivityMonitor(store.dispatch)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
