@@ -1204,6 +1204,11 @@ input {
   white-space: nowrap;
 }
 
+/* Separates the fit's two rates more than the swatch-to-label gap ("-2.0 lb/wk   -8.6 lb/mo"). */
+.legend-rate-gap {
+  margin-left: 6px;
+}
+
 .legend-swatch {
   display: inline-block;
   width: 12px;
