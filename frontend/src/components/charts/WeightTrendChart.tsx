@@ -180,9 +180,10 @@ export default function WeightTrendChart() {
         </span>
         {fit && (
           <span>
+            {/* Magnitudes only: the dashed line's slope already shows loss vs gain. */}
             <span className="legend-swatch legend-swatch--fit" />
-            <span>{(fit.slopePerDay * 7).toFixed(1)} lb/wk</span>
-            <span className="legend-rate-gap">{(fit.slopePerDay * DAYS_PER_MONTH).toFixed(1)} lb/mo</span>
+            <span>{Math.abs(fit.slopePerDay * 7).toFixed(1)} lb/wk</span>
+            <span className="legend-rate-gap">{Math.abs(fit.slopePerDay * DAYS_PER_MONTH).toFixed(1)} lb/mo</span>
           </span>
         )}
       </div>
