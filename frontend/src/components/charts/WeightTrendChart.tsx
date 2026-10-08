@@ -50,6 +50,9 @@ function daysSince(origin: string, date: string): number {
   return (Date.parse(`${date}T00:00:00`) - Date.parse(`${origin}T00:00:00`)) / (24 * 60 * 60 * 1000)
 }
 
+/** Average month length (365.25 / 12), for the fit's lb/mo rate. */
+const DAYS_PER_MONTH = 30.4375
+
 interface LinearFit {
   origin: string
   intercept: number
@@ -177,7 +180,8 @@ export default function WeightTrendChart() {
         </span>
         {fit && (
           <span>
-            <span className="legend-swatch legend-swatch--fit" /> fit {(fit.slopePerDay * 7).toFixed(1)} lb/wk
+            <span className="legend-swatch legend-swatch--fit" /> fit {(fit.slopePerDay * 7).toFixed(1)} lb/wk ·{' '}
+            {(fit.slopePerDay * DAYS_PER_MONTH).toFixed(1)} lb/mo
           </span>
         )}
       </div>
