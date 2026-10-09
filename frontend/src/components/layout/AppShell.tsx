@@ -20,6 +20,7 @@ import MicronutrientsView from '../micronutrients/MicronutrientsView'
 import FoodItemsView from '../foodItems/FoodItemsView'
 import SchemaView from '../schema/SchemaView'
 import BloodPressureView from '../vitals/BloodPressureView'
+import MeasurementsView from '../measurements/MeasurementsView'
 import AboutView from '../about/AboutView'
 import Sidebar from './Sidebar'
 import ChartSheets from '../charts/ChartSheets'
@@ -75,6 +76,7 @@ export default function AppShell() {
         {screen === 'foodItems' && <FoodItemsView />}
         {screen === 'schema' && <SchemaView />}
         {screen === 'bloodPressure' && <BloodPressureView />}
+        {screen === 'measurements' && <MeasurementsView />}
         {screen === 'about' && <AboutView />}
       </div>
       <Sidebar />

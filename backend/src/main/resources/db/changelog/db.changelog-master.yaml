@@ -49,3 +49,5 @@ databaseChangeLog:
       file: db/changelog/024-dedupe-model-estimate-food-items.yaml
   - include:
       file: db/changelog/025-create-omron-reading-table.yaml
+  - include:
+      file: db/changelog/026-create-body-measurement-table.yaml

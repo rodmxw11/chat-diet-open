@@ -77,6 +77,13 @@ chat-diet:
   # covering an overlapping date range - never creates duplicates.
   omron-import-dir: ./data/OMRON-DOWNLOADS
 
+  # Body profile. sex and height-in feed the US Navy body-fat estimate on the Measurements page
+  # (from logged waist/neck - plus hip for women); without them measurements are still logged.
+  profile:
+    sex: male            # male or female
+    birth-date: 1970-01-01
+    height-in: 70
+
   # Used only to draw the weight-trend goal line and by the (separate, TDEE-independent)
   # weight-projection tool. Negative to lose weight, positive to gain, 0 for maintenance.
   # The actual calorie target is set manually via the set_calorie_goal chat tool, not derived

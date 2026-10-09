@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: 026-create-body-measurement-table
+      author: chat-diet
+      changes:
+        # Tape measurements in inches, for tracking fat loss independently of the scale. Each
+        # value is optional - a row can be waist alone - and the US Navy body-fat estimate on the
+        # Measurements page carries the latest neck (and hip) forward to rows that lack one.
+        - createTable:
+            tableName: body_measurement
+            columns:
+              - column:
+                  name: id
+                  type: INTEGER
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: measured_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: waist_in
+                  type: REAL
+              - column:
+                  name: neck_in
+                  type: REAL
+              - column:
+                  name: hip_in
+                  type: REAL

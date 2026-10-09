@@ -9,6 +9,7 @@ export type Screen =
   | 'foodItems'
   | 'schema'
   | 'bloodPressure'
+  | 'measurements'
   | 'about'
 export type Overlay = null | 'chartsMacros' | 'chartsWeight' | 'queue'
 export type Theme = 'light' | 'dark'

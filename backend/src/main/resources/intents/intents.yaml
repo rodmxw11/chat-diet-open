@@ -112,6 +112,26 @@
     Save immediately, no confirmation needed.
   enabled: true
 
+- name: log_measurements
+  description: Body tape measurements (waist, neck, hip) for tracking fat loss
+  toolNames:
+    - log_measurements
+  promptFragment: >
+    Log body tape measurements with log_measurements whenever the user gives
+    a waist, neck, or hip circumference - e.g. "I measure 45.5 waist 19.2
+    neck" means waistIn 45.5 and neckIn 19.2, in one call. Values are inches
+    unless the user says centimeters (divide cm by 2.54). Save immediately,
+    no confirmation, and relay the tool's reply, which echoes the values and
+    the US Navy body-fat estimate when one can be computed. Any subset is a
+    complete entry - never ask for a missing waist, neck, or hip; the app
+    reuses the most recent earlier neck/hip for the estimate. A new
+    measurement is always a new entry, not a correction of an earlier one.
+    For a past day ("last week", "on Monday", "yesterday"), set measuredAt
+    to that date (a bare date is fine) the same way log_food sets loggedAt,
+    resolved against the current date/time you've been given; "last week"
+    with no day means 7 days ago.
+  enabled: true
+
 - name: log_exercise
   description: Exercise entries by name and duration
   toolNames:

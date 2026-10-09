@@ -51,6 +51,25 @@ export interface TdeeStatus {
   unavailableReason: string | null
 }
 
+export interface MeasurementView {
+  id: number
+  measuredAt: string
+  waistIn: number | null
+  neckIn: number | null
+  hipIn: number | null
+  /** US Navy body-fat estimate, or null when the profile or a needed measurement is missing. */
+  bodyFatPct: number | null
+  /** The estimate used an earlier session's neck (or hip) because this one didn't measure it. */
+  neckCarried: boolean
+  hipCarried: boolean
+}
+
+export interface MeasurementsResponse {
+  measurements: MeasurementView[]
+  /** Sex and height are configured, so body fat can be estimated. */
+  profileComplete: boolean
+}
+
 export interface BloodPressureReading {
   timestamp: string
   systolic: number
@@ -65,7 +84,7 @@ export interface BloodPressureReading {
 export const dashboardApi = createApi({
   reducerPath: 'dashboardApi',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
-  tagTypes: ['Summary', 'Macros', 'WeightTrend', 'Tdee', 'BloodPressure'],
+  tagTypes: ['Summary', 'Macros', 'WeightTrend', 'Tdee', 'BloodPressure', 'Measurements'],
   keepUnusedDataFor: 300,
   endpoints: (builder) => ({
     getSummary: builder.query<TodaySummary, void>({
@@ -90,6 +109,10 @@ export const dashboardApi = createApi({
     }),
     // The newest reading regardless of range (204 → null when none are imported), so the page can
     // show how current the data is even when it's older than the charted 7 or 30 days.
+    getMeasurements: builder.query<MeasurementsResponse, void>({
+      query: () => 'measurements',
+      providesTags: ['Measurements'],
+    }),
     getLatestBloodPressure: builder.query<BloodPressureReading | null, void>({
       query: () => 'dashboard/blood-pressure/latest',
       providesTags: ['BloodPressure'],
@@ -104,8 +127,9 @@ export const {
   useGetTdeeQuery,
   useGetBloodPressureQuery,
   useGetLatestBloodPressureQuery,
+  useGetMeasurementsQuery,
 } = dashboardApi
 
 /** Marks everything a log, correction, or delete can change as stale. */
 export const invalidateAfterLog = () =>
-  dashboardApi.util.invalidateTags(['Summary', 'Macros', 'WeightTrend', 'Tdee', 'BloodPressure'])
+  dashboardApi.util.invalidateTags(['Summary', 'Macros', 'WeightTrend', 'Tdee', 'BloodPressure', 'Measurements'])

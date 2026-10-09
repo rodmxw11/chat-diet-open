@@ -102,6 +102,9 @@ export default function Header() {
                 <button type="button" role="menuitem" onClick={() => dispatch(setScreen('bloodPressure'))}>
                   <span>Blood pressure</span>
                 </button>
+                <button type="button" role="menuitem" onClick={() => dispatch(setScreen('measurements'))}>
+                  <span>Measurements</span>
+                </button>
                 <button type="button" role="menuitem" onClick={() => dispatch(setScreen('schema'))}>
                   <span>Database schema</span>
                 </button>
