@@ -20,6 +20,8 @@ export interface DailyMacros {
 export interface WeighIn {
   date: string
   weightLbs: number
+  /** Time of day of that day's (earliest) reading, "HH:mm:ss". */
+  time: string | null
 }
 
 export interface TrendPoint {

@@ -1237,6 +1237,13 @@ input {
   transform: rotate(45deg);
 }
 
+/* A weigh-in logged late in the day (see WeightTrendChart's LATE_WEIGH_IN_HOUR). */
+.legend-swatch--hollow {
+  background: transparent;
+  border: 1.5px solid var(--text-primary);
+  box-sizing: border-box;
+}
+
 .macro-chart-avg-caption {
   text-align: right;
   margin-top: -6px;

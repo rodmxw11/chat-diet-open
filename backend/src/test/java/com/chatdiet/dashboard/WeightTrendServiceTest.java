@@ -50,6 +50,19 @@ class WeightTrendServiceTest {
                 .collect(java.util.stream.Collectors.toMap(TrendPoint::date, TrendPoint::value));
     }
 
+    /** The chart marks late weigh-ins, so each day's reading carries its time - the earliest one's. */
+    @Test
+    void eachWeighInCarriesTheTimeOfThatDaysEarliestReading() {
+        var day = LocalDate.now().minusDays(1);
+        weightEntryRepository.save(new WeightEntry(day.atTime(15, 30, 45), 203.0));
+        weightEntryRepository.save(new WeightEntry(day.atTime(7, 5, 12), 201.0));
+
+        var weighIn = weightTrendService.trend30Day().actual().getFirst();
+
+        assertThat(weighIn.weightLbs()).isEqualTo(201.0);
+        assertThat(weighIn.time()).isEqualTo(java.time.LocalTime.of(7, 5, 12));
+    }
+
     @Test
     void smoothsConsecutiveDaysWithTrendWeightsRecurrenceRelation() {
         var today = LocalDate.now();

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -63,10 +64,12 @@ public class WeightTrendService {
         var to = dayBoundaryService.today();
         var from = to.minusDays(WINDOW_DAYS - 1);
 
-        var byDay = earliestWeighInByDay(weightEntryRepository.findAll());
+        var entries = weightEntryRepository.findAll();
+        var byDay = earliestWeighInByDay(entries);
         if (byDay.isEmpty()) {
             return new WeightTrendResponse(List.of(), List.of(), null);
         }
+        var timeByDay = earliestWeighInTimeByDay(entries);
 
         var trendByDate = smoothedTrendByDate();
 
@@ -74,7 +77,7 @@ public class WeightTrendService {
         for (var date = from; !date.isAfter(to); date = date.plusDays(1)) {
             var weight = byDay.get(date);
             if (weight != null) {
-                actual.add(new WeighIn(date, weight));
+                actual.add(new WeighIn(date, weight, timeByDay.get(date)));
             }
         }
 
@@ -103,6 +106,21 @@ public class WeightTrendService {
      * wins, matching TrendWeight's same-day dedup (it prefers a manually-tagged entry first, but
      * this app has no such distinction - every entry is manual).
      */
+    /** Time of day of each metabolic day's earliest reading - the one {@link #earliestWeighInByDay} keeps. */
+    private Map<LocalDate, LocalTime> earliestWeighInTimeByDay(List<WeightEntry> entries) {
+        var result = new LinkedHashMap<LocalDate, LocalDateTime>();
+        for (var entry : entries) {
+            if (entry.weightLbs() == null) {
+                continue;
+            }
+            result.merge(dayBoundaryService.metabolicDateOf(entry.loggedAt()), entry.loggedAt(),
+                    (a, b) -> a.isBefore(b) ? a : b);
+        }
+        var times = new LinkedHashMap<LocalDate, LocalTime>();
+        result.forEach((date, at) -> times.put(date, at.toLocalTime().withNano(0)));
+        return times;
+    }
+
     private Map<LocalDate, Double> earliestWeighInByDay(List<WeightEntry> entries) {
         var earliestTimestamp = new LinkedHashMap<LocalDate, LocalDateTime>();
         var result = new LinkedHashMap<LocalDate, Double>();

@@ -5,16 +5,19 @@ import {
   Line,
   ResponsiveContainer,
   Scatter,
+  Symbols,
   Tooltip,
   XAxis,
   YAxis,
   type TooltipContentProps,
 } from 'recharts'
-import { useGetTdeeQuery, useGetWeightTrendQuery } from '../../store/dashboardApi'
+import { useGetTdeeQuery, useGetWeightTrendQuery, type WeighIn } from '../../store/dashboardApi'
 
 interface MergedPoint {
   date: string
   actual: number | null
+  /** Time of day of the weigh-in ("HH:mm:ss"), when there is one on this date. */
+  actualTime: string | null
   trend: number | null
   fit: number | null
 }
@@ -33,6 +36,36 @@ function pull(row: MergedPoint): [number, number] {
   return diff >= 0 ? [0, diff] : [-diff, 0]
 }
 
+// Weigh-ins logged at or after this hour run heavier with the day's food and drink - much of the
+// day-to-day noise - so they're drawn hollow rather than mixed in unmarked with morning readings.
+const LATE_WEIGH_IN_HOUR = 10
+
+function isLateWeighIn(time: string | null): boolean {
+  return time !== null && Number(time.slice(0, 2)) >= LATE_WEIGH_IN_HOUR
+}
+
+function formatTime(time: string): string {
+  const [hours, minutes] = time.split(':').map(Number)
+  return new Date(2000, 0, 1, hours, minutes).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+}
+
+// Filled diamond for a morning weigh-in, hollow for a late one.
+function WeighInMarker({ cx, cy, payload }: { cx?: number; cy?: number; payload?: MergedPoint }) {
+  if (cx == null || cy == null || !payload) return null
+  const late = isLateWeighIn(payload.actualTime)
+  return (
+    <Symbols
+      cx={cx}
+      cy={cy}
+      type="diamond"
+      size={64}
+      fill={late ? 'var(--surface-tint-2)' : 'var(--text-primary)'}
+      stroke="var(--text-primary)"
+      strokeWidth={late ? 1.5 : 0}
+    />
+  )
+}
+
 // Only the diamond markers (actual weigh-ins) get a tooltip - hovering elsewhere along the trend
 // line shows nothing, since there's no reading there to report.
 function WeightTooltip({ active, payload }: TooltipContentProps) {
@@ -40,7 +73,10 @@ function WeightTooltip({ active, payload }: TooltipContentProps) {
   if (!active || !row || row.actual === null) return null
   return (
     <div className="dash-tooltip">
-      <div className="dash-tooltip-date">{formatDate(row.date)}</div>
+      <div className="dash-tooltip-date">
+        {formatDate(row.date)}
+        {row.actualTime && ` · ${formatTime(row.actualTime)}`}
+      </div>
       <div className="dash-tooltip-value">{row.actual.toFixed(1)} lbs</div>
     </div>
   )
@@ -76,7 +112,7 @@ function fitLine(actual: { date: string; weightLbs: number }[]): LinearFit | nul
 }
 
 function buildSeries(
-  actual: { date: string; weightLbs: number }[],
+  actual: WeighIn[],
   smoothed: { date: string; value: number }[],
   fit: LinearFit | null,
 ): MergedPoint[] {
@@ -86,11 +122,13 @@ function buildSeries(
   const sortedDates = Array.from(dates).sort()
 
   const actualByDate = new Map(actual.map((p) => [p.date, p.weightLbs]))
+  const timeByDate = new Map(actual.map((p) => [p.date, p.time]))
   const smoothedByDate = new Map(smoothed.map((p) => [p.date, p.value]))
 
   return sortedDates.map((date) => ({
     date,
     actual: actualByDate.get(date) ?? null,
+    actualTime: timeByDate.get(date) ?? null,
     trend: smoothedByDate.get(date) ?? null,
     fit: fit ? fit.intercept + fit.slopePerDay * daysSince(fit.origin, date) : null,
   }))
@@ -164,7 +202,7 @@ export default function WeightTrendChart() {
             isAnimationActive={false}
             connectNulls
           />
-          <Scatter dataKey="actual" fill="var(--text-primary)" shape="diamond" isAnimationActive={false}>
+          <Scatter dataKey="actual" fill="var(--text-primary)" shape={WeighInMarker} isAnimationActive={false}>
             {/* Thin vertical line from each weigh-in marker to the trend line, showing how much
                 that point pulled the smoothed trend up or down. */}
             <ErrorBar dataKey={pull} direction="y" width={0} strokeWidth={1} stroke="var(--status-offline)" />
@@ -175,6 +213,12 @@ export default function WeightTrendChart() {
         <span>
           <span className="legend-swatch legend-swatch--diamond" /> weigh-in
         </span>
+        {trend.actual.some((p) => isLateWeighIn(p.time)) && (
+          <span>
+            <span className="legend-swatch legend-swatch--diamond legend-swatch--hollow" /> after{' '}
+            {formatTime(`${LATE_WEIGH_IN_HOUR}:00`).replace(':00', '')}
+          </span>
+        )}
         <span>
           <span className="legend-swatch legend-swatch--line" /> trend
         </span>
