@@ -60,6 +60,10 @@ Log a meal by name, by barcode scan, from a saved recipe, or from a photo.
   after, here 10 g; "g"/"grams" and a comma or "and" between the two are optional. With a known
   food this logs instantly, with no model round trip)*
 
+**Tip - tare the container instead.** Put the full jar on the scale and tare it to zero, then
+eat; the scale reads the amount eaten as a negative number. Log it without the minus sign:
+"10g mayo". No arithmetic, and a known food logs instantly. Always type amounts unsigned.
+
 Anything under 10 calories (black coffee, water) is acknowledged but not logged.
 
 ### Log weight
