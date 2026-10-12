@@ -54,6 +54,20 @@ class QuantityResolverTest {
         assertThat(quantityResolver.resolve(banana, "142 grams")).isEqualTo(new QuantityResolution.Grams(142.0));
     }
 
+    /** Weighing the jar before and after: the difference is what was eaten. */
+    @Test
+    void aWeighedContainerResolvesToTheDifference() {
+        assertThat(quantityResolver.resolve(banana, "before 596 after 586")).isEqualTo(new QuantityResolution.Grams(10.0));
+        assertThat(quantityResolver.resolve(banana, "Before 412g, after 380 g")).isEqualTo(new QuantityResolution.Grams(32.0));
+        assertThat(quantityResolver.resolve(banana, "before 250.5 grams and after 240.2 grams"))
+                .isEqualTo(new QuantityResolution.Grams(10.3));
+        assertThat(QuantityResolver.parseExplicitGrams("before 596 after 586")).isEqualTo(new QuantityResolution.Grams(10.0));
+        assertThat(quantityResolver.resolve(banana, "before 586 after 596"))
+                .as("the container got heavier - nothing was eaten")
+                .isInstanceOf(QuantityResolution.Unresolvable.class);
+        assertThat(quantityResolver.resolve(banana, "before 586 after 586")).isInstanceOf(QuantityResolution.Unresolvable.class);
+    }
+
     @Test
     void parsesCountAndKnownUnit() {
         assertThat(quantityResolver.resolve(banana, "2 medium")).isEqualTo(new QuantityResolution.Grams(236.0));

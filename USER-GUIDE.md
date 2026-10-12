@@ -10,6 +10,8 @@ calls the matching tool(s) automatically.
 > - **Instant entries** - "142g cheerios", "100 cal apple sauce", "3 slices honey wheat bread",
 >   with or without a leading "I ate": when the food is a known alias, these log immediately with
 >   no model round trip.
+> - **Weighed containers** - "mayo before 596 after 586" logs 10 g of mayo: weigh the jar
+>   before and after, give both numbers in grams, and the app does the subtraction.
 > - **Calories as an amount** - "250 cal of hot dog buns" works anywhere an amount does; the app
 >   converts calories to grams from the item's per-100g data.
 > - **Fewer questions** - a single strong match auto-logs (echoed as *auto-matched*) instead of
@@ -25,6 +27,7 @@ calls the matching tool(s) automatically.
     * [Log food](#log-food)
     * [Log weight](#log-weight)
     * [Log vitals (blood pressure / heart rate)](#log-vitals-blood-pressure--heart-rate)
+    * [Log body measurements](#log-body-measurements)
     * [Log exercise](#log-exercise)
     * [Log a digestive event](#log-a-digestive-event)
     * [Save a note](#save-a-note)
@@ -53,6 +56,9 @@ Log a meal by name, by barcode scan, from a saved recipe, or from a photo.
 - *(scan a barcode)* → confirms the product and logs it
 - *(attach a food photo)* "here's what I'm eating"
 - "Log my usual chicken stir fry" *(**named dish** matches a saved recipe if you have one)*
+- "Today I ate mayo **before** 596 **after** 586" *(a **weighed container**: grams eaten = before -
+  after, here 10 g; "g"/"grams" and a comma or "and" between the two are optional. With a known
+  food this logs instantly, with no model round trip)*
 
 Anything under 10 calories (black coffee, water) is acknowledged but not logged.
 
@@ -65,6 +71,18 @@ Anything under 10 calories (black coffee, water) is acknowledged but not logged.
 
 - "**BP** was 128 over 82, **pulse** 68"
 - "**Blood pressure** 130/85"
+
+### Log body measurements
+
+Tape measurements in inches (say "cm" to have them converted). Any subset is a complete entry.
+
+- "I **measure** 45.5 **waist** 19.2 **neck**"
+- "Last week my **waist** was 46.3" *(backdated to that day)*
+
+The reply includes a US Navy body-fat estimate once a waist and neck are on record (women also
+need a hip); a waist-only entry reuses your most recent earlier neck. The estimate needs
+`chat-diet.profile.sex` and `height-in` in the app's config. See the history on the
+**Measurements** page in the header menu.
 
 ### Log exercise
 

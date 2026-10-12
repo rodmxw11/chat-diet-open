@@ -94,6 +94,11 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
                 continue;
             }
             if (outcome instanceof ItemOutcome.UseEstimate) {
+                var impossible = impossibleEstimate(itemReq);
+                if (impossible != null) {
+                    clarifications.add(impossible);
+                    continue;
+                }
                 var logged = logEstimate(itemReq, groupId, loggedAt);
                 if (logged == null) {
                     clarifications.add("\"" + itemReq.foodRef() + "\": what should I log for calories/macros?");
@@ -235,6 +240,29 @@ public class LogFoodTool implements Function<LogFoodRequest, ToolResult> {
                         tierTag(item.lookupSource()) + (autoMatched ? ", auto-matched" : ""),
                         scaled.calories());
         return new Logged(entry, echo);
+    }
+
+    /** Nothing edible beats pure fat's ~9 cal/g; a denser estimate was made for some other amount. */
+    private static final double MAX_KCAL_PER_100G = 900.0;
+
+    /**
+     * Rejects an estimate whose calories can't fit in the stated grams - e.g. "mayo before 596
+     * after 586" is 10 g, but the model estimated a full serving's calories. Saving it would also
+     * teach the alias an absurd per-100g figure, so the model is told to re-send for those grams.
+     */
+    private static String impossibleEstimate(LogFoodItemRequest itemReq) {
+        var explicit = QuantityResolver.parseExplicitGrams(itemReq.amountText());
+        if (explicit == null || itemReq.totalCalories() == null
+                || itemReq.totalCalories() * 100.0 / explicit.grams() <= MAX_KCAL_PER_100G) {
+            return null;
+        }
+        return "\"%s\": %d cal can't fit in %s g - call log_food again for this item, same amountText, with calories/macros estimated for exactly %s g (don't ask the user)."
+                .formatted(itemReq.foodRef(), itemReq.totalCalories(), formatGrams(explicit.grams()),
+                        formatGrams(explicit.grams()));
+    }
+
+    private static String formatGrams(double grams) {
+        return grams == Math.rint(grams) ? String.valueOf((long) grams) : String.valueOf(grams);
     }
 
     /** Tier 4: no identity resolved - the model's estimate, explicitly chosen from a clarification list. */

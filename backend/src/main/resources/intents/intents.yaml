@@ -23,7 +23,13 @@
     amountGrams field; the app resolves the phrase itself against its own
     cache and USDA FoodData Central, including inverting a stated calorie
     amount into grams. An article or "one" is a count: "an apple", "a banana",
-    "one egg" all get amountText "1", never "" or "a". Always still fill in
+    "one egg" all get amountText "1", never "" or "a". A weighed container
+    ("mayo before 596 after 586", "peanut butter before 412g after 380g")
+    gets amountText "before 596 after 586" exactly as said - the app
+    subtracts it into grams eaten, so never put the difference in amountText;
+    but do make your own calorie/macro estimate for that difference (10 g of
+    mayo here), not a typical serving. If log_food says an estimate can't
+    fit in the grams, silently call it again as told. Always still fill in
     your own best-effort estimate of calories, macros, and micronutrients on
     every item as a fallback for when nothing resolves.
 

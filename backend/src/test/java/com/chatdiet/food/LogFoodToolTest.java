@@ -184,6 +184,28 @@ class LogFoodToolTest {
         assertThat(foodAliasRepository.findByAliasNormalized("homemade chili")).isPresent();
     }
 
+    /** A weighed container's grams with a whole-serving estimate is rejected, never learned. */
+    @Test
+    void anEstimateTooDenseForAWeighedContainersGramsIsSentBack() {
+        var tooDense = new LogFoodItemRequest("mayo", "before 596 after 586", null, null, true,
+                1187, 1.0, 0.0, 133.0, 0.0, 0.0, 816.0, 20.0, 82.0, 5.0);
+
+        var result = logFoodTool.apply(new LogFoodRequest(List.of(tooDense), null, null));
+
+        assertThat(result).isInstanceOf(ToolResult.NeedsClarification.class);
+        assertThat(((ToolResult.NeedsClarification) result).question()).contains("exactly 10 g");
+        assertThat(foodAliasRepository.findByAliasNormalized("mayo")).isEmpty();
+
+        var forTenGrams = new LogFoodItemRequest("mayo", "before 596 after 586", null, null, true,
+                70, 0.1, 0.1, 7.5, 0.0, 0.1, 60.0, 1.2, 4.0, 2.0);
+        var retry = logFoodTool.apply(new LogFoodRequest(List.of(forTenGrams), null, null));
+
+        assertThat(retry).isInstanceOf(ToolResult.Success.class);
+        var entry = (FoodEntry) ((ToolResult.Success) retry).payload();
+        assertThat(entry.totalCalories()).isEqualTo(70);
+        assertThat(entry.amountGrams()).isEqualTo(10.0);
+    }
+
     @Test
     void aSoleStrongFuzzyMatchAutoLogsWritesAnAutoAliasAndSaysSo() {
         var bread = foodItemRepository.save(new FoodItem("Whole Wheat Bread", null,

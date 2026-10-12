@@ -24,6 +24,14 @@ class FastLogParserTest {
     }
 
     @Test
+    void parsesAWeighedContainerWithTheFoodFirst() {
+        assertThat(FastLogParser.parse("today i ate mayo before 596 after 586"))
+                .contains(new FastLogParser.Parsed("before 596 after 586", "mayo", false));
+        assertThat(FastLogParser.parse("Peanut butter before 412g, after 380g."))
+                .contains(new FastLogParser.Parsed("before 412g, after 380g", "Peanut butter", false));
+    }
+
+    @Test
     void parsesCalorieFirstForms() {
         assertThat(FastLogParser.parse("I ate 100 cal apple sauce"))
                 .contains(new FastLogParser.Parsed("100 cal", "apple sauce", false));

@@ -21,6 +21,13 @@ import java.util.regex.Pattern;
 @Service
 public class QuantityResolver {
 
+    /**
+     * A weighed container: "before 596 after 586" (grams, optional "g"/"grams", optional comma or
+     * "and") means 596 - 586 = 10 g eaten. Computed here, not by the model - log_food passes amount
+     * phrases through verbatim.
+     */
+    private static final Pattern CONTAINER_WEIGHED = Pattern.compile(
+            "(?i)^before\\s+([0-9]*\\.?[0-9]+)\\s*(?:g|grams?)?\\s*,?\\s*(?:and\\s+)?after\\s+([0-9]*\\.?[0-9]+)\\s*(?:g|grams?)?$");
     private static final Pattern TRAILING_GRAMS =
             Pattern.compile("(?i)^(.*?)\\s*,?\\s*(?:about\\s+)?([0-9]*\\.?[0-9]+)\\s*g(?:rams?)?$");
     private static final Pattern EXPLICIT_KCAL =
@@ -122,6 +129,12 @@ public class QuantityResolver {
     public static QuantityResolution.Grams parseExplicitGrams(String amountText) {
         if (amountText == null || amountText.isBlank()) {
             return null;
+        }
+        var weighed = CONTAINER_WEIGHED.matcher(amountText.trim());
+        if (weighed.matches()) {
+            var eaten = Double.parseDouble(weighed.group(1)) - Double.parseDouble(weighed.group(2));
+            // Container got heavier (or unchanged): not a consumption - unresolvable, so it's asked about.
+            return eaten > 0 ? new QuantityResolution.Grams(Math.round(eaten * 10) / 10.0) : null;
         }
         var m = TRAILING_GRAMS.matcher(amountText.trim());
         if (!m.matches()) {

@@ -10,7 +10,8 @@ import java.util.regex.Pattern;
  * bread" are the shapes that recur - so an optional leading "I ate"/"ate" is stripped and the
  * rest must open with a number. Everything else returns empty and flows to the model untouched:
  * "yesterday ..." (backdating), corrections, multi-item sentences, estimate-style trailing
- * numbers, bare clarification-pick digits.
+ * numbers, bare clarification-pick digits. The one food-first shape is a weighed container
+ * ("mayo before 596 after 586"), whose amount phrase {@link QuantityResolver} turns into grams.
  */
 public final class FastLogParser {
 
@@ -21,6 +22,9 @@ public final class FastLogParser {
     private static final Pattern KCAL_FIRST =
             Pattern.compile("(?i)^([0-9]*\\.?[0-9]+)\\s*k?cal(?:orie)?s?\\s+(?:of\\s+)?(\\S.*)$");
     private static final Pattern COUNT_FIRST = Pattern.compile("^([0-9]*\\.?[0-9]+)\\s+(\\S.*)$");
+    /** "mayo before 596 after 586": a weighed container - grams eaten = before - after. */
+    private static final Pattern CONTAINER_WEIGHED = Pattern.compile(
+            "(?i)^(\\S.*?)\\s+(before\\s+[0-9]*\\.?[0-9]+\\s*(?:g|grams?)?\\s*,?\\s*(?:and\\s+)?after\\s+[0-9]*\\.?[0-9]+\\s*(?:g|grams?)?)$");
 
     private FastLogParser() {
     }
@@ -45,6 +49,10 @@ public final class FastLogParser {
         var text = TRAILING_PUNCT.matcher(message.trim()).replaceFirst("");
         text = LEADING_ATE.matcher(text).replaceFirst("");
 
+        var weighed = CONTAINER_WEIGHED.matcher(text);
+        if (weighed.matches()) {
+            return Optional.of(new Parsed(weighed.group(2).trim(), weighed.group(1).trim(), false));
+        }
         var grams = GRAMS_FIRST.matcher(text);
         if (grams.matches()) {
             return Optional.of(new Parsed(grams.group(1) + "g", grams.group(2).trim(), false));
