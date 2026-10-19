@@ -37,6 +37,10 @@ function formatBytes(bytes: number): string {
   return `${value.toFixed(1)} ${units[unitIndex]}`
 }
 
+function formatUsd(amount: number): string {
+  return `$${amount.toFixed(2)}`
+}
+
 function formatHour(hour: number): string {
   return new Date(2000, 0, 1, hour).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 }
@@ -153,6 +157,21 @@ export default function AboutView() {
                   <tr>
                     <td>Day rollover</td>
                     <td>{formatHour(info.dayRolloverHour)}</td>
+                  </tr>
+                  <tr>
+                    <td>Actuator</td>
+                    <td>
+                      <a href="/actuator" target="_blank" rel="noopener noreferrer">
+                        /actuator
+                      </a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>AI cost (30 days)</td>
+                    <td>
+                      {formatUsd(info.aiCost.haikuCostUsd + info.aiCost.opusCostUsd)} (Haiku{' '}
+                      {formatUsd(info.aiCost.haikuCostUsd)} · Opus {formatUsd(info.aiCost.opusCostUsd)})
+                    </td>
                   </tr>
                   <tr>
                     <td>JVM heap free</td>

@@ -18,6 +18,7 @@ import java.time.Instant;
  *                          couldn't be read
  * @param dayRolloverHour   the configured metabolic-day rollover hour
  * @param memory            JVM heap/non-heap and system memory, as of this request
+ * @param aiCost            approximate AI model spend over the last 30 metabolic days
  */
 public record AboutInfo(
         String appName,
@@ -30,6 +31,7 @@ public record AboutInfo(
         String os,
         Long databaseSizeBytes,
         int dayRolloverHour,
-        MemoryStats memory
+        MemoryStats memory,
+        AiCostSummary aiCost
 ) {
 }

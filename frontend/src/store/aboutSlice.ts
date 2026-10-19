@@ -15,6 +15,14 @@ export interface MemoryStats {
   swapFreeBytes: number | null
 }
 
+/** Approximate AI model spend over the last 30 metabolic days, each model rounded to the cent. */
+export interface AiCostSummary {
+  fromDate: string
+  toDate: string
+  haikuCostUsd: number
+  opusCostUsd: number
+}
+
 export interface AboutInfo {
   appName: string
   version: string | null
@@ -27,6 +35,7 @@ export interface AboutInfo {
   databaseSizeBytes: number | null
   dayRolloverHour: number
   memory: MemoryStats
+  aiCost: AiCostSummary
 }
 
 interface AboutState {

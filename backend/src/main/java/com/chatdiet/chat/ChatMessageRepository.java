@@ -23,4 +23,11 @@ public interface ChatMessageRepository extends ListCrudRepository<ChatMessage, L
      */
     @Query("SELECT * FROM chat_message WHERE metabolic_date = :metabolicDate ORDER BY created_at DESC, id DESC LIMIT :limit")
     List<ChatMessage> findRecentByMetabolicDate(LocalDate metabolicDate, int limit);
+
+    /**
+     * Every message across a span of metabolic days, inclusive - for multi-day cost totals.
+     * Uncapped, unlike {@link #findByMetabolicDate}: a month is a couple of thousand rows at most.
+     */
+    @Query("SELECT * FROM chat_message WHERE metabolic_date BETWEEN :from AND :to")
+    List<ChatMessage> findByMetabolicDateBetween(LocalDate from, LocalDate to);
 }

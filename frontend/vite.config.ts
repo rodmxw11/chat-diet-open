@@ -38,11 +38,17 @@ export default defineConfig({
       // queue the offline-queue panel can list and delete from) instead of Workbox's opaque,
       // undeletable backgroundSync queue - VitePWA is kept only for manifest/installability and
       // its default precache of the build output (including the self-hosted font files).
+      workbox: {
+        // The precache answers every navigation with the app shell - which would swallow the
+        // About page's link to the backend's own Actuator pages.
+        navigateFallbackDenylist: [/^\/actuator/],
+      },
     }),
   ],
   server: {
     proxy: {
       '/api': 'http://localhost:8080',
+      '/actuator': 'http://localhost:8080',
     },
   },
 })

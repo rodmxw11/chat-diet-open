@@ -1,5 +1,8 @@
 package com.chatdiet.about;
 
+import com.chatdiet.chat.ChatCostCalculator;
+import com.chatdiet.chat.ChatMessageRepository;
+import com.chatdiet.day.DayBoundaryService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -21,19 +24,31 @@ import java.util.Optional;
 @Service
 public class AboutService {
 
+    /** Trailing window for the AI cost figure, counting today. */
+    static final int AI_COST_DAYS = 30;
+
     private final ConfigurableApplicationContext applicationContext;
     private final Optional<BuildProperties> buildProperties;
     private final String datasourceUrl;
     private final int dayRolloverHour;
+    private final ChatMessageRepository chatMessageRepository;
+    private final ChatCostCalculator chatCostCalculator;
+    private final DayBoundaryService dayBoundaryService;
 
     public AboutService(ConfigurableApplicationContext applicationContext,
                          Optional<BuildProperties> buildProperties,
                          @Value("${spring.datasource.url}") String datasourceUrl,
-                         @Value("${chat-diet.day-rollover-hour:4}") int dayRolloverHour) {
+                         @Value("${chat-diet.day-rollover-hour:4}") int dayRolloverHour,
+                         ChatMessageRepository chatMessageRepository,
+                         ChatCostCalculator chatCostCalculator,
+                         DayBoundaryService dayBoundaryService) {
         this.applicationContext = applicationContext;
         this.buildProperties = buildProperties;
         this.datasourceUrl = datasourceUrl;
         this.dayRolloverHour = dayRolloverHour;
+        this.chatMessageRepository = chatMessageRepository;
+        this.chatCostCalculator = chatCostCalculator;
+        this.dayBoundaryService = dayBoundaryService;
     }
 
     public AboutInfo current() {
@@ -52,7 +67,15 @@ public class AboutService {
                 System.getProperty("os.name") + " " + System.getProperty("os.version"),
                 databaseSizeBytes(),
                 dayRolloverHour,
-                MemoryStats.current());
+                MemoryStats.current(),
+                aiCost());
+    }
+
+    private AiCostSummary aiCost() {
+        var to = dayBoundaryService.today();
+        var from = to.minusDays(AI_COST_DAYS - 1);
+        var cost = chatCostCalculator.costFor(chatMessageRepository.findByMetabolicDateBetween(from, to));
+        return new AiCostSummary(from, to, cost.haikuCostUsd(), cost.opusCostUsd());
     }
 
     // Mirrors ExportService/ReadOnlySqlExecutor's assumption that spring.datasource.url is a

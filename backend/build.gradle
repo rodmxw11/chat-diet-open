@@ -23,7 +23,7 @@ try {
 
 // Writes META-INF/build-info.properties (name/version/build time, plus the git commit above) into
 // the jar - Spring Boot's ProjectInfoAutoConfiguration picks it up as a BuildProperties bean with
-// no extra dependency (doesn't require Actuator). Consumed by AboutService for the About page.
+// no extra dependency. Consumed by AboutService for the About page, and by Actuator's /actuator/info.
 springBoot {
     buildInfo {
         properties {
@@ -50,6 +50,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
 	implementation 'org.springframework.boot:spring-boot-starter-liquibase'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'
 	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 	implementation 'com.google.zxing:core:3.5.3'
