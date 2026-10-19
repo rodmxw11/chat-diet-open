@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>chat-diet Actuator</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #656d76;
+    --border: #d0d7de;
+    --link: #0969da;
+    --row-hover: #f6f8fa;
+    --code-bg: #eff1f3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117;
+      --fg: #e6edf3;
+      --muted: #8d96a0;
+      --border: #30363d;
+      --link: #4493f8;
+      --row-hover: #161b22;
+      --code-bg: #1f242c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px;
+    background: var(--bg);
+    color: var(--fg);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); margin: 0 0 20px; }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; overflow-wrap: anywhere; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; }
+  tbody tr:hover { background: var(--row-hover); }
+  td.name { font-weight: 600; white-space: nowrap; }
+  td.desc { color: var(--muted); }
+  tr.sub td.name { font-weight: 400; padding-left: 26px; color: var(--muted); }
+  code { font: 13px ui-monospace, SFMono-Regular, Consolas, monospace; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; word-break: break-all; }
+  .error { color: #cf222e; }
+  @media (max-width: 560px) {
+    td.desc, th.desc { display: none; }
+    td.name { white-space: normal; }
+    tr.sub td.name { padding-left: 18px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Actuator</h1>
+  <p class="subtitle">Spring Boot management endpoints for chat-diet · <a href="/actuator">raw JSON</a></p>
+  <p id="status">Loading…</p>
+  <table id="links" hidden>
+    <thead><tr><th>Endpoint</th><th>Link</th><th class="desc">What it shows</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</main>
+<script>
+  // Short glosses for the endpoints this app exposes; anything new still lists, just undescribed.
+  const DESCRIPTIONS = {
+    beans: 'Every bean in the application context',
+    caches: 'Available caches',
+    conditions: 'Which auto-configurations matched, and why',
+    configprops: 'All @ConfigurationProperties values',
+    env: 'Property sources and resolved properties (values masked)',
+    health: 'App health: database, disk space, liveness/readiness',
+    info: 'Build version, git commit, Java, OS and process',
+    liquibase: 'Applied database changesets',
+    loggers: 'Logger levels (can be changed at runtime)',
+    mappings: 'Every request mapping and its handler',
+    metrics: 'Micrometer metric names; append one to read it',
+    sbom: 'Software bill of materials',
+    scheduledtasks: 'Scheduled jobs, such as daily backups',
+    threaddump: 'Current state of every JVM thread',
+  }
+
+  function cell(className, ...children) {
+    const td = document.createElement('td')
+    if (className) td.className = className
+    td.append(...children)
+    return td
+  }
+
+  function row(name, link, parent) {
+    const tr = document.createElement('tr')
+    if (parent) tr.className = 'sub'
+    const path = new URL(link.href, location.href).pathname
+    let target
+    if (link.templated) {
+      // e.g. /actuator/metrics/{requiredMetricName} - not followable as-is.
+      target = document.createElement('code')
+      target.textContent = decodeURIComponent(path)
+    } else {
+      target = document.createElement('a')
+      target.href = path
+      target.textContent = path
+    }
+    const desc = parent ? '' : (DESCRIPTIONS[name] ?? '')
+    tr.append(cell('name', parent ? name.slice(parent.length + 1) : name), cell('', target), cell('desc', desc))
+    return tr
+  }
+
+  fetch('/actuator', { headers: { Accept: 'application/json' } })
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      return response.json()
+    })
+    .then((body) => {
+      const links = body._links ?? {}
+      const names = Object.keys(links).filter((name) => name !== 'self' && name !== 'html').sort()
+      // Templated variants arrive as "<endpoint>-<variable>" (env-toMatch); list them under their endpoint.
+      const isSub = (name) => name.includes('-') && names.includes(name.slice(0, name.indexOf('-')))
+      const tbody = document.querySelector('#links tbody')
+      for (const name of names.filter((n) => !isSub(n))) {
+        tbody.append(row(name, links[name]))
+        for (const sub of names.filter((n) => isSub(n) && n.startsWith(name + '-'))) {
+          tbody.append(row(sub, links[sub], name))
+        }
+      }
+      document.getElementById('status').hidden = true
+      document.getElementById('links').hidden = false
+    })
+    .catch((error) => {
+      const status = document.getElementById('status')
+      status.className = 'error'
+      status.textContent = `Couldn't load /actuator (${error.message}).`
+    })
+</script>
+</body>
+</html>

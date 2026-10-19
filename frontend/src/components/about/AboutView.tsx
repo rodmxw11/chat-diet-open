@@ -161,8 +161,8 @@ export default function AboutView() {
                   <tr>
                     <td>Actuator</td>
                     <td>
-                      <a href="/actuator" target="_blank" rel="noopener noreferrer">
-                        /actuator
+                      <a href="/actuator/html" target="_blank" rel="noopener noreferrer">
+                        /actuator/html
                       </a>
                     </td>
                   </tr>
