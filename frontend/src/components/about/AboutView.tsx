@@ -169,7 +169,7 @@ export default function AboutView() {
                   <tr>
                     <td>Google Cloud cost</td>
                     <td>
-                      <a href="https://console.cloud.google.com/billing" target="_blank" rel="noopener noreferrer">
+                      <a href="https://console.cloud.google.com/billing/011643-6E4F11-D5D82F?project=chat-diet-docker" target="_blank" rel="noopener noreferrer">
                         Billing reports
                       </a>
                     </td>
