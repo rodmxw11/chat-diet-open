@@ -167,6 +167,14 @@ export default function AboutView() {
                     </td>
                   </tr>
                   <tr>
+                    <td>Google Cloud cost</td>
+                    <td>
+                      <a href="https://console.cloud.google.com/billing" target="_blank" rel="noopener noreferrer">
+                        Billing reports
+                      </a>
+                    </td>
+                  </tr>
+                  <tr>
                     <td>AI cost (30 days)</td>
                     <td>
                       {formatUsd(info.aiCost.haikuCostUsd + info.aiCost.opusCostUsd)} (Haiku{' '}

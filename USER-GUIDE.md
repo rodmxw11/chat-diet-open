@@ -170,8 +170,9 @@ Feature requests or complaints about the app itself - not your diet/health data.
 
 ## About page
 
-The About page (header menu) shows app and server details, an **Export DB** button, an
-**Actuator** link to `/actuator/html`, a browsable list of Spring Boot's health, metrics, env,
+The About page (header menu) shows app and server details, an **Export DB** button, a
+**Google Cloud cost** link to the Google Cloud Billing console (the actual fee isn't shown in the
+app - Google offers no simple API for it), an **Actuator** link to `/actuator/html`, a browsable list of Spring Boot's health, metrics, env,
 loggers, thread dump and other endpoints (heap dump is deliberately off), and **AI cost (30 days)**: approximate Haiku (chat) and Opus (SQL questions) spend over the last 30
 days, from recorded token usage and the rates in the `model_pricing` table. The chat history
 page shows the same figures for a single day.
