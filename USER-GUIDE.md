@@ -66,6 +66,10 @@ eat; the scale reads the amount eaten as a negative number. Log it without the m
 
 Anything under 10 calories (black coffee, water) is acknowledged but not logged.
 
+The **Daily Foods** page lists each entry with its calories and macros. Entries logged by weight
+also show the amount first, e.g. "38G 5C 3F 10P" (38 g, then carbs, fat and protein in grams).
+Entries with no recorded weight show just the macros.
+
 ### Log weight
 
 - "182.4" *(a bare number is read as a weight)*
