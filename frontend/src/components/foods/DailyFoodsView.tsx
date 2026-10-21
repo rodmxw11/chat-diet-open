@@ -10,17 +10,11 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, TIME_FORMAT)
 }
 
-function formatMacros(
-  carbsG: number | null,
-  fatG: number | null,
-  proteinG: number | null,
-  amountGrams: number | null = null,
-): string {
+function formatMacros(carbsG: number | null, fatG: number | null, proteinG: number | null): string {
   const c = Math.round(carbsG ?? 0)
   const f = Math.round(fatG ?? 0)
   const p = Math.round(proteinG ?? 0)
-  const macros = `${c}C ${f}F ${p}P`
-  return amountGrams === null ? macros : `${Math.round(amountGrams)}G ${macros}`
+  return `${c}C ${f}F ${p}P`
 }
 
 // Parses a "YYYY-MM-DD" string as a local-time date and shifts it by `days`, avoiding the
@@ -175,9 +169,12 @@ export default function DailyFoodsView() {
                 {items.map((entry) => (
                   <tr key={entry.id}>
                     <td>{formatTime(entry.loggedAt)}</td>
-                    <td>{entry.rawUtterance}</td>
+                    <td>
+                      {entry.rawUtterance}
+                      {entry.amountGrams !== null && ` ${Math.round(entry.amountGrams)}G`}
+                    </td>
                     <td>{entry.totalCalories ?? 0}</td>
-                    <td>{formatMacros(entry.totalCarbsG, entry.totalFatG, entry.totalProteinG, entry.amountGrams)}</td>
+                    <td>{formatMacros(entry.totalCarbsG, entry.totalFatG, entry.totalProteinG)}</td>
                     <td className="foods-table-delete-cell">
                       <button
                         type="button"
